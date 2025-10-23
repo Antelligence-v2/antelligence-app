@@ -20,8 +20,8 @@ import openai
 import os
 from dotenv import load_dotenv
 
-from backend.biofvm import Microenvironment
-from backend.tumor_environment import TumorGeometry, TumorCell, VesselPoint, CellPhase
+from biofvm import Microenvironment
+from tumor_environment import TumorGeometry, TumorCell, VesselPoint, CellPhase
 
 load_dotenv()
 IO_API_KEY = os.getenv("IO_SECRET_KEY")
@@ -166,10 +166,17 @@ class NanobotAgent:
             direction = direction / np.linalg.norm(direction)
             self.position[:2] += direction * self.speed
         else:
-            # Random walk if no gradient
-            angle = np.random.uniform(0, 2 * np.pi)
-            self.position[0] += self.speed * np.cos(angle)
-            self.position[1] += self.speed * np.sin(angle)
+            # Random walk if no gradient, but stay within tumor
+            if self._is_within_tumor_boundary():
+                angle = np.random.uniform(0, 2 * np.pi)
+                self.position[0] += self.speed * np.cos(angle)
+                self.position[1] += self.speed * np.sin(angle)
+            else:
+                # Move toward tumor center if outside
+                tumor_center = np.array(self.model.geometry.center[:2])
+                direction_to_center = tumor_center - self.position[:2]
+                direction_to_center = direction_to_center / np.linalg.norm(direction_to_center)
+                self.position[:2] += direction_to_center * self.speed
         
         self._clamp_position()
         
@@ -209,7 +216,7 @@ class NanobotAgent:
     
     def _find_nearest_hypoxic_cell(self, max_distance: float = 100.0) -> Optional[TumorCell]:
         """
-        Find nearest hypoxic tumor cell within range.
+        Find nearest hypoxic tumor cell within range and within tumor boundary.
         
         Args:
             max_distance: Maximum search radius (µm)
@@ -225,15 +232,29 @@ class NanobotAgent:
         if not hypoxic_cells:
             return None
         
-        # Calculate distances
+        # Filter cells to only those within tumor boundary
+        tumor_center = np.array(self.model.geometry.center[:2])
+        tumor_radius = self.model.geometry.tumor_radius
+        
+        valid_cells = []
+        for cell in hypoxic_cells:
+            cell_pos = np.array(cell.position[:2])
+            distance_from_center = np.linalg.norm(cell_pos - tumor_center)
+            if distance_from_center <= tumor_radius:
+                valid_cells.append(cell)
+        
+        if not valid_cells:
+            return None
+        
+        # Calculate distances to valid cells only
         distances = [
             np.linalg.norm(np.array(cell.position[:2]) - self.position[:2])
-            for cell in hypoxic_cells
+            for cell in valid_cells
         ]
         
         min_dist = min(distances)
         if min_dist <= max_distance:
-            return hypoxic_cells[distances.index(min_dist)]
+            return valid_cells[distances.index(min_dist)]
         
         return None
     
@@ -319,7 +340,8 @@ class NanobotAgent:
             self.state = NanobotState.SEARCHING
     
     def _clamp_position(self):
-        """Keep nanobot within simulation boundaries."""
+        """Keep nanobot within simulation boundaries and tumor constraints."""
+        # First, clamp to simulation domain
         self.position[0] = np.clip(
             self.position[0],
             self.model.microenv.x_range[0],
@@ -330,6 +352,64 @@ class NanobotAgent:
             self.model.microenv.y_range[0],
             self.model.microenv.y_range[1]
         )
+        
+        # CRITICAL: Enforce tumor boundary constraints
+        self._enforce_tumor_boundary()
+    
+    def _enforce_tumor_boundary(self):
+        """
+        Enforce nanobot boundary constraints:
+        - Must stay within tumor boundary (red area) when treating
+        - Can only leave tumor to go to blood vessels (green areas) for reloading
+        """
+        pos_2d = self.position[:2]
+        tumor_center = np.array(self.model.geometry.center[:2])
+        distance_from_center = np.linalg.norm(pos_2d - tumor_center)
+        
+        # Check if we're in a valid state to be outside tumor
+        can_be_outside = (
+            self.state == NanobotState.RETURNING or 
+            self.state == NanobotState.RELOADING or
+            self.drug_payload < 20.0  # Low on drugs, need to reload
+        )
+        
+        # If we're outside tumor boundary and shouldn't be, move back in
+        if distance_from_center > self.model.geometry.tumor_radius:
+            if not can_be_outside:
+                # Force nanobot back into tumor boundary
+                direction_to_center = tumor_center - pos_2d
+                direction_to_center = direction_to_center / np.linalg.norm(direction_to_center)
+                
+                # Move to edge of tumor boundary
+                edge_position = tumor_center + direction_to_center * (self.model.geometry.tumor_radius - 5.0)
+                self.position[0] = edge_position[0]
+                self.position[1] = edge_position[1]
+                
+                # If we were targeting something outside, cancel it
+                if self.target_cell:
+                    self.target_cell = None
+                    self.state = NanobotState.SEARCHING
+            else:
+                # We're allowed to be outside (returning to vessel), but check if we're near a vessel
+                if self.state == NanobotState.RETURNING:
+                    # Make sure we're actually heading toward a vessel
+                    nearest_vessel = self.model.geometry.find_nearest_vessel(tuple(self.position))
+                    if nearest_vessel:
+                        vessel_pos = np.array(nearest_vessel.position[:2])
+                        vessel_distance = np.linalg.norm(pos_2d - vessel_pos)
+                        
+                        # If we're far from any vessel, redirect toward nearest one
+                        if vessel_distance > 100.0:  # 100 µm threshold
+                            direction_to_vessel = vessel_pos - pos_2d
+                            direction_to_vessel = direction_to_vessel / np.linalg.norm(direction_to_vessel)
+                            self.position[:2] += direction_to_vessel * self.speed * 0.5
+    
+    def _is_within_tumor_boundary(self) -> bool:
+        """Check if nanobot is within the tumor boundary (red area)."""
+        pos_2d = self.position[:2]
+        tumor_center = np.array(self.model.geometry.center[:2])
+        distance_from_center = np.linalg.norm(pos_2d - tumor_center)
+        return distance_from_center <= self.model.geometry.tumor_radius
     
     def _ask_llm_for_decision(self) -> str:
         """
@@ -504,7 +584,7 @@ class TumorNanobotModel:
         )
         
         # Add substrates
-        from backend.biofvm import create_oxygen_substrate, create_drug_substrate, create_pheromone_substrate
+        from biofvm import create_oxygen_substrate, create_drug_substrate, create_pheromone_substrate
         
         create_oxygen_substrate(self.microenv, boundary_value=38.0)
         create_drug_substrate(self.microenv, diffusion_coeff=1e-7)
@@ -513,7 +593,7 @@ class TumorNanobotModel:
         create_pheromone_substrate(self.microenv, 'recruitment', decay_rate=0.12)
         
         # Generate tumor geometry
-        from backend.tumor_environment import create_simple_tumor_environment
+        from tumor_environment import create_simple_tumor_environment
         
         self.geometry = create_simple_tumor_environment(
             domain_size=domain_size,
@@ -532,6 +612,9 @@ class TumorNanobotModel:
             
             nanobot = NanobotAgent(i, self, is_llm_controlled=is_llm)
             self.nanobots.append(nanobot)
+        
+        # Initialize errors list first (needed for log_error calls)
+        self.errors: List[str] = []
         
         # Initialize Queen
         self.queen = QueenNanobot(self, use_llm=use_llm_queen) if with_queen else None
@@ -565,8 +648,6 @@ class TumorNanobotModel:
             'apoptotic_cells': len(self.geometry.get_cells_in_phase(CellPhase.APOPTOTIC)),
             'total_api_calls': 0
         }
-        
-        self.errors: List[str] = []
         self.queen_report = "Queen initialized" if self.queen else "No queen active"
         
         print(f"[TUMOR MODEL] Initialization complete!")
