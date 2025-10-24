@@ -26,6 +26,8 @@ interface SubstrateData {
   trail?: number[][];
   alarm?: number[][];
   recruitment?: number[][];
+  chemokine_signal?: number[][];
+  toxicity_signal?: number[][];
   max_values?: Record<string, number>;
 }
 
@@ -179,6 +181,14 @@ export function TumorSimulationGrid({
               case "recruitment":
                 // Blue for help needed
                 color = `rgba(0, ${150 * normalized}, ${255 * normalized}, ${baseOpacity * normalized})`;
+                break;
+              case "chemokine_signal":
+                // Bright green for "come here" signals
+                color = `rgba(34, ${255 * normalized}, 100, ${baseOpacity * normalized})`;
+                break;
+              case "toxicity_signal":
+                // Dark red for "stay away" signals
+                color = `rgba(${150 * normalized}, 0, ${50 * normalized}, ${baseOpacity * normalized})`;
                 break;
               default:
                 color = `rgba(128, 128, 128, ${normalized * baseOpacity})`;

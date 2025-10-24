@@ -247,12 +247,14 @@ const TumorSimulation = () => {
               </CardHeader>
               <CardContent>
                 <Tabs value={selectedSubstrate} onValueChange={setSelectedSubstrate} className="w-full">
-                  <TabsList className="grid w-full grid-cols-5">
+                  <TabsList className="grid w-full grid-cols-7">
                     <TabsTrigger value="oxygen">Oxygen</TabsTrigger>
                     <TabsTrigger value="drug">Drug</TabsTrigger>
                     <TabsTrigger value="trail">Trail</TabsTrigger>
                     <TabsTrigger value="alarm">Alarm</TabsTrigger>
                     <TabsTrigger value="recruitment">Recruitment</TabsTrigger>
+                    <TabsTrigger value="chemokine_signal">Chemokine</TabsTrigger>
+                    <TabsTrigger value="toxicity_signal">Toxicity</TabsTrigger>
                   </TabsList>
                   <TabsContent value={selectedSubstrate} className="mt-4">
                     {simulationResults ? (
