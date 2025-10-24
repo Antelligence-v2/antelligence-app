@@ -167,8 +167,8 @@ export function TumorSimulationGrid({
                 color = `rgba(${255 * normalized}, ${100 * normalized}, ${255 * (1 - normalized)}, ${baseOpacity * normalized})`;
                 break;
               case "drug":
-                // Green gradient
-                color = `rgba(0, ${255 * normalized}, 0, ${baseOpacity * normalized})`;
+                // Orange gradient
+                color = `rgba(${255 * normalized}, ${165 * normalized}, 0, ${baseOpacity * normalized})`;
                 break;
               case "trail":
                 // Emerald green for successful paths
@@ -520,7 +520,7 @@ export function TumorSimulationGrid({
                 <span>Oxygen (O₂)</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
                 <span>Drug Concentration</span>
               </div>
               <div className="flex items-center gap-2">
