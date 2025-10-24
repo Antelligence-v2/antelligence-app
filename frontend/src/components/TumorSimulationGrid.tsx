@@ -437,7 +437,7 @@ export function TumorSimulationGrid({
       
       {/* Legend below canvas */}
       <div className="mt-6 w-full max-w-3xl">
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
           {/* Nanobot States */}
           <div className="bg-white rounded-lg border p-3 shadow-sm">
             <h4 className="font-bold text-xs text-gray-600 mb-2">🤖 NANOBOT STATES</h4>
@@ -510,13 +510,38 @@ export function TumorSimulationGrid({
               </div>
             </div>
           </div>
+
+          {/* Substrate Fields */}
+          <div className="bg-white rounded-lg border p-3 shadow-sm">
+            <h4 className="font-bold text-xs text-gray-600 mb-2">🧪 SUBSTRATE FIELDS</h4>
+            <div className="space-y-1 text-xs">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                <span>Oxygen (O₂)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                <span>Drug Concentration</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 bg-lime-500 rounded-full"></div>
+                <span>🟩 Chemokine (Attract)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 bg-red-600 rounded-full"></div>
+                <span>🟥 Toxicity (Repel)</span>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Additional info */}
         <div className="mt-3 text-xs text-center text-gray-600 bg-blue-50 rounded p-2">
           💡 <strong>Tip:</strong> Nanobots start at <span className="text-green-600 font-semibold">green vessels</span> (oxygen+drug sources), 
           navigate to <span className="text-purple-600 font-semibold">hypoxic zones</span> (low oxygen), 
-          deliver drugs, then return to reload. Watch the pulsing vessels!
+          deliver drugs, then return to reload. Watch the pulsing vessels! 
+          <span className="text-lime-600 font-semibold">🟩 Chemokine signals</span> attract nanobots to successful delivery sites, 
+          while <span className="text-red-600 font-semibold">🟥 toxicity signals</span> repel them from dangerous areas.
         </div>
       </div>
     </div>
