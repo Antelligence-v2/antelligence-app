@@ -444,23 +444,23 @@ export function TumorSimulationGrid({
             <div className="space-y-1 text-xs">
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 bg-gray-500 rounded-full"></div>
-                <span>Searching (?)</span>
+                <span className="text-gray-800">Searching (?)</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
-                <span>Targeting (→)</span>
+                <span className="text-gray-800">Targeting (→)</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                <span>Delivering (💊)</span>
+                <span className="text-gray-800">Delivering (💊)</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                <span>Returning (←)</span>
+                <span className="text-gray-800">Returning (←)</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
-                <span>Reloading (⚡)</span>
+                <span className="text-gray-800">Reloading (⚡)</span>
               </div>
             </div>
           </div>
@@ -471,19 +471,19 @@ export function TumorSimulationGrid({
             <div className="space-y-1 text-xs">
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 bg-red-500 rounded-full border-2 border-red-600"></div>
-                <span>Tumor Boundary</span>
+                <span className="text-gray-800">Tumor Boundary</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 bg-red-200 rounded-full"></div>
-                <span>Viable Region</span>
+                <span className="text-gray-800">Viable Region</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 bg-purple-200 rounded-full"></div>
-                <span>Hypoxic Zone</span>
+                <span className="text-gray-800">Hypoxic Zone</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 bg-gray-400 rounded-full"></div>
-                <span>Necrotic Core</span>
+                <span className="text-gray-800">Necrotic Core</span>
               </div>
             </div>
           </div>
@@ -494,19 +494,19 @@ export function TumorSimulationGrid({
             <div className="space-y-1 text-xs">
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 bg-green-500 rounded-full border-2 border-green-700"></div>
-                <span>Blood Vessel (O₂+Drug)</span>
+                <span className="text-gray-800">Blood Vessel (O₂+Drug)</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-                <span>Viable Cancer Cells</span>
+                <span className="text-gray-800">Viable Cancer Cells</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
-                <span>Hypoxic Cells</span>
+                <span className="text-gray-800">Hypoxic Cells</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
-                <span>Killed Cells</span>
+                <span className="text-gray-800">Killed Cells</span>
               </div>
             </div>
           </div>
@@ -517,26 +517,26 @@ export function TumorSimulationGrid({
             <div className="space-y-1 text-xs">
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                <span>Oxygen (O₂)</span>
+                <span className="text-gray-800">Oxygen (O₂)</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
-                <span>Drug Concentration</span>
+                <span className="text-gray-800">Drug Concentration</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 bg-lime-500 rounded-full"></div>
-                <span>🟩 Chemokine (Attract)</span>
+                <span className="text-gray-800">🟩 Chemokine (Attract)</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 bg-red-600 rounded-full"></div>
-                <span>🟥 Toxicity (Repel)</span>
+                <span className="text-gray-800">🟥 Toxicity (Repel)</span>
               </div>
             </div>
           </div>
         </div>
 
         {/* Additional info */}
-        <div className="mt-3 text-xs text-center text-gray-600 bg-blue-50 rounded p-2">
+        <div className="mt-3 text-xs text-center text-gray-800 bg-blue-50 rounded p-2">
           💡 <strong>Tip:</strong> Nanobots start at <span className="text-green-600 font-semibold">green vessels</span> (oxygen+drug sources), 
           navigate to <span className="text-purple-600 font-semibold">hypoxic zones</span> (low oxygen), 
           deliver drugs, then return to reload. Watch the pulsing vessels! 
