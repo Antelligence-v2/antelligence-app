@@ -36,7 +36,7 @@ const TumorSimulation = () => {
     voxel_size: 20.0,
     n_nanobots: 10,
     tumor_radius: 200.0,
-    agent_type: "Rule-Based",
+    agent_type: "LLM-Powered",
     selected_model: "meta-llama/Llama-3.3-70B-Instruct",
     use_queen: false,
     use_llm_queen: false,
