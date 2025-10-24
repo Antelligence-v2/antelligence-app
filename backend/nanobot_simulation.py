@@ -80,10 +80,12 @@ class NanobotAgent:
         
         # Chemotaxis weights (how much each gradient influences movement)
         self.chemotaxis_weights = {
-            'oxygen': -1.0,      # Move TOWARD low oxygen (hypoxic tumor)
-            'trail': 0.8,        # Follow successful delivery trails
-            'alarm': -0.5,       # Avoid alarm pheromones
-            'recruitment': 0.6,  # Respond to recruitment signals
+            'oxygen': -1.0,           # Move TOWARD low oxygen (hypoxic tumor)
+            'trail': 0.8,             # Follow successful delivery trails
+            'alarm': -0.5,            # Avoid alarm pheromones
+            'recruitment': 0.6,       # Respond to recruitment signals
+            'chemokine_signal': 1.2,  # Strong attraction to "come here" signals
+            'toxicity_signal': -1.5,  # Strong repulsion from "stay away" signals
         }
         
         # Target tracking
@@ -298,6 +300,11 @@ class NanobotAgent:
             trail = self.model.microenv.get_substrate('trail')
             if trail:
                 trail.add_source(voxel, 3.0)
+            
+            # Emit chemokine signal to attract other nanobots to this successful delivery site
+            chemokine = self.model.microenv.get_substrate('chemokine_signal')
+            if chemokine:
+                chemokine.add_source(voxel, 4.0)  # Strong "come here" signal
         
         # If payload depleted, return to vessel
         if self.drug_payload < 10.0:
@@ -592,6 +599,10 @@ class TumorNanobotModel:
         create_pheromone_substrate(self.microenv, 'alarm', decay_rate=0.15)
         create_pheromone_substrate(self.microenv, 'recruitment', decay_rate=0.12)
         
+        # Add new chemokine and toxicity signal substrates
+        create_pheromone_substrate(self.microenv, 'chemokine_signal', decay_rate=0.08)  # Attractant - slower decay
+        create_pheromone_substrate(self.microenv, 'toxicity_signal', decay_rate=0.2)     # Repellent - faster decay
+        
         # Generate tumor geometry
         from tumor_environment import create_simple_tumor_environment
         
@@ -691,6 +702,8 @@ class TumorNanobotModel:
     
     def _update_tumor_cells(self):
         """Update all tumor cells based on local microenvironment."""
+        toxicity_substrate = self.microenv.get_substrate('toxicity_signal')
+        
         for cell in self.geometry.tumor_cells:
             if not cell.is_alive:
                 continue
@@ -708,6 +721,26 @@ class TumorNanobotModel:
             oxygen_substrate = self.microenv.get_substrate('oxygen')
             if oxygen_substrate:
                 oxygen_substrate.add_sink(voxel, cell.get_oxygen_consumption() * self.microenv.dt)
+            
+            # Generate toxicity signal from hypoxic/necrotic cells and drug overdose
+            if toxicity_substrate:
+                toxicity_amount = 0.0
+                
+                # Hypoxic cells emit moderate toxicity
+                if cell.phase == CellPhase.HYPOXIC:
+                    toxicity_amount += 2.0
+                
+                # Necrotic cells emit high toxicity
+                if cell.phase == CellPhase.NECROTIC:
+                    toxicity_amount += 5.0
+                
+                # Drug overdose areas emit toxicity (high drug concentration)
+                if drug > 50.0:  # Threshold for drug overdose
+                    toxicity_amount += 3.0
+                
+                # Add toxicity signal if any toxicity is generated
+                if toxicity_amount > 0.0:
+                    toxicity_substrate.add_source(voxel, toxicity_amount)
     
     def _apply_vessel_sources(self):
         """Apply oxygen and drug sources from blood vessels."""
