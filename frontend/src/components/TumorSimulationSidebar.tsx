@@ -26,8 +26,8 @@ export function TumorSimulationSidebar({
     onSettingsChange({ ...settings, [key]: value });
   };
 
-  const [domainOpen, setDomainOpen] = useState(true);
-  const [nanobotOpen, setNanobotOpen] = useState(true);
+  const [domainOpen, setDomainOpen] = useState(false);
+  const [nanobotOpen, setNanobotOpen] = useState(false);
   const [queenOpen, setQueenOpen] = useState(false);
   const [simOpen, setSimOpen] = useState(false);
 
@@ -38,7 +38,6 @@ export function TumorSimulationSidebar({
         <Card className="bg-gradient-to-r from-pink-50 to-purple-50 dark:from-pink-950 dark:to-purple-950">
           <CardHeader>
             <div className="flex items-center gap-2">
-              <Brain className="w-6 h-6 text-pink-500" />
               <CardTitle className="text-lg">Tumor Nanobot Config</CardTitle>
             </div>
             <p className="text-xs text-muted-foreground mt-1">

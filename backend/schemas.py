@@ -156,6 +156,17 @@ class TumorSimulationConfig(BaseModel):
     # Cell parameters
     cell_density: float = Field(0.001, gt=0, description="Tumor cells per µm²")
     vessel_density: float = Field(0.01, gt=0, description="Blood vessels per 100 µm²")
+    
+    # Advanced biological parameters
+    enable_bbb: bool = Field(True, description="Enable blood-brain barrier modeling")
+    bbb_permeability: float = Field(0.1, ge=0.0, le=1.0, description="BBB permeability factor")
+    enable_immune_system: bool = Field(True, description="Enable immune system interactions")
+    immune_cell_density: float = Field(0.05, gt=0, description="Immune cells per tumor cell")
+    enable_tumor_heterogeneity: bool = Field(True, description="Enable tumor cell heterogeneity")
+    stem_cell_fraction: float = Field(0.1, ge=0.0, le=1.0, description="Fraction of stem cells")
+    resistant_cell_fraction: float = Field(0.15, ge=0.0, le=1.0, description="Fraction of resistant cells")
+    enable_multi_drug: bool = Field(False, description="Enable multi-drug combination therapy")
+    drug_combination_ratio: float = Field(1.0, gt=0, description="Ratio of drug A to drug B")
 
 
 class NanobotState(BaseModel):

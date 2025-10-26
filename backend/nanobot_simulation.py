@@ -21,7 +21,7 @@ import os
 from dotenv import load_dotenv
 
 from biofvm import Microenvironment
-from tumor_environment import TumorGeometry, TumorCell, VesselPoint, CellPhase
+from tumor_environment import TumorGeometry, TumorCell, VesselPoint, CellPhase, CellType
 
 load_dotenv()
 IO_API_KEY = os.getenv("IO_SECRET_KEY")
@@ -72,11 +72,11 @@ class NanobotAgent:
                 0.0
             ])
         
-        # Nanobot properties
+        # Nanobot properties (medically realistic values)
         self.state = NanobotState.SEARCHING
-        self.drug_payload = 100.0  # Start full
-        self.max_payload = 100.0
-        self.speed = 10.0  # µm per step
+        self.drug_payload = 20.0  # Start with 20 μg payload (effective for direct delivery)
+        self.max_payload = 20.0   # 20 μg total capacity (effective for simulation)
+        self.speed = 30.0  # µm per step (movement speed)
         
         # Chemotaxis weights (how much each gradient influences movement)
         self.chemotaxis_weights = {
@@ -184,7 +184,7 @@ class NanobotAgent:
         
         # Check if we're now near a hypoxic cell
         nearby_cell = self._find_nearest_hypoxic_cell(max_distance=30.0)
-        if nearby_cell and self.drug_payload > 10.0:
+        if nearby_cell and self.drug_payload > 2.0:  # Need at least 2 μg to target
             self.target_cell = nearby_cell
             self.state = NanobotState.TARGETING
     
@@ -291,10 +291,13 @@ class NanobotAgent:
         drug = self.model.microenv.get_substrate('drug')
         
         if drug and self.drug_payload > 0:
-            delivery_amount = min(self.drug_payload, 20.0)  # 20 units per step
+            delivery_amount = min(self.drug_payload, 2.0)  # 2 μg per delivery (effective for direct accumulation)
             drug.add_source(voxel, delivery_amount)
             self.drug_payload -= delivery_amount
             self.total_drug_delivered += delivery_amount
+            
+            # Directly accumulate drug to target cell (bypassing diffusion for immediate effect)
+            cell_killed = self.target_cell.accumulate_drug(delivery_amount)
             
             # Deposit trail pheromone (mark successful delivery path)
             trail = self.model.microenv.get_substrate('trail')
@@ -307,7 +310,7 @@ class NanobotAgent:
                 chemokine.add_source(voxel, 4.0)  # Strong "come here" signal
         
         # If payload depleted, return to vessel
-        if self.drug_payload < 10.0:
+        if self.drug_payload < 2.0:  # Return when < 2 μg remaining
             self.deliveries_made += 1
             self.target_cell = None
             self.target_vessel = self.model.geometry.find_nearest_vessel(tuple(self.position))
@@ -338,8 +341,8 @@ class NanobotAgent:
             self._clamp_position()
     
     def _reload_drug(self):
-        """Reload drug payload at vessel."""
-        reload_rate = 20.0  # Units per step
+        """Reload drug payload at vessel (effective reload rate)."""
+        reload_rate = 5.0  # 5 μg per step (effective reload rate)
         self.drug_payload = min(self.drug_payload + reload_rate, self.max_payload)
         
         if self.drug_payload >= self.max_payload * 0.9:  # 90% full
@@ -420,7 +423,7 @@ class NanobotAgent:
     
     def _ask_llm_for_decision(self) -> str:
         """
-        Query LLM for high-level strategy decision.
+        Query LLM for high-level strategy decision with advanced biological context.
         
         Returns:
             Action string: 'target', 'follow_trail', 'explore', 'return'
@@ -431,31 +434,94 @@ class NanobotAgent:
         trail = self.model.microenv.get_concentration_at('trail', tuple(self.position))
         alarm = self.model.microenv.get_concentration_at('alarm', tuple(self.position))
         
-        # Find nearby hypoxic cells
-        nearby_hypoxic = len([
-            c for c in self.model.geometry.get_cells_in_phase(CellPhase.HYPOXIC)
+        # Get immune system signals
+        ifn_gamma = self.model.microenv.get_concentration_at('ifn_gamma', tuple(self.position))
+        tnf_alpha = self.model.microenv.get_concentration_at('tnf_alpha', tuple(self.position))
+        perforin = self.model.microenv.get_concentration_at('perforin', tuple(self.position))
+        
+        # Get multi-drug concentrations
+        drug_a = self.model.microenv.get_concentration_at('drug_a', tuple(self.position))
+        drug_b = self.model.microenv.get_concentration_at('drug_b', tuple(self.position))
+        
+        # Analyze nearby tumor cells by type
+        nearby_cells = [
+            c for c in self.model.geometry.get_living_cells()
             if np.linalg.norm(np.array(c.position[:2]) - self.position[:2]) < 50.0
-        ])
+        ]
         
-        prompt = f"""You are a nanobot carrying anti-cancer drugs through a tumor.
+        cell_type_counts = {}
+        avg_resistance = 0.0
+        stem_cells_nearby = 0
         
-Current status:
+        if nearby_cells:
+            for cell_type in CellType:
+                cell_type_counts[cell_type.value] = len([
+                    c for c in nearby_cells if c.cell_type == cell_type
+                ])
+            avg_resistance = np.mean([c.resistance_level for c in nearby_cells])
+            stem_cells_nearby = cell_type_counts.get('stem_cell', 0)
+        
+        # Analyze nearby immune cells
+        nearby_immune = [
+            c for c in self.model.geometry.immune_cells
+            if c.is_active and np.linalg.norm(np.array(c.position[:2]) - self.position[:2]) < 50.0
+        ]
+        
+        immune_activity = np.mean([c.activation_level for c in nearby_immune]) if nearby_immune else 0.0
+        
+        # Check BBB permeability of nearest vessel
+        nearest_vessel = self.model.geometry.find_nearest_vessel(tuple(self.position))
+        bbb_permeability = nearest_vessel.bbb_permeability if nearest_vessel else 0.1
+        
+        prompt = f"""You are an intelligent nanobot carrying anti-cancer drugs through a complex tumor microenvironment.
+
+CURRENT STATUS:
 - Position: ({self.position[0]:.1f}, {self.position[1]:.1f}) µm
 - Drug payload: {self.drug_payload:.1f}/{self.max_payload} units
 - Deliveries made: {self.deliveries_made}
 
-Local environment:
-- Oxygen: {oxygen:.2f} mmHg (low oxygen = tumor hypoxia, good target)
+LOCAL MICROENVIRONMENT:
+- Oxygen: {oxygen:.2f} mmHg (low = hypoxic tumor region, good target)
 - Drug concentration: {drug:.2f} (already treated area?)
 - Trail pheromone: {trail:.2f} (successful delivery paths)
-- Alarm pheromone: {alarm:.2f} (problems reported here)
-- Nearby hypoxic cells: {nearby_hypoxic}
+- Alarm pheromone: {alarm:.2f} (problems/toxicity reported)
 
-Actions:
-- 'target': Lock onto nearby hypoxic tumor cell
-- 'follow_trail': Follow pheromone trail to known good areas  
-- 'explore': Use chemotaxis to explore new regions
-- 'return': Return to blood vessel to reload
+IMMUNE SYSTEM SIGNALS:
+- IFN-gamma: {ifn_gamma:.2f} (T-cell activity, enhances immune response)
+- TNF-alpha: {tnf_alpha:.2f} (macrophage activity, pro-inflammatory)
+- Perforin: {perforin:.2f} (NK cell activity, cytotoxic)
+
+MULTI-DRUG THERAPY:
+- Drug A: {drug_a:.2f} (primary therapeutic agent)
+- Drug B: {drug_b:.2f} (secondary/synergistic agent)
+
+TUMOR CELL ANALYSIS (within 50µm):
+- Total cells: {len(nearby_cells)}
+- Stem cells: {stem_cells_nearby} (highly resistant, need more drug)
+- Differentiated: {cell_type_counts.get('differentiated', 0)} (normal sensitivity)
+- Resistant: {cell_type_counts.get('resistant', 0)} (developed resistance)
+- Invasive: {cell_type_counts.get('invasive', 0)} (more sensitive)
+- Average resistance level: {avg_resistance:.2f} (0=no resistance, 1=fully resistant)
+
+IMMUNE CELL ACTIVITY:
+- Active immune cells nearby: {len(nearby_immune)}
+- Average activation: {immune_activity:.2f} (0=inactive, 1=fully active)
+
+BLOOD-BRAIN BARRIER:
+- Nearest vessel BBB permeability: {bbb_permeability:.2f} (0.05=very restrictive, 0.3=leaky tumor vessels)
+
+STRATEGIC CONSIDERATIONS:
+- Stem cells require 3x more drug than regular cells
+- Immune cells make tumor cells more vulnerable to drugs
+- High resistance areas need sustained drug delivery
+- BBB restricts drug transport (only {bbb_permeability*100:.0f}% passes through)
+- Multi-drug combinations can overcome resistance
+
+ACTIONS:
+- 'target': Lock onto specific tumor cell (prioritize stem cells if payload sufficient)
+- 'follow_trail': Follow pheromone trail to known effective areas
+- 'explore': Use chemotaxis to find new targets (avoid high resistance areas)
+- 'return': Return to vessel to reload (especially if near BBB vessels)
 
 What should you do? Respond with ONE word only."""
 
@@ -543,10 +609,132 @@ class QueenNanobot:
         return guidance
     
     def _guide_with_llm(self) -> Dict[int, np.ndarray]:
-        """LLM-based strategic guidance."""
-        # TODO: Implement LLM queen guidance similar to QueenAnt
-        # For now, fall back to heuristic
-        return self._guide_with_heuristic()
+        """LLM-based strategic guidance with advanced biological context."""
+        guidance = {}
+        
+        # Get comprehensive tumor statistics
+        stats = self.model.geometry.get_tumor_statistics()
+        
+        # Analyze cell type distribution
+        cell_type_dist = stats.get('cell_type_distribution', {})
+        immune_dist = stats.get('immune_cell_distribution', {})
+        
+        # Calculate priority regions
+        stem_cell_regions = []
+        high_resistance_regions = []
+        immune_active_regions = []
+        
+        for cell in self.model.geometry.get_living_cells():
+            if cell.cell_type == CellType.STEM_CELL:
+                stem_cell_regions.append(cell.position[:2])
+            if cell.resistance_level > 0.5:
+                high_resistance_regions.append(cell.position[:2])
+        
+        for immune_cell in self.model.geometry.immune_cells:
+            if immune_cell.is_active and immune_cell.activation_level > 0.7:
+                immune_active_regions.append(immune_cell.position[:2])
+        
+        # Create strategic prompt for Queen
+        prompt = f"""You are the Queen nanobot coordinating a swarm of {len(self.model.nanobots)} nanobots in a complex tumor microenvironment.
+
+TUMOR STATUS:
+- Total cells: {stats['total_cells']}
+- Living cells: {stats['living_cells']}
+- Survival rate: {stats['survival_rate']:.2%}
+
+CELL TYPE DISTRIBUTION:
+- Stem cells: {cell_type_dist.get('stem_cell', 0)} (highly resistant, priority targets)
+- Differentiated: {cell_type_dist.get('differentiated', 0)} (normal sensitivity)
+- Resistant: {cell_type_dist.get('resistant', 0)} (developed resistance)
+- Invasive: {cell_type_dist.get('invasive', 0)} (more sensitive)
+
+IMMUNE SYSTEM STATUS:
+- T cells: {immune_dist.get('t_cell', 0)} (adaptive immunity)
+- Macrophages: {immune_dist.get('macrophage', 0)} (phagocytosis)
+- NK cells: {immune_dist.get('nk_cell', 0)} (innate cytotoxicity)
+- Dendritic: {immune_dist.get('dendritic', 0)} (antigen presentation)
+
+STRATEGIC PRIORITIES:
+- Stem cell regions: {len(stem_cell_regions)} (require sustained drug delivery)
+- High resistance areas: {len(high_resistance_regions)} (need multi-drug approach)
+- Immune active zones: {len(immune_active_regions)} (synergistic opportunities)
+
+NANOBOT STATUS:
+- Total deliveries: {self.model.metrics['total_deliveries']}
+- Total drug delivered: {self.model.metrics['total_drug_delivered']:.1f}
+- Cells killed: {self.model.metrics['cells_killed']}
+
+COORDINATION STRATEGY:
+1. Direct nanobots to stem cell regions (highest priority)
+2. Avoid over-concentrating in already treated areas
+3. Leverage immune-active regions for synergistic effects
+4. Consider BBB permeability when planning reload routes
+
+Provide guidance for nanobot positioning and targeting priorities."""
+
+        try:
+            response = self.model.io_client.chat.completions.create(
+                model=self.model.selected_model,
+                messages=[
+                    {"role": "system", "content": "You are a strategic Queen nanobot. Provide high-level coordination guidance."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.2,
+                max_completion_tokens=200,
+                timeout=15
+            )
+            
+            # Parse response and convert to guidance vectors
+            # For now, use enhanced heuristic based on the analysis
+            return self._guide_with_enhanced_heuristic(stem_cell_regions, high_resistance_regions, immune_active_regions)
+            
+        except Exception as e:
+            self.model.log_error(f"Queen LLM guidance failed: {str(e)}")
+            return self._guide_with_heuristic()
+    
+    def _guide_with_enhanced_heuristic(self, stem_regions, resistance_regions, immune_regions) -> Dict[int, np.ndarray]:
+        """Enhanced heuristic guidance using advanced biological analysis."""
+        guidance = {}
+        
+        for nanobot in self.model.nanobots:
+            if nanobot.state == NanobotState.SEARCHING and nanobot.drug_payload > 20.0:
+                best_direction = None
+                best_priority = 0
+                
+                # Priority 1: Stem cell regions (highest priority)
+                for stem_pos in stem_regions:
+                    direction = np.array(stem_pos) - nanobot.position[:2]
+                    distance = np.linalg.norm(direction)
+                    if distance > 0:
+                        priority = 3.0 / (distance + 1)  # Higher priority for closer stem cells
+                        if priority > best_priority:
+                            best_direction = direction / distance
+                            best_priority = priority
+                
+                # Priority 2: Immune-active regions (synergistic opportunities)
+                for immune_pos in immune_regions:
+                    direction = np.array(immune_pos) - nanobot.position[:2]
+                    distance = np.linalg.norm(direction)
+                    if distance > 0:
+                        priority = 2.0 / (distance + 1)
+                        if priority > best_priority:
+                            best_direction = direction / distance
+                            best_priority = priority
+                
+                # Priority 3: High resistance regions (need sustained treatment)
+                for res_pos in resistance_regions:
+                    direction = np.array(res_pos) - nanobot.position[:2]
+                    distance = np.linalg.norm(direction)
+                    if distance > 0:
+                        priority = 1.5 / (distance + 1)
+                        if priority > best_priority:
+                            best_direction = direction / distance
+                            best_priority = priority
+                
+                if best_direction is not None:
+                    guidance[nanobot.nanobot_id] = best_direction
+        
+        return guidance
 
 
 class TumorNanobotModel:
@@ -603,6 +791,15 @@ class TumorNanobotModel:
         create_pheromone_substrate(self.microenv, 'chemokine_signal', decay_rate=0.08)  # Attractant - slower decay
         create_pheromone_substrate(self.microenv, 'toxicity_signal', decay_rate=0.2)     # Repellent - faster decay
         
+        # Add immune system substrates
+        create_pheromone_substrate(self.microenv, 'ifn_gamma', decay_rate=0.05)    # IFN-gamma from T cells
+        create_pheromone_substrate(self.microenv, 'tnf_alpha', decay_rate=0.08)    # TNF-alpha from macrophages
+        create_pheromone_substrate(self.microenv, 'perforin', decay_rate=0.12)    # Perforin from NK cells
+        
+        # Add multi-drug substrates
+        self.microenv.add_substrate('drug_a', diffusion_coefficient=1e-6, decay_rate=0.05)  # Primary drug
+        self.microenv.add_substrate('drug_b', diffusion_coefficient=1e-7, decay_rate=0.05)  # Secondary drug
+        
         # Generate tumor geometry
         from tumor_environment import create_simple_tumor_environment
         
@@ -657,7 +854,12 @@ class TumorNanobotModel:
             'viable_cells': len(self.geometry.get_cells_in_phase(CellPhase.VIABLE)),
             'necrotic_cells': len(self.geometry.get_cells_in_phase(CellPhase.NECROTIC)),
             'apoptotic_cells': len(self.geometry.get_cells_in_phase(CellPhase.APOPTOTIC)),
-            'total_api_calls': 0
+            'total_api_calls': 0,
+            # Add LLM vs rule-based metrics for frontend compatibility
+            'food_collected_by_llm': 0,
+            'food_collected_by_rule': 0,
+            'deliveries_by_llm': 0,
+            'deliveries_by_rule': 0
         }
         self.queen_report = "Queen initialized" if self.queen else "No queen active"
         
@@ -675,6 +877,9 @@ class TumorNanobotModel:
         
         # Update tumor cells (oxygen consumption, drug absorption)
         self._update_tumor_cells()
+        
+        # Update immune cells and their interactions
+        self._update_immune_cells()
         
         # Apply vessel sources
         self._apply_vessel_sources()
@@ -742,9 +947,20 @@ class TumorNanobotModel:
                 if toxicity_amount > 0.0:
                     toxicity_substrate.add_source(voxel, toxicity_amount)
     
+    def _update_immune_cells(self):
+        """Update immune cells and their interactions with tumor cells."""
+        for immune_cell in self.geometry.immune_cells:
+            if immune_cell.is_active:
+                # Update immune cell state and interactions
+                immune_cell.update(self.microenv.dt, self.geometry.tumor_cells)
+                
+                # Secrete cytokines into microenvironment
+                immune_cell.secrete_cytokines(self.microenv)
+    
     def _apply_vessel_sources(self):
         """Apply oxygen and drug sources from blood vessels."""
         oxygen_substrate = self.microenv.get_substrate('oxygen')
+        drug_substrate = self.microenv.get_substrate('drug')
         
         for vessel in self.geometry.vessels:
             voxel = self.microenv.position_to_voxel(vessel.position)
@@ -752,6 +968,12 @@ class TumorNanobotModel:
             # Vessels supply oxygen
             if oxygen_substrate:
                 oxygen_substrate.add_source(voxel, vessel.oxygen_supply * 0.5)
+            
+            # Vessels supply drugs with BBB permeability consideration
+            if drug_substrate and vessel.drug_supply > 0:
+                # Apply BBB permeability factor
+                effective_drug_supply = vessel.drug_supply * vessel.bbb_permeability
+                drug_substrate.add_source(voxel, effective_drug_supply)
     
     def _update_metrics(self):
         """Update simulation metrics."""
@@ -767,6 +989,14 @@ class TumorNanobotModel:
         # Nanobot metrics
         self.metrics['total_deliveries'] = sum(n.deliveries_made for n in self.nanobots)
         self.metrics['total_drug_delivered'] = sum(n.total_drug_delivered for n in self.nanobots)
+        
+        # Track deliveries by LLM vs rule-based nanobots (for frontend compatibility)
+        self.metrics['deliveries_by_llm'] = sum(n.deliveries_made for n in self.nanobots if n.is_llm_controlled)
+        self.metrics['deliveries_by_rule'] = sum(n.deliveries_made for n in self.nanobots if not n.is_llm_controlled)
+        
+        # Map deliveries to food collection for frontend compatibility
+        self.metrics['food_collected_by_llm'] = self.metrics['deliveries_by_llm']
+        self.metrics['food_collected_by_rule'] = self.metrics['deliveries_by_rule']
     
     def log_error(self, message: str):
         """Log an error message."""

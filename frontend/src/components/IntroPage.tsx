@@ -53,30 +53,23 @@ export const IntroPage: React.FC<IntroPageProps> = ({ onEnter }) => {
       {/* Hero Section */}
       <div className="relative z-10 flex items-center justify-center min-h-screen p-4">
         <div className="text-center -mt-48">
-          <div className="flex items-center justify-center mb-8">
-            <img 
-              src="/ant-logo.jpeg" 
-              alt="Antelligence Logo" 
-              className="w-20 h-20 object-contain rounded-2xl shadow-2xl border-4 border-amber-200 dark:border-amber-700 mr-6"
-            />
-          </div>
-          <h1 className="text-8xl font-black bg-gradient-to-r from-amber-600 via-orange-500 to-red-500 bg-clip-text text-transparent mb-12 tracking-tight drop-shadow-2xl">
-            Antelligence
+          <h1 className="text-8xl font-black text-black mb-12 tracking-tight drop-shadow-2xl" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
+          Antelligence
           </h1>
           <div className="flex flex-col gap-4 items-center">
             <Button 
               onClick={handleEnter}
               size="lg"
-              className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white px-8 py-4 text-xl font-semibold"
+              className="w-80 h-14 text-lg font-semibold"
             >
-              🐜 Start Foraging Simulation
+              Ant Colony Simulation
             </Button>
             <Button 
               onClick={handleTumorSimulation}
               size="lg"
-              className="bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600 text-white px-8 py-4 text-xl font-semibold"
+              variant="outline"
+              className="w-80 h-14 text-lg font-semibold border-2 border-slate-300 hover:border-slate-400 bg-slate-100 text-slate-800 hover:bg-slate-200 hover:text-slate-800"
             >
-              <Brain className="mr-2" />
               Tumor Nanobot Simulation
             </Button>
           </div>
@@ -111,133 +104,97 @@ export const IntroPage: React.FC<IntroPageProps> = ({ onEnter }) => {
       </div>
 
       {/* Information Section */}
-      <div className="relative z-10 bg-gradient-to-b from-amber-50 to-amber-100 dark:from-amber-900 dark:to-amber-800">
-        <div className="max-w-6xl mx-auto px-6 py-16">
-          <div className="bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm rounded-2xl shadow-2xl p-8 border border-amber-200 dark:border-amber-700">
-            
-            {/* Welcome Section */}
-            <div className="text-center mb-12">
-              <h2 className="text-4xl font-bold text-amber-800 dark:text-amber-200 mb-6">
-                Welcome to Antelligence: Your Interactive Ant Colony Simulation!
-              </h2>
-              <p className="text-lg text-amber-700 dark:text-amber-300 leading-relaxed max-w-4xl mx-auto">
-                Get ready to dive into a fascinating world where digital ants forage for food, make smart decisions, and even interact with a blockchain! Antelligence is an innovative simulation that combines advanced AI with the transparency of decentralized ledgers, offering you a unique platform to observe complex emergent behaviors.
-              </p>
-            </div>
-
-            {/* Features Grid */}
-            <div className="grid md:grid-cols-2 gap-8">
+      <div className="relative z-10 bg-background">
+        <div className="max-w-4xl mx-auto px-6 py-16">
+          <Card className="shadow-lg">
+            <CardHeader className="text-center">
+              <CardTitle className="text-3xl font-bold">Swarm Intelligence</CardTitle>
+              <CardDescription className="text-lg mt-4">
+                The power of collective behavior emerges from simple individual actions
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-8">
               
-              {/* Ant Colony & Environment Settings */}
-              <div className="space-y-4">
-                <h3 className="text-2xl font-semibold text-amber-800 dark:text-amber-200 flex items-center gap-2">
-                  🚀 Explore and Customize Your Ant Colony
-                </h3>
-                <p className="text-amber-700 dark:text-amber-300">
-                  This simulation is designed for you to experiment and learn. On the left sidebar, you'll find a range of parameters that you can adjust to create your own unique foraging scenarios:
+              {/* Core Concept */}
+              <div className="text-center space-y-4">
+                <p className="text-muted-foreground text-lg leading-relaxed">
+                  Swarm intelligence demonstrates how complex, intelligent behavior can emerge from simple rules 
+                  followed by many individual agents. No single ant knows the entire path to food, yet together 
+                  they create efficient foraging networks through local interactions.
                 </p>
+              </div>
+
+              {/* Two Projects */}
+              <div className="grid md:grid-cols-2 gap-8">
                 
-                <div className="space-y-3">
-                  <h4 className="text-xl font-semibold text-amber-800 dark:text-amber-200 flex items-center gap-2">
-                    🐜 Ant Colony & Environment Settings
-                  </h4>
-                  <ul className="space-y-2 text-amber-700 dark:text-amber-300">
-                    <li><strong>👥 Number of Ants:</strong> Decide how many ants populate your grid. Will a larger colony be more efficient, or will they get in each other's way?</li>
-                    <li><strong>📐 Grid Size:</strong> Set the dimensions of the ants' world. A bigger grid means more exploration!</li>
-                    <li><strong>🍯 Number of Food Piles:</strong> Distribute food across the environment. Observe how your colony adapts to different resource distributions.</li>
-                  </ul>
-                  
-                  <h5 className="text-lg font-semibold text-amber-800 dark:text-amber-200 mt-4">🤖 Ant Types:</h5>
-                  <ul className="space-y-2 text-amber-700 dark:text-amber-300">
-                    <li><strong>🧠 LLM-Powered Ants:</strong> These ants use a powerful Large Language Model (LLM) from Intelligence.io to decide their next move. They learn, adapt, and show more complex behaviors.</li>
-                    <li><strong>⚙️ Rule-Based Ants:</strong> These ants follow simple, predefined rules, acting as a baseline for comparison.</li>
-                    <li><strong>🔄 Hybrid Colony:</strong> Mix both types of ants to see how different intelligences collaborate and compete!</li>
-                  </ul>
+                {/* Ant Colony Simulation */}
+                <Card className="border-2">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      🐜 Ant Colony Simulation
+                    </CardTitle>
+                    <CardDescription>
+                      AI-powered ants foraging for food
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <p className="text-sm text-muted-foreground">
+                      Watch digital ants use pheromone trails and AI decision-making to efficiently collect food. 
+                      Each ant follows simple rules, but together they demonstrate emergent intelligence.
+                    </p>
+                    <ul className="text-sm space-y-1">
+                      <li>• LLM-powered decision making</li>
+                      <li>• Pheromone communication</li>
+                      <li>• Blockchain transaction logging</li>
+                    </ul>
+                  </CardContent>
+                </Card>
+
+                {/* Tumor Nanobot Simulation */}
+                <Card className="border-2">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      🧠 Tumor Nanobot Simulation
+                    </CardTitle>
+                    <CardDescription>
+                      Medical nanobots targeting cancer cells
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <p className="text-sm text-muted-foreground">
+                      Explore how nanobots navigate tumor microenvironments to deliver targeted drug therapy. 
+                      Similar swarm principles applied to medical treatment scenarios.
+                    </p>
+                    <ul className="text-sm space-y-1">
+                      <li>• Hypoxic zone targeting</li>
+                      <li>• Drug delivery optimization</li>
+                      <li>• Biological signal processing</li>
+                    </ul>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Common Principles */}
+              <div className="text-center space-y-4">
+                <h3 className="text-xl font-semibold">Common Principles</h3>
+                <div className="grid grid-cols-3 gap-4 text-sm">
+                  <div className="p-4 bg-muted rounded-lg">
+                    <div className="font-semibold mb-2">Decentralized Control</div>
+                    <p className="text-muted-foreground">No central coordinator needed</p>
+                  </div>
+                  <div className="p-4 bg-muted rounded-lg">
+                    <div className="font-semibold mb-2">Local Interactions</div>
+                    <p className="text-muted-foreground">Agents respond to immediate environment</p>
+                  </div>
+                  <div className="p-4 bg-muted rounded-lg">
+                    <div className="font-semibold mb-2">Emergent Behavior</div>
+                    <p className="text-muted-foreground">Complex patterns from simple rules</p>
+                  </div>
                 </div>
               </div>
 
-              {/* Queen Ant's Command Center */}
-              <div className="space-y-4">
-                <h3 className="text-2xl font-semibold text-amber-800 dark:text-amber-200 flex items-center gap-2">
-                  🧠 The Queen Ant's Command Center
-                </h3>
-                <p className="text-amber-700 dark:text-amber-300">
-                  The Queen Ant is the central intelligence of your colony, providing strategic oversight.
-                </p>
-                
-                <div className="space-y-3">
-                  <h4 className="text-lg font-semibold text-amber-800 dark:text-amber-200">👑 Queen's Thought Process:</h4>
-                  <ul className="space-y-2 text-amber-700 dark:text-amber-300">
-                    <li><strong>🧠 LLM-Powered:</strong> The Queen uses its own LLM to analyze colony-wide data, identify anomalies (like ants getting stuck or slow food collection), and potentially issue high-level directives to guide the worker ants.</li>
-                    <li><strong>⚙️ Heuristic (Rule-Based):</strong> The Queen follows predefined rules for guidance and anomaly reporting.</li>
-                  </ul>
-                  <p className="text-amber-700 dark:text-amber-300">
-                    <strong>📊 Queen Ant Report:</strong> She gives a concise but detailed conclusion of how the simulation fared overall. Observe how the Queen's presence and intelligence level influence the overall foraging efficiency and coordination of the colony.
-                  </p>
-                </div>
-              </div>
-
-              {/* Pheromone Communication */}
-              <div className="space-y-4">
-                <h3 className="text-2xl font-semibold text-amber-800 dark:text-amber-200 flex items-center gap-2">
-                  ✨ Pheromone Communication
-                </h3>
-                <p className="text-amber-700 dark:text-amber-300">
-                  Just like real ants, our digital ants communicate using pheromones! These invisible chemical trails guide their collective behavior.
-                </p>
-                
-                <ul className="space-y-2 text-amber-700 dark:text-amber-300">
-                  <li><strong>🟢 Trail Pheromones:</strong> Deposited by ants on successful paths, helping others follow efficient routes to food and back to the nest.</li>
-                  <li><strong>🔴 Alarm Pheromones:</strong> Released when an ant encounters a problem (e.g., an LLM API error, a dead end), warning other ants away from problematic areas.</li>
-                  <li><strong>🔵 Recruitment Pheromones:</strong> Signals a discovery or a need for help, attracting other ants to a specific location or task.</li>
-                </ul>
-                <p className="text-amber-700 dark:text-amber-300">
-                  You can adjust Pheromone Decay Rates and Deposit Amounts to see how these invisible signals impact the colony's dynamics.
-                </p>
-              </div>
-
-              {/* Blockchain Information Display */}
-              <div className="space-y-4">
-                <h3 className="text-2xl font-semibold text-amber-800 dark:text-amber-200 flex items-center gap-2">
-                  🔗 Blockchain Information Display
-                </h3>
-                <p className="text-amber-700 dark:text-amber-300">
-                  Beyond the visual simulation, Antelligence integrates with a real blockchain to record significant events.
-                </p>
-                
-                <ul className="space-y-2 text-amber-700 dark:text-amber-300">
-                  <li><strong>🔍 Transparent Food Collection:</strong> Every time an ant successfully collects a piece of food, this event is immutably logged on an Ethereum-compatible blockchain (like the Base Sepolia Testnet).</li>
-                  <li><strong>📋 "Colony Memory" Contract:</strong> This smart contract acts as a public ledger, storing records of food collection and potentially other colony activities.</li>
-                </ul>
-                <p className="text-amber-700 dark:text-amber-300">
-                  You'll see real-time updates of these blockchain transactions, showcasing how decentralized technologies can provide transparent and verifiable data for multi-agent systems. You'll need to provide the deployed contract address and its Application Binary Interface (ABI) in the sidebar to enable this feature.
-                </p>
-              </div>
-
-              {/* Visualizations & Metrics */}
-              <div className="space-y-4 md:col-span-2">
-                <h3 className="text-2xl font-semibold text-amber-800 dark:text-amber-200 flex items-center gap-2">
-                  📊 Visualizations & Metrics
-                </h3>
-                <p className="text-amber-700 dark:text-amber-300">
-                  As the simulation runs, you'll see dynamic visualizations of:
-                </p>
-                
-                <ul className="space-y-2 text-amber-700 dark:text-amber-300">
-                  <li><strong>🐜 Ant Movement:</strong> Track individual ants as they explore, find food, and return to the nest.</li>
-                  <li><strong>🎨 Pheromone Maps:</strong> Visualize the intensity of different pheromone types across the grid.</li>
-                  <li><strong>🔥 Foraging Efficiency Hotspots:</strong> See where LLM ants are most effective in collecting food.</li>
-                  <li><strong>📈 Performance Charts:</strong> Monitor key metrics like food collected by LLM vs. rule-based ants, API call counts, and remaining food over time.</li>
-                </ul>
-                
-                <div className="text-center mt-8">
-                  <p className="text-lg font-semibold text-amber-800 dark:text-amber-200">
-                    Start customizing your simulation and observe the fascinating interplay of AI, swarm intelligence, and blockchain in Antelligence!
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>
