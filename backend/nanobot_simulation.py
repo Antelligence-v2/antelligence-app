@@ -125,6 +125,13 @@ class NanobotAgent:
         Search for hypoxic tumor cells to target.
         Uses chemotaxis and pheromone guidance.
         """
+        # FIRST PRIORITY: Check for nearby targets immediately (be more aggressive)
+        nearby_cell = self._find_nearest_hypoxic_cell(max_distance=100.0)  # Increased search radius
+        if nearby_cell and self.drug_payload > 2.0:
+            self.target_cell = nearby_cell
+            self.state = NanobotState.TARGETING
+            return
+        
         # Check if we have guidance from Queen
         if guidance and self.nanobot_id in guidance:
             guided_direction = guidance[self.nanobot_id]
@@ -140,7 +147,7 @@ class NanobotAgent:
                 
                 if action == "target":
                     # Try to lock onto nearby hypoxic cell
-                    target_cell = self._find_nearest_hypoxic_cell()
+                    target_cell = self._find_nearest_hypoxic_cell(max_distance=120.0)  # Increased for LLM
                     if target_cell:
                         self.target_cell = target_cell
                         self.state = NanobotState.TARGETING
@@ -181,12 +188,6 @@ class NanobotAgent:
                 self.position[:2] += direction_to_center * self.speed
         
         self._clamp_position()
-        
-        # Check if we're now near a hypoxic cell
-        nearby_cell = self._find_nearest_hypoxic_cell(max_distance=30.0)
-        if nearby_cell and self.drug_payload > 2.0:  # Need at least 2 μg to target
-            self.target_cell = nearby_cell
-            self.state = NanobotState.TARGETING
     
     def _compute_chemotaxis_direction(self) -> np.ndarray:
         """
@@ -216,12 +217,12 @@ class NanobotAgent:
         
         return direction
     
-    def _find_nearest_hypoxic_cell(self, max_distance: float = 100.0) -> Optional[TumorCell]:
+    def _find_nearest_hypoxic_cell(self, max_distance: float = 150.0) -> Optional[TumorCell]:
         """
         Find nearest hypoxic tumor cell within range and within tumor boundary.
         
         Args:
-            max_distance: Maximum search radius (µm)
+            max_distance: Maximum search radius (µm) - increased for better targeting
             
         Returns:
             Nearest hypoxic TumorCell or None
@@ -254,7 +255,7 @@ class NanobotAgent:
             for cell in valid_cells
         ]
         
-        min_dist = min(distances)
+        min_dist = min(distances) if distances else float('inf')
         if min_dist <= max_distance:
             return valid_cells[distances.index(min_dist)]
         
@@ -371,8 +372,9 @@ class NanobotAgent:
     def _enforce_tumor_boundary(self):
         """
         Enforce nanobot boundary constraints:
-        - Must stay within tumor boundary (red area) when treating
-        - Can only leave tumor to go to blood vessels (green areas) for reloading
+        - Allow entry into tumor when targeting
+        - Can leave tumor to go to blood vessels for reloading
+        - Prevent wandering outside tumor when not on a mission
         """
         pos_2d = self.position[:2]
         tumor_center = np.array(self.model.geometry.center[:2])
@@ -382,39 +384,53 @@ class NanobotAgent:
         can_be_outside = (
             self.state == NanobotState.RETURNING or 
             self.state == NanobotState.RELOADING or
-            self.drug_payload < 20.0  # Low on drugs, need to reload
+            self.drug_payload < 10.0  # Low on drugs, need to reload
         )
         
-        # If we're outside tumor boundary and shouldn't be, move back in
+        # Allow entry when actively targeting (TARGETING or DELIVERING state)
+        is_actively_targeting = (
+            self.state == NanobotState.TARGETING or 
+            self.state == NanobotState.DELIVERING
+        )
+        
+        # If we're outside tumor boundary, decide what to do
         if distance_from_center > self.model.geometry.tumor_radius:
-            if not can_be_outside:
-                # Force nanobot back into tumor boundary
+            # Allow entry if actively targeting a cell inside tumor
+            if is_actively_targeting and self.target_cell:
+                # Check if target is inside tumor - if so, allow crossing boundary
+                target_pos = np.array(self.target_cell.position[:2])
+                target_distance_from_center = np.linalg.norm(target_pos - tumor_center)
+                if target_distance_from_center <= self.model.geometry.tumor_radius:
+                    # Target is inside tumor, allow nanobot to enter
+                    return  # Don't constrain movement
+            
+            # Not actively targeting or target is outside tumor
+            if not can_be_outside and not is_actively_targeting:
+                # Force nanobot back toward tumor center only if not on a mission
                 direction_to_center = tumor_center - pos_2d
-                direction_to_center = direction_to_center / np.linalg.norm(direction_to_center)
-                
-                # Move to edge of tumor boundary
-                edge_position = tumor_center + direction_to_center * (self.model.geometry.tumor_radius - 5.0)
-                self.position[0] = edge_position[0]
-                self.position[1] = edge_position[1]
-                
-                # If we were targeting something outside, cancel it
-                if self.target_cell:
-                    self.target_cell = None
-                    self.state = NanobotState.SEARCHING
-            else:
-                # We're allowed to be outside (returning to vessel), but check if we're near a vessel
-                if self.state == NanobotState.RETURNING:
-                    # Make sure we're actually heading toward a vessel
-                    nearest_vessel = self.model.geometry.find_nearest_vessel(tuple(self.position))
-                    if nearest_vessel:
-                        vessel_pos = np.array(nearest_vessel.position[:2])
-                        vessel_distance = np.linalg.norm(pos_2d - vessel_pos)
-                        
-                        # If we're far from any vessel, redirect toward nearest one
-                        if vessel_distance > 100.0:  # 100 µm threshold
-                            direction_to_vessel = vessel_pos - pos_2d
-                            direction_to_vessel = direction_to_vessel / np.linalg.norm(direction_to_vessel)
-                            self.position[:2] += direction_to_vessel * self.speed * 0.5
+                if np.linalg.norm(direction_to_center) > 0:
+                    direction_to_center = direction_to_center / np.linalg.norm(direction_to_center)
+                    # Move toward tumor boundary edge
+                    edge_position = tumor_center + direction_to_center * (self.model.geometry.tumor_radius - 5.0)
+                    self.position[0] = edge_position[0]
+                    self.position[1] = edge_position[1]
+                    
+                    # Cancel targeting if forced back
+                    if self.target_cell:
+                        self.target_cell = None
+                        self.state = NanobotState.SEARCHING
+            elif self.state == NanobotState.RETURNING:
+                # We're allowed to be outside (returning to vessel)
+                nearest_vessel = self.model.geometry.find_nearest_vessel(tuple(self.position))
+                if nearest_vessel:
+                    vessel_pos = np.array(nearest_vessel.position[:2])
+                    vessel_distance = np.linalg.norm(pos_2d - vessel_pos)
+                    
+                    # If we're far from any vessel, redirect toward nearest one
+                    if vessel_distance > 100.0:  # 100 µm threshold
+                        direction_to_vessel = vessel_pos - pos_2d
+                        direction_to_vessel = direction_to_vessel / np.linalg.norm(direction_to_vessel)
+                        self.position[:2] += direction_to_vessel * self.speed * 0.5
     
     def _is_within_tumor_boundary(self) -> bool:
         """Check if nanobot is within the tumor boundary (red area)."""
