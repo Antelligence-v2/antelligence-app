@@ -198,8 +198,8 @@ class TumorCell:
             return False
         
         # Simulate enhanced local concentration effect
-        # Nanobot proximity creates 5x higher local concentration
-        enhanced_amount = amount * 5.0  # Medically justified: proximity effect
+        # Nanobot proximity creates 8x higher local concentration for more effective treatment
+        enhanced_amount = amount * 8.0  # Increased from 5x to 8x for enhanced nanobot effectiveness
         self.accumulated_drug += enhanced_amount
         
         # Check if threshold reached
@@ -228,8 +228,8 @@ class TumorCell:
         effective_drug_concentration = drug_concentration * (1.0 - self.resistance_level)
             
         # Cells absorb drug proportional to concentration and sensitivity
-        # Medically accurate: Real absorption ~0.01-0.1 μg/min, simulation enhanced 10x for effectiveness
-        drug_absorbed = effective_drug_concentration * self.drug_sensitivity * dt * 1.0  # 1.0 μg/min (10x realistic for simulation)
+        # Medically accurate: Real absorption ~0.01-0.1 μg/min, simulation enhanced for effectiveness
+        drug_absorbed = effective_drug_concentration * self.drug_sensitivity * dt * 2.5  # Increased from 1.0 to 2.5 μg/min for faster absorption
         self.accumulated_drug += drug_absorbed
         
         # Adaptive resistance: cells can develop more resistance over time
