@@ -273,7 +273,7 @@ class NanobotAgent:
         direction = target_pos - self.position[:2]
         distance = np.linalg.norm(direction)
         
-        if distance < 15.0:  # Close enough to deliver (increased from 5µm to 15µm for better targeting)
+        if distance < 30.0:  # Close enough to deliver (increased from 15µm to 30µm for better reach)
             self.state = NanobotState.DELIVERING
         else:
             direction = direction / distance
@@ -292,7 +292,7 @@ class NanobotAgent:
         drug = self.model.microenv.get_substrate('drug')
         
         if drug and self.drug_payload > 0:
-            delivery_amount = min(self.drug_payload, 2.0)  # 2 μg per delivery (effective for direct accumulation)
+            delivery_amount = min(self.drug_payload, 3.0)  # 3 μg per delivery (increased for more effective killing)
             drug.add_source(voxel, delivery_amount)
             self.drug_payload -= delivery_amount
             self.total_drug_delivered += delivery_amount
