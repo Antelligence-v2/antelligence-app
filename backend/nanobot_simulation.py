@@ -273,7 +273,7 @@ class NanobotAgent:
         direction = target_pos - self.position[:2]
         distance = np.linalg.norm(direction)
         
-        if distance < 5.0:  # Close enough to deliver
+        if distance < 15.0:  # Close enough to deliver (increased from 5µm to 15µm for better targeting)
             self.state = NanobotState.DELIVERING
         else:
             direction = direction / distance

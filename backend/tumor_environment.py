@@ -96,11 +96,11 @@ class TumorCell:
         """Get hypoxic threshold based on cell type."""
         thresholds = {
             CellType.STEM_CELL: 3.0,       # Very tolerant
-            CellType.DIFFERENTIATED: 5.0,  # Normal
+            CellType.DIFFERENTIATED: 8.0,  # Increased from 5.0 to 8.0 - cells need more oxygen to stay viable
             CellType.RESISTANT: 4.0,       # Somewhat tolerant
-            CellType.INVASIVE: 6.0         # Less tolerant
+            CellType.INVASIVE: 9.0         # Increased from 6.0 to 9.0 - less tolerant, stay hypoxic easier
         }
-        return thresholds.get(self.cell_type, 5.0)
+        return thresholds.get(self.cell_type, 8.0)  # Default increased from 5.0 to 8.0
     
     def _get_necrotic_time_threshold(self) -> float:
         """Get time before necrosis based on cell type."""
