@@ -296,6 +296,9 @@ class NanobotAgent:
             self.drug_payload -= delivery_amount
             self.total_drug_delivered += delivery_amount
             
+            # Count delivery immediately when drug is released
+            self.deliveries_made += 1
+            
             # Directly accumulate drug to target cell (bypassing diffusion for immediate effect)
             cell_killed = self.target_cell.accumulate_drug(delivery_amount)
             
@@ -311,12 +314,11 @@ class NanobotAgent:
         
         # If payload depleted, return to vessel
         if self.drug_payload < 2.0:  # Return when < 2 μg remaining
-            self.deliveries_made += 1
             self.target_cell = None
             self.target_vessel = self.model.geometry.find_nearest_vessel(tuple(self.position))
             self.state = NanobotState.RETURNING
         else:
-            # Continue delivering
+            # Continue delivering to same target
             pass
     
     def _return_to_vessel(self):
