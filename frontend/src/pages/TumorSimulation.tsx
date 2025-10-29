@@ -234,13 +234,6 @@ const TumorSimulation = () => {
                     {metrics.time.toFixed(2)}m
                   </span>
                 </div>
-                <Button
-                  onClick={() => navigate('/tumor/visualization')}
-                  size="sm"
-                  className="bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white shadow-lg"
-                >
-                  📊 View Visualizations
-                </Button>
               </div>
             )}
           </div>
