@@ -4,7 +4,16 @@ require("dotenv").config({ path: "../.env" }); // Load from parent directory
 const { BASE_SEPOLIA_RPC_URL, PRIVATE_KEY } = process.env;
 
 module.exports = {
-  solidity: "0.8.24",
+  solidity: {
+    version: "0.8.24",
+    settings: {
+      optimizer: {
+        enabled: true,
+        runs: 200,
+      },
+      viaIR: true,
+    },
+  },
   networks: {
     hardhat: {},
 

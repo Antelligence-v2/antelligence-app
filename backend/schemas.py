@@ -208,6 +208,13 @@ class SubstrateMapData(BaseModel):
     trail: List[List[float]]
     alarm: List[List[float]]
     recruitment: List[List[float]]
+    chemokine_signal: Optional[List[List[float]]] = None
+    toxicity_signal: Optional[List[List[float]]] = None
+    ifn_gamma: Optional[List[List[float]]] = None
+    tnf_alpha: Optional[List[List[float]]] = None
+    perforin: Optional[List[List[float]]] = None
+    drug_a: Optional[List[List[float]]] = None
+    drug_b: Optional[List[List[float]]] = None
     max_values: Dict[str, float]
     mean_values: Dict[str, float]
 

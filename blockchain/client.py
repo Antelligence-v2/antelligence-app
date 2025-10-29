@@ -71,19 +71,24 @@ except Exception as e:
 # Load contract addresses from environment variables
 FOOD_CONTRACT_ADDRESS = os.getenv("FOOD_ADDR")
 MEMORY_CONTRACT_ADDRESS = os.getenv("MEMORY_ADDR")
+TUMOR_INTEL_CONTRACT_ADDRESS = os.getenv("TUMOR_INTEL_ADDR")
 
 if not FOOD_CONTRACT_ADDRESS:
     print("WARNING: FOOD_ADDR not set in .env. Food contract interactions may fail.")
 if not MEMORY_CONTRACT_ADDRESS:
     print("WARNING: MEMORY_ADDR not set in .env. Memory contract interactions may fail.")
+if not TUMOR_INTEL_CONTRACT_ADDRESS:
+    print("WARNING: TUMOR_INTEL_ADDR not set in .env. TumorIntel contract interactions may fail.")
 
 # Load contract ABIs
 MEMORY_ABI = load_contract_abi('ColonyMemory')
 FOOD_ABI = load_contract_abi('FoodToken')
+TUMOR_INTEL_ABI = load_contract_abi('TumorIntel')
 
 # Create contract instances if addresses are available
 memory_contract = None
 food_contract = None
+tumor_intel_contract = None
 
 if MEMORY_CONTRACT_ADDRESS and MEMORY_ABI and w3.is_connected():
     try:
@@ -104,5 +109,15 @@ if FOOD_CONTRACT_ADDRESS and FOOD_ABI and w3.is_connected():
         print(f"✅ FoodToken contract loaded at {FOOD_CONTRACT_ADDRESS}")
     except Exception as e:
         print(f"⚠️ Failed to load FoodToken contract: {e}")
+
+if TUMOR_INTEL_CONTRACT_ADDRESS and TUMOR_INTEL_ABI and w3.is_connected():
+    try:
+        tumor_intel_contract = w3.eth.contract(
+            address=Web3.to_checksum_address(TUMOR_INTEL_CONTRACT_ADDRESS),
+            abi=TUMOR_INTEL_ABI
+        )
+        print(f"✅ TumorIntel contract loaded at {TUMOR_INTEL_CONTRACT_ADDRESS}")
+    except Exception as e:
+        print(f"⚠️ Failed to load TumorIntel contract: {e}")
 
 # The `w3`, `acct`, and contract objects are now ready to be imported and used

@@ -14,37 +14,23 @@ import openai
 from dotenv import load_dotenv
 
 # Add the current directory to Python path for local development
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+current_dir = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, current_dir)
 
-try:
-    from backend.simulation import SimpleForagingModel
-    from backend.nanobot_simulation import TumorNanobotModel
-    from backend.tumor_environment import CellPhase
-    from backend.schemas import (
-        SimulationConfig, SimulationResult, StepState, AntState, 
-        PheromoneMapData, ForagingEfficiencyData, FoodDepletionPoint,
-        ComparisonConfig, ComparisonResult, PerformanceData,
-        PheromoneConfigUpdate, PredatorState,
-        # Tumor simulation schemas
-        TumorSimulationConfig, TumorSimulationResult, TumorStepState,
-        NanobotState, TumorCellState, VesselState, SubstrateMapData,
-        TumorComparisonConfig, TumorComparisonResult, TumorPerformanceData
-    )
-except ImportError:
-    # Fallback for local development
-    from simulation import SimpleForagingModel
-    from nanobot_simulation import TumorNanobotModel
-    from tumor_environment import CellPhase
-    from schemas import (
-        SimulationConfig, SimulationResult, StepState, AntState, 
-        PheromoneMapData, ForagingEfficiencyData, FoodDepletionPoint,
-        ComparisonConfig, ComparisonResult, PerformanceData,
-        PheromoneConfigUpdate, PredatorState,
-        # Tumor simulation schemas
-        TumorSimulationConfig, TumorSimulationResult, TumorStepState,
-        NanobotState, TumorCellState, VesselState, SubstrateMapData,
-        TumorComparisonConfig, TumorComparisonResult, TumorPerformanceData
-    )
+# Import modules directly from current directory
+from simulation import SimpleForagingModel
+from nanobot_simulation import TumorNanobotModel
+from tumor_environment import CellPhase
+from schemas import (
+    SimulationConfig, SimulationResult, StepState, AntState, 
+    PheromoneMapData, ForagingEfficiencyData, FoodDepletionPoint,
+    ComparisonConfig, ComparisonResult, PerformanceData,
+    PheromoneConfigUpdate, PredatorState,
+    # Tumor simulation schemas
+    TumorSimulationConfig, TumorSimulationResult, TumorStepState,
+    NanobotState, TumorCellState, VesselState, SubstrateMapData,
+    TumorComparisonConfig, TumorComparisonResult, TumorPerformanceData
+)
 
 # Load environment variables
 load_dotenv()
@@ -55,6 +41,12 @@ IO_API_KEY = os.getenv("IO_SECRET_KEY")
 # --- Blockchain Integration ---
 BLOCKCHAIN_ENABLED = False
 try:
+    # Add parent directory to path to find blockchain module
+    import sys
+    import os
+    parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    sys.path.insert(0, parent_dir)
+    
     from blockchain.client import w3, acct, MEMORY_CONTRACT_ADDRESS
     BLOCKCHAIN_ENABLED = True
     print("✅ Blockchain client loaded successfully!")
@@ -108,9 +100,15 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["*"],  # Allow all methods including OPTIONS
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],  # Explicitly allow OPTIONS
     allow_headers=["*"],  # Allow all headers to prevent CORS preflight issues
 )
+
+# Add a custom OPTIONS handler for all routes
+@app.options("/{full_path:path}")
+async def options_handler(full_path: str):
+    """Handle OPTIONS requests for CORS preflight"""
+    return {"message": "OK"}
 
 def convert_pheromone_maps(model) -> PheromoneMapData:
     """Convert numpy pheromone maps to JSON-serializable format."""
@@ -545,7 +543,14 @@ def convert_substrate_maps(model: TumorNanobotModel) -> SubstrateMapData:
     max_values = {}
     mean_values = {}
     
-    for name in ['oxygen', 'drug', 'trail', 'alarm', 'recruitment']:
+    # Include all substrates that the frontend expects
+    all_substrates = [
+        'oxygen', 'drug', 'trail', 'alarm', 'recruitment',
+        'chemokine_signal', 'toxicity_signal', 'ifn_gamma',
+        'tnf_alpha', 'perforin', 'drug_a', 'drug_b'
+    ]
+    
+    for name in all_substrates:
         substrate = model.microenv.get_substrate(name)
         if substrate:
             # Get 2D slice (z=0) and transpose for correct orientation
@@ -554,16 +559,25 @@ def convert_substrate_maps(model: TumorNanobotModel) -> SubstrateMapData:
             max_values[name] = float(np.max(substrate.concentration))
             mean_values[name] = float(np.mean(substrate.concentration))
         else:
-            substrate_data[name] = []
+            # Create empty grid if substrate doesn't exist
+            grid_size = model.microenv.dims[0]
+            substrate_data[name] = [[0.0] * grid_size for _ in range(grid_size)]
             max_values[name] = 0.0
             mean_values[name] = 0.0
     
     return SubstrateMapData(
-        oxygen=substrate_data['oxygen'],
-        drug=substrate_data['drug'],
-        trail=substrate_data['trail'],
-        alarm=substrate_data['alarm'],
-        recruitment=substrate_data['recruitment'],
+        oxygen=substrate_data.get('oxygen', []),
+        drug=substrate_data.get('drug', []),
+        trail=substrate_data.get('trail', []),
+        alarm=substrate_data.get('alarm', []),
+        recruitment=substrate_data.get('recruitment', []),
+        chemokine_signal=substrate_data.get('chemokine_signal'),
+        toxicity_signal=substrate_data.get('toxicity_signal'),
+        ifn_gamma=substrate_data.get('ifn_gamma'),
+        tnf_alpha=substrate_data.get('tnf_alpha'),
+        perforin=substrate_data.get('perforin'),
+        drug_a=substrate_data.get('drug_a'),
+        drug_b=substrate_data.get('drug_b'),
         max_values=max_values,
         mean_values=mean_values
     )
@@ -628,20 +642,15 @@ async def run_tumor_simulation(config: TumorSimulationConfig):
             # Capture detailed state periodically
             capture_detail = (step_num % detail_interval == 0) or (step_num == config.max_steps - 1)
             substrate_data = None
-            tumor_cells_state = []
             
             if capture_detail:
                 substrate_data = convert_substrate_maps(model)
                 
-                # Include tumor cell states (sample for performance)
-                sample_cells = random.sample(
-                    model.geometry.tumor_cells,
-                    min(100, len(model.geometry.tumor_cells))
-                )
-                tumor_cells_state = [
-                    TumorCellState(**cell.to_dict())
-                    for cell in sample_cells
-                ]
+            # Include all living tumor cell states at every step
+            tumor_cells_state = [
+                TumorCellState(**cell.to_dict())
+                for cell in model.geometry.get_living_cells()
+            ]
             
             # Create step state
             current_state = TumorStepState(
@@ -864,5 +873,189 @@ async def test_tumor_simulation():
         
     except Exception as e:
         print(f"[TUMOR TEST] Error: {str(e)}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# --- Simulation Caching and Comparison Endpoints ---
+
+class CachedSimulation(BaseModel):
+    """Model for caching simulation results."""
+    id: str
+    timestamp: str
+    agent_type: str
+    llm_model: str
+    simulation_type: str  # "ant" or "tumor"
+    config: dict
+    final_metrics: dict
+    summary: dict
+
+import json
+from datetime import datetime
+from pathlib import Path
+
+# Create cache directory if it doesn't exist
+CACHE_DIR = Path("simulation_cache")
+CACHE_DIR.mkdir(exist_ok=True)
+
+
+@app.post("/simulation/cache")
+async def cache_simulation(simulation_data: dict):
+    """
+    Cache a completed simulation for later comparison.
+    
+    Args:
+        simulation_data: Complete simulation result with metadata
+    """
+    try:
+        timestamp = datetime.now().isoformat()
+        sim_id = f"{simulation_data.get('agent_type', 'unknown')}_{simulation_data.get('llm_model', 'unknown').replace('/', '-')}_{timestamp.replace(':', '-')}"
+        
+        cache_file = CACHE_DIR / f"{sim_id}.json"
+        
+        cached_sim = {
+            "id": sim_id,
+            "timestamp": timestamp,
+            "agent_type": simulation_data.get("agent_type", "unknown"),
+            "llm_model": simulation_data.get("llm_model", "unknown"),
+            "simulation_type": simulation_data.get("simulation_type", "unknown"),
+            "config": simulation_data.get("config", {}),
+            "final_metrics": simulation_data.get("final_metrics", {}),
+            "summary": simulation_data.get("summary", {}),
+        }
+        
+        with open(cache_file, 'w') as f:
+            json.dump(cached_sim, f, indent=2)
+        
+        print(f"[CACHE] Saved simulation: {sim_id}")
+        
+        return {
+            "status": "success",
+            "simulation_id": sim_id,
+            "cached_at": timestamp
+        }
+        
+    except Exception as e:
+        print(f"[CACHE] Error saving simulation: {str(e)}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/simulation/history")
+async def get_simulation_history(simulation_type: str = None):
+    """
+    Get list of all cached simulations.
+    
+    Args:
+        simulation_type: Optional filter by "ant" or "tumor"
+    """
+    try:
+        cache_files = list(CACHE_DIR.glob("*.json"))
+        simulations = []
+        
+        for cache_file in cache_files:
+            try:
+                with open(cache_file, 'r') as f:
+                    sim_data = json.load(f)
+                    
+                    # Filter by simulation type if specified
+                    if simulation_type and sim_data.get("simulation_type") != simulation_type:
+                        continue
+                    
+                    simulations.append({
+                        "id": sim_data.get("id"),
+                        "timestamp": sim_data.get("timestamp"),
+                        "agent_type": sim_data.get("agent_type"),
+                        "llm_model": sim_data.get("llm_model"),
+                        "simulation_type": sim_data.get("simulation_type"),
+                        "summary": sim_data.get("summary", {})
+                    })
+            except Exception as e:
+                print(f"[HISTORY] Error reading {cache_file}: {e}")
+                continue
+        
+        # Sort by timestamp (newest first)
+        simulations.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
+        
+        print(f"[HISTORY] Found {len(simulations)} cached simulations")
+        
+        return {
+            "simulations": simulations,
+            "total_count": len(simulations)
+        }
+        
+    except Exception as e:
+        print(f"[HISTORY] Error: {str(e)}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/simulation/compare/{id1}/{id2}")
+async def compare_simulations(id1: str, id2: str):
+    """
+    Compare two cached simulations side-by-side.
+    
+    Args:
+        id1: ID of first simulation
+        id2: ID of second simulation
+    """
+    try:
+        # Load both simulations
+        sim1_file = CACHE_DIR / f"{id1}.json"
+        sim2_file = CACHE_DIR / f"{id2}.json"
+        
+        if not sim1_file.exists():
+            raise HTTPException(status_code=404, detail=f"Simulation {id1} not found")
+        if not sim2_file.exists():
+            raise HTTPException(status_code=404, detail=f"Simulation {id2} not found")
+        
+        with open(sim1_file, 'r') as f:
+            sim1_data = json.load(f)
+        with open(sim2_file, 'r') as f:
+            sim2_data = json.load(f)
+        
+        # Calculate comparison metrics
+        comparison = {
+            "simulation1": {
+                "id": sim1_data.get("id"),
+                "agent_type": sim1_data.get("agent_type"),
+                "llm_model": sim1_data.get("llm_model"),
+                "metrics": sim1_data.get("final_metrics", {}),
+                "summary": sim1_data.get("summary", {})
+            },
+            "simulation2": {
+                "id": sim2_data.get("id"),
+                "agent_type": sim2_data.get("agent_type"),
+                "llm_model": sim2_data.get("llm_model"),
+                "metrics": sim2_data.get("final_metrics", {}),
+                "summary": sim2_data.get("summary", {})
+            },
+            "differences": {}
+        }
+        
+        # Calculate percentage differences for key metrics
+        metrics1 = sim1_data.get("final_metrics", {})
+        metrics2 = sim2_data.get("final_metrics", {})
+        
+        for key in set(metrics1.keys()) | set(metrics2.keys()):
+            val1 = metrics1.get(key, 0)
+            val2 = metrics2.get(key, 0)
+            
+            if isinstance(val1, (int, float)) and isinstance(val2, (int, float)):
+                if val1 > 0:
+                    percent_diff = ((val2 - val1) / val1) * 100
+                    comparison["differences"][key] = {
+                        "absolute": val2 - val1,
+                        "percent": percent_diff
+                    }
+        
+        print(f"[COMPARE] Comparing {id1} vs {id2}")
+        
+        return comparison
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[COMPARE] Error: {str(e)}")
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))

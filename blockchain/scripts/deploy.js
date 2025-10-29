@@ -14,6 +14,11 @@ async function main() {
   await memory.waitForDeployment();
   console.log("ColonyMemory ➜", await memory.getAddress());
 
+  const TumorIntel = await ethers.getContractFactory("TumorIntel");
+  const tumorIntel = await TumorIntel.deploy();
+  await tumorIntel.waitForDeployment();
+  console.log("TumorIntel ➜", await tumorIntel.getAddress());
+
 }
 
 main().catch((e) => {

@@ -19,12 +19,30 @@ from enum import Enum
 import openai
 import os
 from dotenv import load_dotenv
-
+import threading
 from biofvm import Microenvironment
 from tumor_environment import TumorGeometry, TumorCell, VesselPoint, CellPhase, CellType
 
 load_dotenv()
 IO_API_KEY = os.getenv("IO_SECRET_KEY")
+
+# Blockchain integration
+try:
+    # Add parent directory to path to find blockchain module
+    import sys
+    import os
+    parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    sys.path.insert(0, parent_dir)
+    
+    from blockchain.client import w3, acct, tumor_intel_contract, TUMOR_INTEL_CONTRACT_ADDRESS
+    BLOCKCHAIN_ENABLED = tumor_intel_contract is not None
+    if BLOCKCHAIN_ENABLED:
+        print("[NANOBOT] ✅ Blockchain intelligence sharing enabled")
+    else:
+        print("[NANOBOT] ⚠️ Blockchain client loaded but TumorIntel contract not available")
+except Exception as e:
+    BLOCKCHAIN_ENABLED = False
+    print(f"[NANOBOT] ⚠️ Blockchain disabled: {e}")
 
 
 class NanobotState(Enum):
@@ -98,6 +116,9 @@ class NanobotAgent:
         self.api_calls = 0
         self.move_history: List[Tuple[float, float]] = []
         
+        # Movement inertia for smoother navigation
+        self.previous_direction = np.zeros(2)
+        
     def step(self, guidance: Optional[Dict] = None):
         """
         Execute one timestep of nanobot behavior.
@@ -122,14 +143,22 @@ class NanobotAgent:
     
     def _search_for_target(self, guidance: Optional[Dict] = None):
         """
-        Search for hypoxic tumor cells to target.
-        Uses chemotaxis and pheromone guidance.
+        Search for tumor cells to target.
+        Prioritizes nearest living cell for drug delivery.
         """
-        # FIRST PRIORITY: Check for nearby targets immediately (be more aggressive)
-        nearby_cell = self._find_nearest_hypoxic_cell(max_distance=100.0)  # Increased search radius
+        # FIRST PRIORITY: Check for nearby targets immediately
+        nearby_cell = self._find_nearest_living_cell(max_distance=100.0)  # Updated to find any living cell
         if nearby_cell and self.drug_payload > 2.0:
             self.target_cell = nearby_cell
             self.state = NanobotState.TARGETING
+            
+            # New Blockchain Event: Report new target acquired
+            self._report_intel_to_blockchain(
+                pin_type=5,  # TARGET_ACQUIRED
+                x=self.target_cell.position[0],
+                y=self.target_cell.position[1],
+                priority=5
+            )
             return
         
         # Check if we have guidance from Queen
@@ -169,23 +198,39 @@ class NanobotAgent:
                 if alarm:
                     alarm.add_source(voxel, 5.0)
         
-        # Default behavior: chemotaxis-based movement
+        # Default behavior: chemotaxis-based movement with inertia and stochasticity
         direction = self._compute_chemotaxis_direction()
         if np.linalg.norm(direction) > 0:
             direction = direction / np.linalg.norm(direction)
-            self.position[:2] += direction * self.speed
+            
+            # Add inertia: blend new direction with previous direction (70% new, 30% old)
+            inertial_direction = 0.7 * direction + 0.3 * self.previous_direction
+            
+            # Add stochasticity: small random noise to break oscillation loops
+            random_vector = np.random.randn(2) * 0.1
+            final_direction = inertial_direction + random_vector
+            
+            # Normalize and apply movement
+            if np.linalg.norm(final_direction) > 0:
+                final_direction = final_direction / np.linalg.norm(final_direction)
+            
+            self.position[:2] += final_direction * self.speed
+            self.previous_direction = final_direction
         else:
             # Random walk if no gradient, but stay within tumor
             if self._is_within_tumor_boundary():
                 angle = np.random.uniform(0, 2 * np.pi)
-                self.position[0] += self.speed * np.cos(angle)
-                self.position[1] += self.speed * np.sin(angle)
+                random_direction = np.array([np.cos(angle), np.sin(angle)])
+                self.position[0] += self.speed * random_direction[0]
+                self.position[1] += self.speed * random_direction[1]
+                self.previous_direction = random_direction
             else:
                 # Move toward tumor center if outside
                 tumor_center = np.array(self.model.geometry.center[:2])
                 direction_to_center = tumor_center - self.position[:2]
                 direction_to_center = direction_to_center / np.linalg.norm(direction_to_center)
                 self.position[:2] += direction_to_center * self.speed
+                self.previous_direction = direction_to_center
         
         self._clamp_position()
     
@@ -257,7 +302,56 @@ class NanobotAgent:
         
         min_dist = min(distances) if distances else float('inf')
         if min_dist <= max_distance:
-            return valid_cells[distances.index(min_dist)]
+            target_cell = valid_cells[distances.index(min_dist)]
+            
+            # Report hypoxic cluster discovery to blockchain
+            pin_type = 0  # HYPOXIC_CLUSTER
+            priority = 8 if target_cell.cell_type == CellType.STEM_CELL else 6
+            self._report_intel_to_blockchain(pin_type, target_cell.position[0], target_cell.position[1], priority)
+            
+            return target_cell
+        
+        return None
+    
+    def _find_nearest_living_cell(self, max_distance: float = 150.0) -> Optional[TumorCell]:
+        """
+        Find nearest living tumor cell within range (prioritizes closest, not hypoxic status).
+        
+        Args:
+            max_distance: Maximum search radius (µm)
+            
+        Returns:
+            Nearest living TumorCell or None
+        """
+        living_cells = self.model.geometry.get_living_cells()
+        
+        if not living_cells:
+            return None
+        
+        # Filter cells to only those within tumor boundary
+        tumor_center = np.array(self.model.geometry.center[:2])
+        tumor_radius = self.model.geometry.tumor_radius
+        
+        valid_cells = []
+        for cell in living_cells:
+            cell_pos = np.array(cell.position[:2])
+            distance_from_center = np.linalg.norm(cell_pos - tumor_center)
+            if distance_from_center <= tumor_radius:
+                valid_cells.append(cell)
+        
+        if not valid_cells:
+            return None
+        
+        # Calculate distances to valid cells only
+        distances = [
+            np.linalg.norm(np.array(cell.position[:2]) - self.position[:2])
+            for cell in valid_cells
+        ]
+        
+        min_dist = min(distances) if distances else float('inf')
+        if min_dist <= max_distance:
+            target_cell = valid_cells[distances.index(min_dist)]
+            return target_cell
         
         return None
     
@@ -280,6 +374,73 @@ class NanobotAgent:
             self.position[:2] += direction * self.speed
             self._clamp_position()
     
+    def _report_intel_to_blockchain(self, pin_type: int, x: float, y: float, priority: int):
+        """
+        Report intelligence to the blockchain for swarm coordination.
+        
+        Args:
+            pin_type: Type of intel (0=HYPOXIC_CLUSTER, 1=STEM_CELL_DETECTED, etc.)
+            x, y: Coordinates in micrometers
+            priority: Priority level (1-10)
+        """
+        if not BLOCKCHAIN_ENABLED:
+            print(f"[NANOBOT {self.nanobot_id}] ⚠️ Blockchain not enabled globally")
+            return
+            
+        if not self.model.blockchain_enabled:
+            print(f"[NANOBOT {self.nanobot_id}] ⚠️ Blockchain not enabled in model")
+            return
+        
+        pin_type_names = {
+            0: "HYPOXIC_CLUSTER",
+            1: "STEM_CELL_DETECTED",
+            2: "HIGH_RESISTANCE",
+            3: "IMMUNE_ACTIVE",
+            4: "SUCCESSFUL_KILL",
+            5: "TARGET_ACQUIRED",
+            6: "DRUG_DELIVERY"
+        }
+        pin_name = pin_type_names.get(pin_type, f"UNKNOWN_{pin_type}")
+        
+        print(f"[NANOBOT {self.nanobot_id}] 🔄 Attempting blockchain report: {pin_name} at ({int(x)}, {int(y)}) priority={priority}")
+        
+        try:
+            # Use centralized nonce manager to prevent conflicts
+            with self.model.nonce_lock:
+                nonce = self.model.current_nonce
+                self.model.current_nonce += 1
+            
+            gas_price = w3.eth.gas_price
+            
+            print(f"[NANOBOT {self.nanobot_id}]   Building transaction: nonce={nonce}, gas_price={gas_price}")
+            
+            txn = tumor_intel_contract.functions.reportIntel(
+                int(x), int(y), pin_type, priority
+            ).build_transaction({
+                'from': acct.address,
+                'nonce': nonce,
+                'gas': 200000,
+                'gasPrice': gas_price,
+            })
+            
+            print(f"[NANOBOT {self.nanobot_id}]   Signing transaction...")
+            
+            # Sign and send
+            signed = acct.sign_transaction(txn)
+            tx_hash = w3.eth.send_raw_transaction(signed.rawTransaction)
+            
+            print(f"[NANOBOT {self.nanobot_id}] ✅ Intel reported to blockchain!")
+            print(f"[NANOBOT {self.nanobot_id}]   Transaction: https://sepolia.basescan.org/tx/{tx_hash.hex()}")
+            
+            # Add to model's blockchain logs
+            if hasattr(self.model, 'blockchain_logs'):
+                self.model.blockchain_logs.append(f"Nanobot {self.nanobot_id}: {pin_name} at ({int(x)}, {int(y)}) - tx: {tx_hash.hex()[:10]}...")
+                
+        except Exception as e:
+            print(f"[NANOBOT {self.nanobot_id}] ❌ Failed to report intel: {type(e).__name__}: {e}")
+            import traceback
+            traceback.print_exc()
+    
     def _deliver_drug(self):
         """Deliver drug payload to target cell."""
         if not self.target_cell or not self.target_cell.is_alive:
@@ -300,8 +461,22 @@ class NanobotAgent:
             # Count delivery immediately when drug is released
             self.deliveries_made += 1
             
+            # New Blockchain Event: Report every drug delivery
+            self._report_intel_to_blockchain(
+                pin_type=6,  # DRUG_DELIVERY
+                x=self.position[0],
+                y=self.position[1],
+                priority=4
+            )
+            
             # Directly accumulate drug to target cell (bypassing diffusion for immediate effect)
             cell_killed = self.target_cell.accumulate_drug(delivery_amount)
+            
+            # Report successful kill to blockchain if cell was eliminated
+            if cell_killed:
+                pin_type = 4  # SUCCESSFUL_KILL
+                priority = 7 if self.target_cell.cell_type == CellType.STEM_CELL else 5
+                self._report_intel_to_blockchain(pin_type, self.position[0], self.position[1], priority)
             
             # Deposit trail pheromone (mark successful delivery path)
             trail = self.model.microenv.get_substrate('trail')
@@ -704,9 +879,11 @@ Provide guidance for nanobot positioning and targeting priorities."""
             
             # Parse response and convert to guidance vectors
             # For now, use enhanced heuristic based on the analysis
+            print(f"[TUMOR MODEL] ✅ Queen LLM guidance successful")
             return self._guide_with_enhanced_heuristic(stem_cell_regions, high_resistance_regions, immune_active_regions)
             
         except Exception as e:
+            print(f"[TUMOR MODEL] Queen LLM guidance failed: {e}")
             self.model.log_error(f"Queen LLM guidance failed: {str(e)}")
             return self._guide_with_heuristic()
     
@@ -780,6 +957,22 @@ class TumorNanobotModel:
         self.with_queen = with_queen
         self.use_llm_queen = use_llm_queen
         
+        # List of known supported chat models
+        SUPPORTED_CHAT_MODELS = [
+            'meta-llama/Llama-3.3-70B-Instruct',
+            'mistralai/Mistral-Large-Instruct-2411',
+            'openai/gpt-4-turbo',
+            'openai/gpt-4',
+            'openai/gpt-3.5-turbo'
+        ]
+        
+        # Validate LLM model selection
+        if self.use_llm_queen and self.selected_model not in SUPPORTED_CHAT_MODELS:
+            print(f"⚠️ [TUMOR MODEL] Warning: Unsupported model '{self.selected_model}' for Queen LLM.")
+            print(f"   Supported models: {SUPPORTED_CHAT_MODELS}")
+            self.selected_model = 'mistralai/Mistral-Large-Instruct-2411'  # Fallback to safe default
+            print(f"   Fell back to default: '{self.selected_model}'")
+        
         print(f"\n[TUMOR MODEL] Initializing tumor nanobot simulation...")
         print(f"  Domain: {domain_size} x {domain_size} µm")
         print(f"  Voxel size: {voxel_size} µm")
@@ -842,6 +1035,13 @@ class TumorNanobotModel:
         # Initialize errors list first (needed for log_error calls)
         self.errors: List[str] = []
         
+        # Blockchain integration for decentralized swarm intelligence
+        self.blockchain_enabled = BLOCKCHAIN_ENABLED
+        self.nonce_lock = threading.Lock()
+        if self.blockchain_enabled:
+            self.current_nonce = w3.eth.get_transaction_count(acct.address)
+
+        self.nonce = 0
         # Initialize Queen
         self.queen = QueenNanobot(self, use_llm=use_llm_queen) if with_queen else None
         
@@ -926,6 +1126,8 @@ class TumorNanobotModel:
     def _update_tumor_cells(self):
         """Update all tumor cells based on local microenvironment."""
         toxicity_substrate = self.microenv.get_substrate('toxicity_signal')
+        new_cells = []  # Track cells ready to divide
+        next_cell_id = len(self.geometry.tumor_cells)
         
         for cell in self.geometry.tumor_cells:
             if not cell.is_alive:
@@ -938,6 +1140,13 @@ class TumorNanobotModel:
             # Update cell state
             cell.update_oxygen_status(oxygen, self.microenv.dt)
             cell.absorb_drug(drug, self.microenv.dt)
+            
+            # Update cell growth and check for division
+            if cell.update_growth(self.microenv.dt, oxygen):
+                daughter_cell = cell.divide(next_cell_id)
+                if daughter_cell:
+                    new_cells.append(daughter_cell)
+                    next_cell_id += 1
             
             # Add oxygen consumption as sink
             voxel = self.microenv.position_to_voxel(cell.position)
@@ -964,6 +1173,57 @@ class TumorNanobotModel:
                 # Add toxicity signal if any toxicity is generated
                 if toxicity_amount > 0.0:
                     toxicity_substrate.add_source(voxel, toxicity_amount)
+        
+        # Add newly divided cells to the tumor geometry
+        self.geometry.tumor_cells.extend(new_cells)
+        
+        # Apply cell mechanics (repulsion) to prevent overlap
+        if new_cells:
+            self._apply_cell_mechanics()
+    
+    def _apply_cell_mechanics(self):
+        """
+        Apply simple repulsion forces between nearby cells to prevent overlap.
+        This is a simplified version of cell mechanics - not full PhysiCell.
+        """
+        cells = self.geometry.tumor_cells
+        repulsion_radius = 25.0  # µm - cells repel if closer than this
+        repulsion_force = 2.0    # µm displacement per step
+        
+        for i, cell1 in enumerate(cells):
+            if not cell1.is_alive:
+                continue
+                
+            for j in range(i + 1, len(cells)):
+                cell2 = cells[j]
+                if not cell2.is_alive:
+                    continue
+                
+                # Calculate distance between cells
+                dx = cell2.position[0] - cell1.position[0]
+                dy = cell2.position[1] - cell1.position[1]
+                distance = np.sqrt(dx**2 + dy**2)
+                
+                # If cells are overlapping, push them apart
+                if distance < repulsion_radius and distance > 0.1:
+                    # Normalize direction
+                    nx = dx / distance
+                    ny = dy / distance
+                    
+                    # Calculate repulsion (inversely proportional to distance)
+                    repulsion_magnitude = repulsion_force * (repulsion_radius - distance) / repulsion_radius
+                    
+                    # Apply repulsion to both cells (equal and opposite)
+                    cell1.position = (
+                        cell1.position[0] - nx * repulsion_magnitude * 0.5,
+                        cell1.position[1] - ny * repulsion_magnitude * 0.5,
+                        cell1.position[2]
+                    )
+                    cell2.position = (
+                        cell2.position[0] + nx * repulsion_magnitude * 0.5,
+                        cell2.position[1] + ny * repulsion_magnitude * 0.5,
+                        cell2.position[2]
+                    )
     
     def _update_immune_cells(self):
         """Update immune cells and their interactions with tumor cells."""

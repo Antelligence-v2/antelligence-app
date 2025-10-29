@@ -37,10 +37,10 @@ const TumorSimulation = () => {
     n_nanobots: 10,
     tumor_radius: 200.0,
     agent_type: "LLM-Powered",
-    selected_model: "meta-llama/Llama-3.3-70B-Instruct",
+    selected_model: "mistralai/Mistral-Large-Instruct-2411",
     use_queen: true,
     use_llm_queen: true,
-    max_steps: 100,
+    max_steps: 200,
     cell_density: 0.001,
     vessel_density: 0.01,
   });

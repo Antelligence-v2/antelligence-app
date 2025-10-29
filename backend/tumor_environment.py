@@ -81,6 +81,10 @@ class TumorCell:
         self.is_alive = True
         self.time_of_death = None
         self.generation = 0  # Track cell divisions
+        
+        # Cell proliferation tracking
+        self.growth_progress = 0.0  # minutes of growth
+        self.division_threshold = self._get_division_threshold()  # minutes needed to divide
     
     def _get_oxygen_uptake_rate(self) -> float:
         """Get oxygen uptake rate based on cell type."""
@@ -151,6 +155,16 @@ class TumorCell:
             CellType.INVASIVE: 0.15       # Very high mutation rate
         }
         return rates.get(self.cell_type, 0.05)
+    
+    def _get_division_threshold(self) -> float:
+        """Get time required for cell division based on cell type (in minutes)."""
+        thresholds = {
+            CellType.STEM_CELL: 120.0,       # 2 hours (slower division)
+            CellType.DIFFERENTIATED: 90.0,   # 1.5 hours (normal)
+            CellType.RESISTANT: 100.0,       # 1.67 hours (slightly slower)
+            CellType.INVASIVE: 60.0         # 1 hour (fast dividing)
+        }
+        return thresholds.get(self.cell_type, 90.0)
         
     def update_oxygen_status(self, oxygen_concentration: float, dt: float):
         """
@@ -243,6 +257,73 @@ class TumorCell:
             self.phase = CellPhase.APOPTOTIC
             self.is_alive = False
             self.time_of_death = 'apoptosis'
+    
+    def update_growth(self, dt: float, oxygen_concentration: float) -> bool:
+        """
+        Update cell growth progress and determine if ready to divide.
+        
+        Args:
+            dt: Timestep in minutes
+            oxygen_concentration: Local oxygen level (mmHg)
+            
+        Returns:
+            True if cell is ready to divide, False otherwise
+        """
+        if not self.is_alive or self.phase != CellPhase.VIABLE:
+            return False
+        
+        # Only grow if well-oxygenated
+        if oxygen_concentration > self.hypoxic_threshold * 1.2:
+            self.growth_progress += dt
+            
+            if self.growth_progress >= self.division_threshold:
+                return True
+        
+        return False
+    
+    def divide(self, new_cell_id: int) -> Optional['TumorCell']:
+        """
+        Divide this cell into a daughter cell.
+        
+        Args:
+            new_cell_id: ID for the new daughter cell
+            
+        Returns:
+            New TumorCell instance or None if division fails
+        """
+        if not self.is_alive or self.phase != CellPhase.VIABLE:
+            return None
+        
+        # Reset growth progress
+        self.growth_progress = 0.0
+        
+        # Place daughter cell nearby (random angle, distance = 2 * radius)
+        angle = np.random.uniform(0, 2 * np.pi)
+        offset_distance = 2.0 * self.radius
+        
+        new_position = (
+            self.position[0] + offset_distance * np.cos(angle),
+            self.position[1] + offset_distance * np.sin(angle),
+            self.position[2]
+        )
+        
+        # Daughter cell inherits parent's type (with small chance of mutation)
+        daughter_type = self.cell_type
+        if np.random.random() < self.mutation_rate:
+            # Mutate to a random cell type
+            daughter_type = np.random.choice(list(CellType))
+        
+        # Create daughter cell
+        daughter_cell = TumorCell(
+            cell_id=new_cell_id,
+            position=new_position,
+            radius=self.radius,
+            initial_phase=CellPhase.VIABLE,
+            cell_type=daughter_type
+        )
+        daughter_cell.generation = self.generation + 1
+        
+        return daughter_cell
     
     def get_oxygen_consumption(self) -> float:
         """
