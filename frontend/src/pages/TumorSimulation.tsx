@@ -8,7 +8,7 @@ import { SimulationLoading } from "@/components/SimulationLoading";
 import { TumorSimulationGrid } from "@/components/TumorSimulationGrid";
 import { TumorSimulationControls } from "@/components/TumorSimulationControls";
 import { TumorSimulationSidebar } from "@/components/TumorSimulationSidebar";
-import { TumorPerformanceCharts } from "@/components/TumorPerformanceCharts";
+// Removed TumorPerformanceCharts import - moved to visualization tab
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Brain, Activity, Zap, Home } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -73,6 +73,11 @@ const TumorSimulation = () => {
 
       setSimulationResults(response.data);
       setCurrentStep(0);
+      
+      // Save simulation data to session storage for visualization tab
+      sessionStorage.setItem('tumorSimulationResults', JSON.stringify(response.data));
+      sessionStorage.setItem('tumorSimulationConfig', JSON.stringify(config));
+      sessionStorage.setItem('tumorSimulationStep', '0');
       
       setTimeout(() => {
         setIsLoading(false);
@@ -229,6 +234,13 @@ const TumorSimulation = () => {
                     {metrics.time.toFixed(2)}m
                   </span>
                 </div>
+                <Button
+                  onClick={() => navigate('/tumor/visualization')}
+                  size="sm"
+                  className="bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white shadow-lg"
+                >
+                  📊 View Visualizations
+                </Button>
               </div>
             )}
           </div>
@@ -389,275 +401,38 @@ const TumorSimulation = () => {
                </CardContent>
             </Card>
 
-            {/* All simulation-related sections - only show after simulation starts */}
+            {/* Simple Legend - only show after simulation starts */}
             {simulationResults && (
-              <>
-                {/* Legend */}
-                <Card className="border-0 shadow-lg bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      <div className="p-1 rounded-lg bg-gradient-to-r from-indigo-500 to-purple-500">
-                        <span className="text-white text-sm">🎨</span>
-                      </div>
-                      Visualization Legend
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      <div className="flex items-center gap-3 p-2 rounded-lg bg-blue-50 dark:bg-blue-950/30">
-                        <div className="w-4 h-4 bg-blue-500 rounded-full shadow-sm"></div>
-                        <span className="font-medium text-sm">Nanobots</span>
-                      </div>
-                      <div className="flex items-center gap-3 p-2 rounded-lg bg-red-50 dark:bg-red-950/30">
-                        <div className="w-4 h-4 bg-red-500 rounded-full shadow-sm"></div>
-                        <span className="font-medium text-sm">Tumor Cells</span>
-                      </div>
-                      <div className="flex items-center gap-3 p-2 rounded-lg bg-green-50 dark:bg-green-950/30">
-                        <div className="w-4 h-4 bg-green-500 rounded-full shadow-sm"></div>
-                        <span className="font-medium text-sm">Blood Vessels</span>
-                      </div>
-                      <div className="flex items-center gap-3 p-2 rounded-lg bg-purple-50 dark:bg-purple-950/30">
-                        <div className="w-4 h-4 bg-purple-500 rounded-full shadow-sm"></div>
-                        <span className="font-medium text-sm">Hypoxic Regions</span>
-                      </div>
+              <Card className="border-0 shadow-lg bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <div className="p-1 rounded-lg bg-gradient-to-r from-indigo-500 to-purple-500">
+                      <span className="text-white text-sm">🎨</span>
                     </div>
-                  </CardContent>
-                </Card>
-
-                {/* Performance Charts */}
-                <Card className="border-0 shadow-xl bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
-                  <CardHeader>
-                    <CardTitle className="text-xl flex items-center gap-2">
-                      <div className="p-1 rounded-lg bg-gradient-to-r from-green-500 to-blue-500">
-                        <span className="text-white text-sm">📈</span>
-                      </div>
-                      Performance Analytics
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <TumorPerformanceCharts
-                      simulationResults={simulationResults}
-                      currentStep={currentStep}
-                    />
-                  </CardContent>
-                </Card>
-
-                {/* Tumor Statistics */}
-                <Card className="border-0 shadow-xl bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
-                  <CardHeader>
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 rounded-xl bg-gradient-to-r from-green-500 to-emerald-500 shadow-lg">
-                        <Activity className="w-6 h-6 text-white" />
-                      </div>
-                      <div>
-                        <CardTitle className="text-xl">📊 Treatment Outcomes</CardTitle>
-                        <p className="text-sm text-muted-foreground mt-1">
-                          Real-time metrics from nanobot therapy
-                        </p>
-                      </div>
+                    Visualization Legend
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="flex items-center gap-3 p-2 rounded-lg bg-blue-50 dark:bg-blue-950/30">
+                      <div className="w-4 h-4 bg-blue-500 rounded-full shadow-sm"></div>
+                      <span className="font-medium text-sm">Nanobots</span>
                     </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      <div className="text-center p-4 bg-gradient-to-br from-red-50 to-red-100 dark:from-red-950/50 dark:to-red-900/30 rounded-xl border border-red-200 dark:border-red-800">
-                        <div className="text-3xl font-bold text-red-600 dark:text-red-400 mb-1">
-                          {simulationResults.tumor_statistics?.cells_killed || 0}
-                        </div>
-                        <div className="text-sm font-medium text-red-700 dark:text-red-300">Cells Killed</div>
-                      </div>
-                      <div className="text-center p-4 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950/50 dark:to-blue-900/30 rounded-xl border border-blue-200 dark:border-blue-800">
-                        <div className="text-3xl font-bold text-blue-600 dark:text-blue-400 mb-1">
-                          {metrics.deliveries}
-                        </div>
-                        <div className="text-sm font-medium text-blue-700 dark:text-blue-300">Drug Deliveries</div>
-                      </div>
-                      <div className="text-center p-4 bg-gradient-to-br from-green-50 to-green-100 dark:from-green-950/50 dark:to-green-900/30 rounded-xl border border-green-200 dark:border-green-800">
-                        <div className="text-3xl font-bold text-green-600 dark:text-green-400 mb-1">
-                          {((simulationResults.tumor_statistics?.kill_rate || 0) * 100).toFixed(1)}%
-                        </div>
-                        <div className="text-sm font-medium text-green-700 dark:text-green-300">Kill Rate</div>
-                      </div>
-                      <div className="text-center p-4 bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-950/50 dark:to-purple-900/30 rounded-xl border border-purple-200 dark:border-purple-800">
-                        <div className="text-3xl font-bold text-purple-600 dark:text-purple-400 mb-1">
-                          {metrics.hypoxicCells}
-                        </div>
-                        <div className="text-sm font-medium text-purple-700 dark:text-purple-300">Hypoxic Cells</div>
-                      </div>
+                    <div className="flex items-center gap-3 p-2 rounded-lg bg-red-50 dark:bg-red-950/30">
+                      <div className="w-4 h-4 bg-red-500 rounded-full shadow-sm"></div>
+                      <span className="font-medium text-sm">Tumor Cells</span>
                     </div>
-                  </CardContent>
-                </Card>
-
-                {/* Technical Details */}
-                <Card className="border-0 shadow-xl bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
-                  <CardHeader>
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 rounded-xl bg-gradient-to-r from-yellow-500 to-orange-500 shadow-lg">
-                        <Zap className="w-6 h-6 text-white" />
-                      </div>
-                      <div>
-                        <CardTitle className="text-xl">🔬 Technical Parameters</CardTitle>
-                        <p className="text-sm text-muted-foreground mt-1">
-                          Detailed simulation configuration and metrics
-                        </p>
-                      </div>
+                    <div className="flex items-center gap-3 p-2 rounded-lg bg-green-50 dark:bg-green-950/30">
+                      <div className="w-4 h-4 bg-green-500 rounded-full shadow-sm"></div>
+                      <span className="font-medium text-sm">Blood Vessels</span>
                     </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                      <div className="space-y-3">
-                        <h4 className="font-semibold text-lg flex items-center gap-2">
-                          <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                          Simulation Setup
-                        </h4>
-                        <div className="space-y-2 text-sm">
-                          <div className="flex justify-between p-2 bg-slate-50 dark:bg-slate-700 rounded-lg">
-                            <span className="text-muted-foreground">Domain:</span>
-                            <span className="font-medium">{config.domain_size} µm</span>
-                          </div>
-                          <div className="flex justify-between p-2 bg-slate-50 dark:bg-slate-700 rounded-lg">
-                            <span className="text-muted-foreground">Voxel Size:</span>
-                            <span className="font-medium">{config.voxel_size} µm</span>
-                          </div>
-                          <div className="flex justify-between p-2 bg-slate-50 dark:bg-slate-700 rounded-lg">
-                            <span className="text-muted-foreground">Tumor Radius:</span>
-                            <span className="font-medium">{config.tumor_radius} µm</span>
-                          </div>
-                          <div className="flex justify-between p-2 bg-slate-50 dark:bg-slate-700 rounded-lg">
-                            <span className="text-muted-foreground">Nanobots:</span>
-                            <span className="font-medium">{config.n_nanobots}</span>
-                          </div>
-                          <div className="flex justify-between p-2 bg-slate-50 dark:bg-slate-700 rounded-lg">
-                            <span className="text-muted-foreground">Agent Type:</span>
-                            <span className="font-medium">{config.agent_type}</span>
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <div className="space-y-3">
-                        <h4 className="font-semibold text-lg flex items-center gap-2">
-                          <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-                          Tumor State
-                        </h4>
-                        <div className="space-y-2 text-sm">
-                          <div className="flex justify-between p-2 bg-slate-50 dark:bg-slate-700 rounded-lg">
-                            <span className="text-muted-foreground">Viable:</span>
-                            <span className="font-medium text-green-600">{metrics.viableCells}</span>
-                          </div>
-                          <div className="flex justify-between p-2 bg-slate-50 dark:bg-slate-700 rounded-lg">
-                            <span className="text-muted-foreground">Hypoxic:</span>
-                            <span className="font-medium text-purple-600">{metrics.hypoxicCells}</span>
-                          </div>
-                          <div className="flex justify-between p-2 bg-slate-50 dark:bg-slate-700 rounded-lg">
-                            <span className="text-muted-foreground">Necrotic:</span>
-                            <span className="font-medium text-gray-600">{currentStepData?.metrics?.necrotic_cells ?? 0}</span>
-                          </div>
-                          <div className="flex justify-between p-2 bg-slate-50 dark:bg-slate-700 rounded-lg">
-                            <span className="text-muted-foreground">Apoptotic:</span>
-                            <span className="font-medium text-orange-600">{currentStepData?.metrics?.apoptotic_cells ?? 0}</span>
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <div className="space-y-3">
-                        <h4 className="font-semibold text-lg flex items-center gap-2">
-                          <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                          Treatment Progress
-                        </h4>
-                        <div className="space-y-2 text-sm">
-                          <div className="flex justify-between p-2 bg-slate-50 dark:bg-slate-700 rounded-lg">
-                            <span className="text-muted-foreground">Time:</span>
-                            <span className="font-medium">{metrics.time.toFixed(3)} min</span>
-                          </div>
-                          <div className="flex justify-between p-2 bg-slate-50 dark:bg-slate-700 rounded-lg">
-                            <span className="text-muted-foreground">Drug Delivered:</span>
-                            <span className="font-medium">{metrics.drugDelivered.toFixed(1)} units</span>
-                          </div>
-                          <div className="flex justify-between p-2 bg-slate-50 dark:bg-slate-700 rounded-lg">
-                            <span className="text-muted-foreground">Efficiency:</span>
-                            <span className="font-medium">{(metrics.cellsKilled / Math.max(metrics.deliveries, 1)).toFixed(2)} cells/delivery</span>
-                          </div>
-                          <div className="flex justify-between p-2 bg-slate-50 dark:bg-slate-700 rounded-lg">
-                            <span className="text-muted-foreground">API Calls:</span>
-                            <span className="font-medium">{currentStepData?.metrics?.total_api_calls ?? 0}</span>
-                          </div>
-                        </div>
-                      </div>
-                      
-                      {/* New Biological Metrics Section */}
-                      <div className="space-y-3">
-                        <h4 className="font-semibold text-lg flex items-center gap-2">
-                          <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-                          Cell Type Distribution
-                        </h4>
-                        <div className="space-y-2 text-sm">
-                          <div className="flex justify-between p-2 bg-slate-50 dark:bg-slate-700 rounded-lg">
-                            <span className="text-muted-foreground">Stem Cells:</span>
-                            <span className="font-medium text-purple-600">{metrics.cellTypeDistribution.stem_cell || 0}</span>
-                          </div>
-                          <div className="flex justify-between p-2 bg-slate-50 dark:bg-slate-700 rounded-lg">
-                            <span className="text-muted-foreground">Differentiated:</span>
-                            <span className="font-medium text-blue-600">{metrics.cellTypeDistribution.differentiated || 0}</span>
-                          </div>
-                          <div className="flex justify-between p-2 bg-slate-50 dark:bg-slate-700 rounded-lg">
-                            <span className="text-muted-foreground">Resistant:</span>
-                            <span className="font-medium text-orange-600">{metrics.cellTypeDistribution.resistant || 0}</span>
-                          </div>
-                          <div className="flex justify-between p-2 bg-slate-50 dark:bg-slate-700 rounded-lg">
-                            <span className="text-muted-foreground">Invasive:</span>
-                            <span className="font-medium text-red-600">{metrics.cellTypeDistribution.invasive || 0}</span>
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <div className="space-y-3">
-                        <h4 className="font-semibold text-lg flex items-center gap-2">
-                          <div className="w-2 h-2 bg-cyan-500 rounded-full"></div>
-                          Immune System
-                        </h4>
-                        <div className="space-y-2 text-sm">
-                          <div className="flex justify-between p-2 bg-slate-50 dark:bg-slate-700 rounded-lg">
-                            <span className="text-muted-foreground">Total Immune Cells:</span>
-                            <span className="font-medium text-cyan-600">{metrics.totalImmuneCells}</span>
-                          </div>
-                          <div className="flex justify-between p-2 bg-slate-50 dark:bg-slate-700 rounded-lg">
-                            <span className="text-muted-foreground">T Cells:</span>
-                            <span className="font-medium text-blue-500">{metrics.immuneCellDistribution.t_cell || 0}</span>
-                          </div>
-                          <div className="flex justify-between p-2 bg-slate-50 dark:bg-slate-700 rounded-lg">
-                            <span className="text-muted-foreground">Macrophages:</span>
-                            <span className="font-medium text-green-500">{metrics.immuneCellDistribution.macrophage || 0}</span>
-                          </div>
-                          <div className="flex justify-between p-2 bg-slate-50 dark:bg-slate-700 rounded-lg">
-                            <span className="text-muted-foreground">NK Cells:</span>
-                            <span className="font-medium text-purple-500">{metrics.immuneCellDistribution.nk_cell || 0}</span>
-                          </div>
-                          <div className="flex justify-between p-2 bg-slate-50 dark:bg-slate-700 rounded-lg">
-                            <span className="text-muted-foreground">Dendritic:</span>
-                            <span className="font-medium text-yellow-500">{metrics.immuneCellDistribution.dendritic || 0}</span>
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <div className="space-y-3">
-                        <h4 className="font-semibold text-lg flex items-center gap-2">
-                          <div className="w-2 h-2 bg-indigo-500 rounded-full"></div>
-                          System Status
-                        </h4>
-                        <div className="space-y-2 text-sm">
-                          <div className="flex justify-between p-2 bg-slate-50 dark:bg-slate-700 rounded-lg">
-                            <span className="text-muted-foreground">Blood Vessels:</span>
-                            <span className="font-medium text-indigo-600">{metrics.totalVessels}</span>
-                          </div>
-                          <div className="flex justify-between p-2 bg-slate-50 dark:bg-slate-700 rounded-lg">
-                            <span className="text-muted-foreground">Survival Rate:</span>
-                            <span className="font-medium text-green-600">{(metrics.survivalRate * 100).toFixed(1)}%</span>
-                          </div>
-                        </div>
-                      </div>
+                    <div className="flex items-center gap-3 p-2 rounded-lg bg-purple-50 dark:bg-purple-950/30">
+                      <div className="w-4 h-4 bg-purple-500 rounded-full shadow-sm"></div>
+                      <span className="font-medium text-sm">Hypoxic Regions</span>
                     </div>
-                  </CardContent>
-                </Card>
-              </>
+                  </div>
+                </CardContent>
+              </Card>
             )}
           </div>
         </div>
