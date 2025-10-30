@@ -638,8 +638,8 @@ class TumorGeometry:
             distance_from_core = r - self.necrotic_core_radius
             normalized_distance = distance_from_core / (self.tumor_radius - self.necrotic_core_radius)
             
-            # Inner 30% of viable region starts hypoxic
-            initial_phase = CellPhase.HYPOXIC if normalized_distance < 0.3 else CellPhase.VIABLE
+            # Inner 60% of viable region starts hypoxic (matching BraTS data)
+            initial_phase = CellPhase.HYPOXIC if normalized_distance < 0.6 else CellPhase.VIABLE
             
             # Assign cell type based on position and randomness
             cell_type = self._assign_cell_type(normalized_distance)
