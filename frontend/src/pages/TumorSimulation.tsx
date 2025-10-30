@@ -13,7 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Brain, Activity, Zap, Home } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8001";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000";
 
 interface TumorSimulationConfig {
   domain_size: number;
@@ -27,6 +27,9 @@ interface TumorSimulationConfig {
   max_steps: number;
   cell_density: number;
   vessel_density: number;
+  use_brats?: boolean;
+  brats_patient?: string;
+  brats_dataset?: string;
 }
 
 const TumorSimulation = () => {
@@ -59,14 +62,39 @@ const TumorSimulation = () => {
     setLoadingProgress(0);
     setIsPlaying(false);
     setSimulationResults(null);
-    toast.info("Starting tumor nanobot simulation...");
+    
+    const isBratsMode = config.use_brats && config.brats_patient;
+    toast.info(isBratsMode ? "Starting BraTS patient simulation..." : "Starting tumor nanobot simulation...");
 
     try {
       const progressInterval = setInterval(() => {
         setLoadingProgress(prev => Math.min(prev + 1, 90));
       }, 200);
 
-      const response = await axios.post(`${API_BASE_URL}/simulation/tumor/run`, config);
+      // Choose endpoint based on BraTS mode
+      const endpoint = isBratsMode 
+        ? `${API_BASE_URL}/simulation/tumor/from-brats`
+        : `${API_BASE_URL}/simulation/tumor/run`;
+      
+      // Prepare request config
+      const requestConfig = isBratsMode
+        ? {
+            patient_id: config.brats_patient,
+            dataset: config.brats_dataset || "additional_training",
+            domain_size: config.domain_size,
+            voxel_size: config.voxel_size,
+            n_nanobots: config.n_nanobots,
+            agent_type: config.agent_type,
+            selected_model: config.selected_model,
+            use_queen: config.use_queen,
+            use_llm_queen: config.use_llm_queen,
+            max_steps: config.max_steps,
+            cell_density: config.cell_density,
+            vessel_density: config.vessel_density,
+          }
+        : config;
+
+      const response = await axios.post(endpoint, requestConfig);
       
       clearInterval(progressInterval);
       setLoadingProgress(100);
