@@ -916,22 +916,170 @@ def create_simple_tumor_environment(
 def create_brats_tumor_geometry(
     segmentation_array: np.ndarray,
     voxel_spacing: Tuple[float, float, float],
-    cell_density: float = 0.001
+    cell_density: float = 0.001,
+    slice_idx: Optional[int] = None,
+    target_domain_size: Optional[float] = 600.0,
+    voxel_size: float = 20.0
 ) -> TumorGeometry:
     """
     Create tumor geometry from BraTS segmentation data.
     
-    This function will be used when integrating real MRI data.
-    For now, it's a placeholder for future implementation.
+    Converts BraTS 2024 segmentation masks into a 2D tumor geometry
+    compatible with the PhysiCell-based nanobot simulation.
     
     Args:
-        segmentation_array: 3D array with tumor labels (1=necrosis, 2=edema, 4=enhancing)
+        segmentation_array: 3D array with tumor labels (1=NCR, 2=ED, 4=ET)
         voxel_spacing: (dx, dy, dz) in mm
-        cell_density: Cells per µm³
+        cell_density: Cells per µm² (for 2D simulation)
+        slice_idx: Index of axial slice to use (if None, uses best slice)
+        target_domain_size: Target domain size in µm (default 600.0)
+        voxel_size: Simulation voxel size in µm (default 20.0)
         
     Returns:
         TumorGeometry with cells placed according to segmentation
     """
-    # TODO: Implement BraTS data loading in future phase
-    raise NotImplementedError("BraTS geometry generation will be implemented in Phase 6")
+    from brats_loader import (
+        extract_tumor_regions, 
+        get_2d_slice, 
+        find_best_slice,
+        resample_2d_slice,
+        LABEL_NCR, LABEL_ED, LABEL_ET
+    )
+    
+    print("[BRATS] Creating tumor geometry from BraTS segmentation...")
+    
+    # Extract tumor regions
+    regions = extract_tumor_regions(segmentation_array)
+    
+    # Find best slice if not specified
+    if slice_idx is None:
+        slice_idx = find_best_slice(segmentation_array)
+        print(f"  Using best slice: {slice_idx}")
+    else:
+        print(f"  Using specified slice: {slice_idx}")
+    
+    # Get 2D slice (axial view, z-axis)
+    seg_2d = get_2d_slice(segmentation_array, slice_idx, axis=2)
+    ncr_2d = get_2d_slice(regions['ncr'], slice_idx, axis=2)
+    ed_2d = get_2d_slice(regions['ed'], slice_idx, axis=2)
+    et_2d = get_2d_slice(regions['et'], slice_idx, axis=2)
+    
+    print(f"  Original 2D slice shape: {seg_2d.shape}")
+    print(f"  NCR voxels: {np.sum(ncr_2d)}, ED voxels: {np.sum(ed_2d)}, ET voxels: {np.sum(et_2d)}")
+    
+    # Resample to fit simulation domain
+    if target_domain_size:
+        # Calculate target grid size
+        target_grid_size = int(target_domain_size / voxel_size)
+        target_shape = (target_grid_size, target_grid_size)
+        
+        print(f"  Resampling to: {target_shape} voxels ({target_domain_size} µm domain)")
+        seg_2d = resample_2d_slice(seg_2d, target_shape, method='interpolate')
+        ncr_2d = resample_2d_slice(ncr_2d, target_shape, method='interpolate')
+        ed_2d = resample_2d_slice(ed_2d, target_shape, method='interpolate')
+        et_2d = resample_2d_slice(et_2d, target_shape, method='interpolate')
+        
+        # Binarize after interpolation (interpolation creates float values)
+        ncr_2d = (ncr_2d > 0.5).astype(np.uint8)
+        ed_2d = (ed_2d > 0.5).astype(np.uint8)
+        et_2d = (et_2d > 0.5).astype(np.uint8)
+        seg_2d = ncr_2d + ed_2d * 2 + et_2d * 4
+        
+        # Use simulation voxel size
+        dx_um = voxel_size
+        dy_um = voxel_size
+    else:
+        # Calculate physical dimensions from original spacing
+        # Convert mm to µm (1 mm = 1000 µm)
+        dx_um = voxel_spacing[0] * 1000
+        dy_um = voxel_spacing[1] * 1000
+    
+    whole_tumor_2d = ncr_2d | ed_2d | et_2d
+    
+    # Calculate domain size after resampling
+    domain_size_x = seg_2d.shape[0] * dx_um
+    domain_size_y = seg_2d.shape[1] * dy_um
+    
+    # Find tumor bounding box
+    y_coords, x_coords = np.where(whole_tumor_2d)
+    if len(x_coords) == 0:
+        # No tumor in this slice, create empty geometry
+        print("  ⚠️  No tumor found in selected slice")
+        center = (domain_size_x / 2, domain_size_y / 2, 0.0)
+        tumor_radius = 50.0  # Default small radius
+        geometry = TumorGeometry(center=center, tumor_radius=tumor_radius, vessel_density=0.01)
+        return geometry
+    
+    # Calculate tumor center and radius from bounding box
+    tumor_center_x = float(np.mean(x_coords)) * dx_um
+    tumor_center_y = float(np.mean(y_coords)) * dy_um
+    tumor_radius = float(np.max(np.sqrt(
+        (x_coords * dx_um - tumor_center_x)**2 + 
+        (y_coords * dy_um - tumor_center_y)**2
+    ))) + 50.0  # Add some margin
+    
+    center = (tumor_center_x, tumor_center_y, 0.0)
+    print(f"  Tumor center: ({tumor_center_x:.1f}, {tumor_center_y:.1f}) µm")
+    print(f"  Tumor radius: {tumor_radius:.1f} µm")
+    
+    # Create geometry
+    geometry = TumorGeometry(
+        center=center,
+        tumor_radius=tumor_radius,
+        necrotic_core_radius=tumor_radius * 0.3,  # NCR typically 30% of tumor radius
+        vessel_density=0.01
+    )
+    
+    # Generate cells based on segmentation
+    cell_id = 0
+    
+    # Process each tumor voxel
+    for i in range(seg_2d.shape[0]):
+        for j in range(seg_2d.shape[1]):
+            voxel_value = seg_2d[i, j]
+            
+            if voxel_value == 0:  # Background
+                continue
+            
+            # Position in physical space (µm)
+            x_pos = i * dx_um
+            y_pos = j * dy_um
+            z_pos = 0.0
+            
+            # Determine cell phase based on BraTS label
+            if voxel_value == LABEL_NCR:
+                initial_phase = CellPhase.NECROTIC
+                cell_type = CellType.DIFFERENTIATED
+            elif voxel_value == LABEL_ED:
+                initial_phase = CellPhase.HYPOXIC  # Edema indicates hypoxic/peritumoral zone
+                cell_type = CellType.DIFFERENTIATED
+            elif voxel_value == LABEL_ET:
+                initial_phase = CellPhase.VIABLE  # Enhancing tumor = viable growing cells
+                cell_type = CellType.STEM_CELL if np.random.random() < 0.3 else CellType.DIFFERENTIATED
+            else:
+                # Unknown label, treat as viable
+                initial_phase = CellPhase.VIABLE
+                cell_type = CellType.DIFFERENTIATED
+            
+            # Create cell
+            cell = TumorCell(
+                cell_id=cell_id,
+                position=(x_pos, y_pos, z_pos),
+                initial_phase=initial_phase,
+                cell_type=cell_type,
+                radius=10.0  # Standard glioma cell radius
+            )
+            
+            geometry.tumor_cells.append(cell)
+            cell_id += 1
+    
+    print(f"  Generated {len(geometry.tumor_cells)} tumor cells from segmentation")
+    
+    # Generate vasculature around tumor periphery
+    geometry._generate_peripheral_vasculature(dimensionality=2)
+    
+    # Generate immune cells
+    geometry._generate_immune_cells(dimensionality=2)
+    
+    return geometry
 

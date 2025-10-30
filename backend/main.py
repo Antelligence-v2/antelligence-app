@@ -14,23 +14,39 @@ import openai
 from dotenv import load_dotenv
 
 # Add the current directory to Python path for local development
-current_dir = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, current_dir)
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-# Import modules directly from current directory
-from simulation import SimpleForagingModel
-from nanobot_simulation import TumorNanobotModel
-from tumor_environment import CellPhase
-from schemas import (
-    SimulationConfig, SimulationResult, StepState, AntState, 
-    PheromoneMapData, ForagingEfficiencyData, FoodDepletionPoint,
-    ComparisonConfig, ComparisonResult, PerformanceData,
-    PheromoneConfigUpdate, PredatorState,
-    # Tumor simulation schemas
-    TumorSimulationConfig, TumorSimulationResult, TumorStepState,
-    NanobotState, TumorCellState, VesselState, SubstrateMapData,
-    TumorComparisonConfig, TumorComparisonResult, TumorPerformanceData
-)
+try:
+    from backend.simulation import SimpleForagingModel
+    from backend.nanobot_simulation import TumorNanobotModel
+    from backend.tumor_environment import CellPhase
+    from backend.schemas import (
+        SimulationConfig, SimulationResult, StepState, AntState, 
+        PheromoneMapData, ForagingEfficiencyData, FoodDepletionPoint,
+        ComparisonConfig, ComparisonResult, PerformanceData,
+        PheromoneConfigUpdate, PredatorState,
+        # Tumor simulation schemas
+        TumorSimulationConfig, TumorSimulationResult, TumorStepState,
+        NanobotState, TumorCellState, VesselState, SubstrateMapData,
+        TumorComparisonConfig, TumorComparisonResult, TumorPerformanceData,
+        BraTSSimulationConfig
+    )
+except ImportError:
+    # Fallback for local development
+    from simulation import SimpleForagingModel
+    from nanobot_simulation import TumorNanobotModel
+    from tumor_environment import CellPhase
+    from schemas import (
+        SimulationConfig, SimulationResult, StepState, AntState, 
+        PheromoneMapData, ForagingEfficiencyData, FoodDepletionPoint,
+        ComparisonConfig, ComparisonResult, PerformanceData,
+        PheromoneConfigUpdate, PredatorState,
+        # Tumor simulation schemas
+        TumorSimulationConfig, TumorSimulationResult, TumorStepState,
+        NanobotState, TumorCellState, VesselState, SubstrateMapData,
+        TumorComparisonConfig, TumorComparisonResult, TumorPerformanceData,
+        BraTSSimulationConfig
+    )
 
 # Load environment variables
 load_dotenv()
@@ -41,12 +57,6 @@ IO_API_KEY = os.getenv("IO_SECRET_KEY")
 # --- Blockchain Integration ---
 BLOCKCHAIN_ENABLED = False
 try:
-    # Add parent directory to path to find blockchain module
-    import sys
-    import os
-    parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    sys.path.insert(0, parent_dir)
-    
     from blockchain.client import w3, acct, MEMORY_CONTRACT_ADDRESS
     BLOCKCHAIN_ENABLED = True
     print("✅ Blockchain client loaded successfully!")
@@ -100,15 +110,9 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],  # Explicitly allow OPTIONS
+    allow_methods=["*"],  # Allow all methods including OPTIONS
     allow_headers=["*"],  # Allow all headers to prevent CORS preflight issues
 )
-
-# Add a custom OPTIONS handler for all routes
-@app.options("/{full_path:path}")
-async def options_handler(full_path: str):
-    """Handle OPTIONS requests for CORS preflight"""
-    return {"message": "OK"}
 
 def convert_pheromone_maps(model) -> PheromoneMapData:
     """Convert numpy pheromone maps to JSON-serializable format."""
@@ -543,14 +547,7 @@ def convert_substrate_maps(model: TumorNanobotModel) -> SubstrateMapData:
     max_values = {}
     mean_values = {}
     
-    # Include all substrates that the frontend expects
-    all_substrates = [
-        'oxygen', 'drug', 'trail', 'alarm', 'recruitment',
-        'chemokine_signal', 'toxicity_signal', 'ifn_gamma',
-        'tnf_alpha', 'perforin', 'drug_a', 'drug_b'
-    ]
-    
-    for name in all_substrates:
+    for name in ['oxygen', 'drug', 'trail', 'alarm', 'recruitment']:
         substrate = model.microenv.get_substrate(name)
         if substrate:
             # Get 2D slice (z=0) and transpose for correct orientation
@@ -559,25 +556,16 @@ def convert_substrate_maps(model: TumorNanobotModel) -> SubstrateMapData:
             max_values[name] = float(np.max(substrate.concentration))
             mean_values[name] = float(np.mean(substrate.concentration))
         else:
-            # Create empty grid if substrate doesn't exist
-            grid_size = model.microenv.dims[0]
-            substrate_data[name] = [[0.0] * grid_size for _ in range(grid_size)]
+            substrate_data[name] = []
             max_values[name] = 0.0
             mean_values[name] = 0.0
     
     return SubstrateMapData(
-        oxygen=substrate_data.get('oxygen', []),
-        drug=substrate_data.get('drug', []),
-        trail=substrate_data.get('trail', []),
-        alarm=substrate_data.get('alarm', []),
-        recruitment=substrate_data.get('recruitment', []),
-        chemokine_signal=substrate_data.get('chemokine_signal'),
-        toxicity_signal=substrate_data.get('toxicity_signal'),
-        ifn_gamma=substrate_data.get('ifn_gamma'),
-        tnf_alpha=substrate_data.get('tnf_alpha'),
-        perforin=substrate_data.get('perforin'),
-        drug_a=substrate_data.get('drug_a'),
-        drug_b=substrate_data.get('drug_b'),
+        oxygen=substrate_data['oxygen'],
+        drug=substrate_data['drug'],
+        trail=substrate_data['trail'],
+        alarm=substrate_data['alarm'],
+        recruitment=substrate_data['recruitment'],
         max_values=max_values,
         mean_values=mean_values
     )
@@ -642,15 +630,20 @@ async def run_tumor_simulation(config: TumorSimulationConfig):
             # Capture detailed state periodically
             capture_detail = (step_num % detail_interval == 0) or (step_num == config.max_steps - 1)
             substrate_data = None
+            tumor_cells_state = []
             
             if capture_detail:
                 substrate_data = convert_substrate_maps(model)
                 
-            # Include all living tumor cell states at every step
-            tumor_cells_state = [
-                TumorCellState(**cell.to_dict())
-                for cell in model.geometry.get_living_cells()
-            ]
+                # Include tumor cell states (sample for performance)
+                sample_cells = random.sample(
+                    model.geometry.tumor_cells,
+                    min(100, len(model.geometry.tumor_cells))
+                )
+                tumor_cells_state = [
+                    TumorCellState(**cell.to_dict())
+                    for cell in sample_cells
+                ]
             
             # Create step state
             current_state = TumorStepState(
@@ -877,185 +870,194 @@ async def test_tumor_simulation():
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# --- Simulation Caching and Comparison Endpoints ---
-
-class CachedSimulation(BaseModel):
-    """Model for caching simulation results."""
-    id: str
-    timestamp: str
-    agent_type: str
-    llm_model: str
-    simulation_type: str  # "ant" or "tumor"
-    config: dict
-    final_metrics: dict
-    summary: dict
-
-import json
-from datetime import datetime
-from pathlib import Path
-
-# Create cache directory if it doesn't exist
-CACHE_DIR = Path("simulation_cache")
-CACHE_DIR.mkdir(exist_ok=True)
-
-
-@app.post("/simulation/cache")
-async def cache_simulation(simulation_data: dict):
+@app.post("/simulation/tumor/from-brats", response_model=TumorSimulationResult)
+async def run_brats_simulation(config: BraTSSimulationConfig):
     """
-    Cache a completed simulation for later comparison.
+    Run a tumor nanobot simulation using real BraTS 2024 patient data.
     
-    Args:
-        simulation_data: Complete simulation result with metadata
+    This endpoint loads BraTS segmentation data and creates a realistic
+    tumor geometry for simulation.
     """
     try:
-        timestamp = datetime.now().isoformat()
-        sim_id = f"{simulation_data.get('agent_type', 'unknown')}_{simulation_data.get('llm_model', 'unknown').replace('/', '-')}_{timestamp.replace(':', '-')}"
+        print(f"[BRATS SIM] Starting BraTS simulation for patient: {config.patient_id}")
         
-        cache_file = CACHE_DIR / f"{sim_id}.json"
+        # Import BraTS loader
+        from brats_loader import (
+            load_brats_segmentation,
+            find_brats_segmentation_file,
+            get_patient_metadata
+        )
+        from tumor_environment import create_brats_tumor_geometry
+        from brats_loader import BRATS_TRAINING_PATH, BRATS_VALIDATION_PATH, BRATS_ADDITIONAL_TRAINING_PATH
         
-        cached_sim = {
-            "id": sim_id,
-            "timestamp": timestamp,
-            "agent_type": simulation_data.get("agent_type", "unknown"),
-            "llm_model": simulation_data.get("llm_model", "unknown"),
-            "simulation_type": simulation_data.get("simulation_type", "unknown"),
-            "config": simulation_data.get("config", {}),
-            "final_metrics": simulation_data.get("final_metrics", {}),
-            "summary": simulation_data.get("summary", {}),
-        }
+        # Find patient directory based on dataset
+        if config.dataset == 'training':
+            base_path = BRATS_TRAINING_PATH
+        elif config.dataset == 'validation':
+            base_path = BRATS_VALIDATION_PATH
+        elif config.dataset == 'additional_training':
+            base_path = BRATS_ADDITIONAL_TRAINING_PATH
+        else:
+            raise HTTPException(status_code=400, detail=f"Unknown dataset: {config.dataset}")
         
-        with open(cache_file, 'w') as f:
-            json.dump(cached_sim, f, indent=2)
+        if not base_path or not os.path.exists(base_path):
+            raise HTTPException(status_code=400, detail=f"Dataset path not found: {config.dataset}")
         
-        print(f"[CACHE] Saved simulation: {sim_id}")
+        patient_dir = os.path.join(base_path, config.patient_id)
+        seg_file = find_brats_segmentation_file(patient_dir)
         
-        return {
-            "status": "success",
-            "simulation_id": sim_id,
-            "cached_at": timestamp
-        }
+        if not seg_file:
+            raise HTTPException(status_code=404, detail=f"Patient not found: {config.patient_id}")
         
-    except Exception as e:
-        print(f"[CACHE] Error saving simulation: {str(e)}")
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.get("/simulation/history")
-async def get_simulation_history(simulation_type: str = None):
-    """
-    Get list of all cached simulations.
-    
-    Args:
-        simulation_type: Optional filter by "ant" or "tumor"
-    """
-    try:
-        cache_files = list(CACHE_DIR.glob("*.json"))
-        simulations = []
+        print(f"  Loading segmentation: {seg_file}")
         
-        for cache_file in cache_files:
-            try:
-                with open(cache_file, 'r') as f:
-                    sim_data = json.load(f)
-                    
-                    # Filter by simulation type if specified
-                    if simulation_type and sim_data.get("simulation_type") != simulation_type:
-                        continue
-                    
-                    simulations.append({
-                        "id": sim_data.get("id"),
-                        "timestamp": sim_data.get("timestamp"),
-                        "agent_type": sim_data.get("agent_type"),
-                        "llm_model": sim_data.get("llm_model"),
-                        "simulation_type": sim_data.get("simulation_type"),
-                        "summary": sim_data.get("summary", {})
-                    })
-            except Exception as e:
-                print(f"[HISTORY] Error reading {cache_file}: {e}")
-                continue
+        # Load segmentation
+        seg_array, voxel_spacing = load_brats_segmentation(seg_file)
+        print(f"  Loaded: shape={seg_array.shape}, spacing={voxel_spacing} mm")
         
-        # Sort by timestamp (newest first)
-        simulations.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
+        # Create geometry from BraTS
+        brats_geometry = create_brats_tumor_geometry(
+            segmentation_array=seg_array,
+            voxel_spacing=voxel_spacing,
+            cell_density=config.cell_density,
+            slice_idx=config.slice_idx,
+            target_domain_size=config.domain_size,
+            voxel_size=config.voxel_size
+        )
         
-        print(f"[HISTORY] Found {len(simulations)} cached simulations")
+        print(f"[BRATS SIM] Geometry created: {len(brats_geometry.tumor_cells)} cells")
         
-        return {
-            "simulations": simulations,
-            "total_count": len(simulations)
-        }
+        # Initialize simulation model with BraTS geometry
+        model = TumorNanobotModel(
+            domain_size=config.domain_size,
+            voxel_size=config.voxel_size,
+            n_nanobots=config.n_nanobots,
+            tumor_radius=brats_geometry.tumor_radius,  # Use actual tumor radius from BraTS
+            agent_type=config.agent_type,
+            with_queen=config.use_queen,
+            use_llm_queen=config.use_llm_queen,
+            selected_model=config.selected_model
+        )
         
-    except Exception as e:
-        print(f"[HISTORY] Error: {str(e)}")
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.get("/simulation/compare/{id1}/{id2}")
-async def compare_simulations(id1: str, id2: str):
-    """
-    Compare two cached simulations side-by-side.
-    
-    Args:
-        id1: ID of first simulation
-        id2: ID of second simulation
-    """
-    try:
-        # Load both simulations
-        sim1_file = CACHE_DIR / f"{id1}.json"
-        sim2_file = CACHE_DIR / f"{id2}.json"
+        # Replace geometry with BraTS geometry
+        model.geometry = brats_geometry
         
-        if not sim1_file.exists():
-            raise HTTPException(status_code=404, detail=f"Simulation {id1} not found")
-        if not sim2_file.exists():
-            raise HTTPException(status_code=404, detail=f"Simulation {id2} not found")
+        print(f"[BRATS SIM] Model initialized. Starting {config.max_steps} steps...")
         
-        with open(sim1_file, 'r') as f:
-            sim1_data = json.load(f)
-        with open(sim2_file, 'r') as f:
-            sim2_data = json.load(f)
+        # Track initial tumor stats
+        initial_stats = model.geometry.get_tumor_statistics()
         
-        # Calculate comparison metrics
-        comparison = {
-            "simulation1": {
-                "id": sim1_data.get("id"),
-                "agent_type": sim1_data.get("agent_type"),
-                "llm_model": sim1_data.get("llm_model"),
-                "metrics": sim1_data.get("final_metrics", {}),
-                "summary": sim1_data.get("summary", {})
-            },
-            "simulation2": {
-                "id": sim2_data.get("id"),
-                "agent_type": sim2_data.get("agent_type"),
-                "llm_model": sim2_data.get("llm_model"),
-                "metrics": sim2_data.get("final_metrics", {}),
-                "summary": sim2_data.get("summary", {})
-            },
-            "differences": {}
-        }
+        history = []
+        detail_interval = max(1, config.max_steps // 20)
         
-        # Calculate percentage differences for key metrics
-        metrics1 = sim1_data.get("final_metrics", {})
-        metrics2 = sim2_data.get("final_metrics", {})
+        # Store vessel positions
+        vessels_state = [
+            VesselState(
+                position=v.position,
+                oxygen_supply=v.oxygen_supply,
+                drug_supply=v.drug_supply,
+                supply_radius=v.supply_radius
+            )
+            for v in model.geometry.vessels
+        ]
         
-        for key in set(metrics1.keys()) | set(metrics2.keys()):
-            val1 = metrics1.get(key, 0)
-            val2 = metrics2.get(key, 0)
+        for step_num in range(config.max_steps):
+            if step_num % 10 == 0:
+                print(f"[BRATS SIM] Step {step_num + 1}/{config.max_steps}")
+            model.step()
             
-            if isinstance(val1, (int, float)) and isinstance(val2, (int, float)):
-                if val1 > 0:
-                    percent_diff = ((val2 - val1) / val1) * 100
-                    comparison["differences"][key] = {
-                        "absolute": val2 - val1,
-                        "percent": percent_diff
-                    }
+            # Create nanobot states
+            nanobots_state = [nanobot.to_dict() for nanobot in model.nanobots]
+            nanobots_state = [NanobotState(**nb) for nb in nanobots_state]
+            
+            # Capture detailed state periodically
+            capture_detail = (step_num % detail_interval == 0) or (step_num == config.max_steps - 1)
+            substrate_data = None
+            tumor_cells_state = []
+            
+            if capture_detail:
+                substrate_data = convert_substrate_maps(model)
+                
+                sample_cells = random.sample(
+                    model.geometry.tumor_cells,
+                    min(100, len(model.geometry.tumor_cells))
+                )
+                tumor_cells_state = [TumorCellState(**cell.to_dict()) for cell in sample_cells]
+            
+            current_state = TumorStepState(
+                step=model.step_count,
+                time=model.microenv.time,
+                nanobots=nanobots_state,
+                tumor_cells=tumor_cells_state,
+                vessels=vessels_state if step_num == 0 else [],
+                metrics=model.metrics.copy(),
+                queen_report=model.queen_report,
+                errors=model.errors.copy(),
+                substrate_data=substrate_data
+            )
+            
+            history.append(current_state)
+            model.errors.clear()
         
-        print(f"[COMPARE] Comparing {id1} vs {id2}")
+        print(f"[BRATS SIM] Simulation completed after {model.step_count} steps")
         
-        return comparison
+        # Get final statistics
+        final_stats = model.geometry.get_tumor_statistics()
+        final_substrate_data = convert_substrate_maps(model)
+        blockchain_logs = []
+        
+        result = TumorSimulationResult(
+            config=TumorSimulationConfig(**config.dict()),
+            total_steps_run=model.step_count,
+            total_time=model.microenv.time,
+            final_metrics=model.metrics,
+            history=history,
+            tumor_statistics=final_stats,
+            final_substrate_data=final_substrate_data,
+            blockchain_logs=blockchain_logs
+        )
+        
+        return result
         
     except HTTPException:
         raise
     except Exception as e:
-        print(f"[COMPARE] Error: {str(e)}")
+        print(f"[BRATS SIM] Error: {str(e)}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/brats/patients")
+async def list_brats_patients():
+    """
+    List all available BraTS patients across all datasets.
+    """
+    try:
+        from brats_loader import list_brats_patients, BRATS_TRAINING_PATH, BRATS_VALIDATION_PATH, BRATS_ADDITIONAL_TRAINING_PATH
+        
+        datasets = {}
+        
+        # Get patients from each dataset
+        for dataset_name, path in [
+            ("training", BRATS_TRAINING_PATH),
+            ("validation", BRATS_VALIDATION_PATH),
+            ("additional_training", BRATS_ADDITIONAL_TRAINING_PATH)
+        ]:
+            if path and os.path.exists(path):
+                patients = list_brats_patients(path)
+                datasets[dataset_name] = patients
+            else:
+                datasets[dataset_name] = []
+        
+        total = sum(len(p) for p in datasets.values())
+        print(f"[BRATS] Listed {total} patients across {len(datasets)} datasets")
+        
+        return {
+            "datasets": datasets,
+            "total_patients": total
+        }
+        
+    except Exception as e:
+        print(f"[BRATS] Error listing patients: {str(e)}")
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))

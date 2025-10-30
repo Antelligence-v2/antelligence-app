@@ -1,0 +1,90 @@
+# BraTS 2024 Integration Plan for dev-tanya Branch
+
+## 🎯 Goal
+Integrate BraTS 2024 training data (Kaggle) and validation data (Synapse) to create realistic tumor geometries from real MRI segmentations.
+
+---
+
+## 📋 Implementation Plan
+
+### Phase 1: Data Setup & Loading (Priority: HIGH) ✅
+- [x] Create `backend/data/` directory structure
+- [x] Add BraTS data loading utility (`backend/brats_loader.py`)
+- [x] Implement NIfTI file reading with nibabel
+- [x] Add data path configuration to `.env`
+- [ ] Create script to organize/unzip BraTS data
+
+### Phase 2: Segmentation Processing (Priority: HIGH) ✅
+- [x] Extract tumor regions from segmentations (ED=2, ET=4, NCR=1)
+- [x] Resample/scale BraTS voxel spacing to simulation grid
+- [x] Generate 2D slices for visualization compatibility
+- [x] Add metadata extraction (patient ID, slice info, etc.)
+
+### Phase 3: Geometry Integration (Priority: MEDIUM) ✅
+- [x] Implement `create_brats_tumor_geometry()` fully
+- [x] Convert segmentation masks to cell positions
+- [x] Map tumor types to cell phases (NCR→necrotic, ED→hypoxic, ET→viable)
+- [x] Add blood vessel placement near tumor boundaries
+
+### Phase 4: API Integration (Priority: MEDIUM) ✅
+- [x] Add new endpoint: `POST /simulation/tumor/from-brats`
+- [x] Add schema for BraTS config
+- [x] Add endpoint `GET /brats/patients` to list available patients
+- [ ] Update frontend to select BraTS patients
+- [ ] Add BraTS dataset browser in frontend
+
+### Phase 5: Testing & Validation (Priority: LOW)
+- [x] Test with BraTS patient data (verified working with 271 patients)
+- [ ] Compare BraTS vs synthetic tumor metrics
+- [ ] Add logging for geometry differences
+- [ ] Performance benchmark
+
+---
+
+## 🔧 Technical Details
+
+### File Structure
+```
+backend/
+  ├── data/                      # NEW: BraTS data storage
+  │   ├── raw/                   # Original BraTS files (gitignored)
+  │   ├── processed/             # Preprocessed geometries
+  │   └── metadata.json          # Dataset index
+  ├── brats_loader.py           # NEW: BraTS data loading
+  ├── tumor_environment.py      # UPDATE: Implement create_brats_tumor_geometry
+  └── main.py                    # UPDATE: Add BraTS endpoint
+```
+
+### BraTS Data Format (Expected)
+```
+Brats24_Validation/
+  ├── ASNR-MICCAI-BraTS2024-GLI-Challenge-ValidationData-Source/
+  └── [PatientID]/
+      ├── [PatientID]-t1c.nii.gz
+      ├── [PatientID]-t1n.nii.gz
+      ├── [PatientID]-t2f.nii.gz
+      ├── [PatientID]-t2w.nii.gz
+      └── [PatientID]-seg.nii.gz  # SEGMENTATION
+```
+
+### Key Functions to Implement
+1. `load_brats_segmentation(path) -> np.ndarray, voxel_spacing`
+2. `segment_to_cells(mask, spacing) -> List[TumorCell]`
+3. `brats_to_geometry(patient_id, slice_idx) -> TumorGeometry`
+
+---
+
+## ⚠️ Constraints & Considerations
+
+1. **Memory**: BraTS volumes are ~512x512x240 = 50MB each
+2. **2D Compatibility**: Current simulation is 2D, need slice selection
+3. **Scale**: BraTS voxels = 1mm, simulation needs µm scale conversion
+4. **Privacy**: Never commit actual BraTS data to git
+5. **Performance**: Cache processed geometries
+
+---
+
+## 🚀 Getting Started
+
+Start with Phase 1 - we can implement step by step and test incrementally.
+

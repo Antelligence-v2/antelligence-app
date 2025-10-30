@@ -74,3 +74,9 @@ logs/
 *.temp
 tmp/
 temp/
+
+# BraTS medical imaging data - NEVER commit
+backend/data/raw/
+*.nii.gz
+*.nii
+backend/data/*.zip
