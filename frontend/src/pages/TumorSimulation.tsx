@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { SimulationLoading } from "@/components/SimulationLoading";
 import { TumorSimulationGrid } from "@/components/TumorSimulationGrid";
+import { TumorSimulation3D } from "@/components/tumor/TumorSimulation3D";
 import { TumorSimulationControls } from "@/components/TumorSimulationControls";
 import { TumorSimulationSidebar } from "@/components/TumorSimulationSidebar";
 // Removed TumorPerformanceCharts import - moved to visualization tab
@@ -53,6 +54,7 @@ const TumorSimulation = () => {
   const [playbackSpeed, setPlaybackSpeed] = useState(500);
   const [selectedSubstrate, setSelectedSubstrate] = useState<string>("oxygen");
   const [detailedMode, setDetailedMode] = useState(false); // Simple vs Detailed mode toggle
+  const [viewMode, setViewMode] = useState<'2D' | '3D'>('2D'); // 2D vs 3D view toggle
 
   const runSimulation = useCallback(async () => {
     setIsLoading(true);
@@ -281,6 +283,30 @@ const TumorSimulation = () => {
                      <div className="flex gap-2">
                        <Button
                          size="sm"
+                         variant={viewMode === '2D' ? "default" : "outline"}
+                         onClick={() => setViewMode('2D')}
+                         className={`transition-all duration-200 ${
+                           viewMode === '2D' 
+                             ? "bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 shadow-lg" 
+                             : "hover:bg-green-50 dark:hover:bg-green-900/20"
+                         }`}
+                       >
+                         📊 2D View
+                       </Button>
+                       <Button
+                         size="sm"
+                         variant={viewMode === '3D' ? "default" : "outline"}
+                         onClick={() => setViewMode('3D')}
+                         className={`transition-all duration-200 ${
+                           viewMode === '3D' 
+                             ? "bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 shadow-lg" 
+                             : "hover:bg-purple-50 dark:hover:bg-purple-900/20"
+                         }`}
+                       >
+                         🎮 3D View
+                       </Button>
+                       <Button
+                         size="sm"
                          variant={!detailedMode ? "default" : "outline"}
                          onClick={() => setDetailedMode(false)}
                          className={`transition-all duration-200 ${
@@ -309,57 +335,88 @@ const TumorSimulation = () => {
                </CardHeader>
                <CardContent>
                  {simulationResults ? (
-                   <Tabs value={selectedSubstrate} onValueChange={setSelectedSubstrate} className="w-full">
-                     <TabsList className="grid w-full grid-cols-6 bg-slate-100 dark:bg-slate-700 p-1 rounded-lg">
-                       <TabsTrigger 
-                         value="oxygen" 
-                         className="data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-blue-600 dark:data-[state=active]:bg-slate-800 dark:data-[state=active]:text-blue-400 transition-all duration-200"
-                       >
-                         🫁 Oxygen
-                       </TabsTrigger>
-                       <TabsTrigger 
-                         value="drug"
-                         className="data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-green-600 dark:data-[state=active]:bg-slate-800 dark:data-[state=active]:text-green-400 transition-all duration-200"
-                       >
-                         💊 Drug
-                       </TabsTrigger>
-                       <TabsTrigger 
-                         value="ifn_gamma"
-                         className="data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-purple-600 dark:data-[state=active]:bg-slate-800 dark:data-[state=active]:text-purple-400 transition-all duration-200"
-                       >
-                         🦠 IFN-γ
-                       </TabsTrigger>
-                       <TabsTrigger 
-                         value="tnf_alpha"
-                         className="data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-orange-600 dark:data-[state=active]:bg-slate-800 dark:data-[state=active]:text-orange-400 transition-all duration-200"
-                       >
-                         🔥 TNF-α
-                       </TabsTrigger>
-                       <TabsTrigger 
-                         value="perforin"
-                         className="data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-red-600 dark:data-[state=active]:bg-slate-800 dark:data-[state=active]:text-red-400 transition-all duration-200"
-                       >
-                         ⚡ Perforin
-                       </TabsTrigger>
-                       <TabsTrigger 
-                         value="chemokine_signal"
-                         className="data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-cyan-600 dark:data-[state=active]:bg-slate-800 dark:data-[state=active]:text-cyan-400 transition-all duration-200"
-                       >
-                         🧪 Chemokine
-                       </TabsTrigger>
-                     </TabsList>
+                  <Tabs value={selectedSubstrate} onValueChange={setSelectedSubstrate} className="w-full">
+                    <TabsList className="grid w-full grid-cols-9 bg-slate-100 dark:bg-slate-700 p-1 rounded-lg">
+                      <TabsTrigger 
+                        value="oxygen" 
+                        className="data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-blue-600 dark:data-[state=active]:bg-slate-800 dark:data-[state=active]:text-blue-400 transition-all duration-200"
+                      >
+                        🫁 Oxygen
+                      </TabsTrigger>
+                      <TabsTrigger 
+                        value="drug"
+                        className="data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-green-600 dark:data-[state=active]:bg-slate-800 dark:data-[state=active]:text-green-400 transition-all duration-200"
+                      >
+                        💊 Drug
+                      </TabsTrigger>
+                      <TabsTrigger 
+                        value="ifn_gamma"
+                        className="data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-purple-600 dark:data-[state=active]:bg-slate-800 dark:data-[state=active]:text-purple-400 transition-all duration-200"
+                      >
+                        🦠 IFN-γ
+                      </TabsTrigger>
+                      <TabsTrigger 
+                        value="tnf_alpha"
+                        className="data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-orange-600 dark:data-[state=active]:bg-slate-800 dark:data-[state=active]:text-orange-400 transition-all duration-200"
+                      >
+                        🔥 TNF-α
+                      </TabsTrigger>
+                      <TabsTrigger 
+                        value="perforin"
+                        className="data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-red-600 dark:data-[state=active]:bg-slate-800 dark:data-[state=active]:text-red-400 transition-all duration-200"
+                      >
+                        ⚡ Perforin
+                      </TabsTrigger>
+                      <TabsTrigger 
+                        value="chemokine_signal"
+                        className="data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-cyan-600 dark:data-[state=active]:bg-slate-800 dark:data-[state=active]:text-cyan-400 transition-all duration-200"
+                      >
+                        🧪 Chemokine
+                      </TabsTrigger>
+                      <TabsTrigger 
+                        value="trail"
+                        className="data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-emerald-600 dark:data-[state=active]:bg-slate-800 dark:data-[state=active]:text-emerald-400 transition-all duration-200"
+                      >
+                        🛤️ Trail
+                      </TabsTrigger>
+                      <TabsTrigger 
+                        value="alarm"
+                        className="data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-red-600 dark:data-[state=active]:bg-slate-800 dark:data-[state=active]:text-red-400 transition-all duration-200"
+                      >
+                        🚨 Alarm
+                      </TabsTrigger>
+                      <TabsTrigger 
+                        value="recruitment"
+                        className="data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-blue-600 dark:data-[state=active]:bg-slate-800 dark:data-[state=active]:text-blue-400 transition-all duration-200"
+                      >
+                        📢 Recruitment
+                      </TabsTrigger>
+                    </TabsList>
                      <TabsContent value={selectedSubstrate} className="mt-6">
                        <div className="rounded-xl border-2 border-dashed border-slate-200 dark:border-slate-700 p-4 bg-slate-50/50 dark:bg-slate-800/50">
-                         <TumorSimulationGrid
-                           domainSize={config.domain_size}
-                           nanobots={currentStepData?.nanobots ?? []}
-                           tumorCells={currentStepData?.tumor_cells ?? []}
-                           vessels={simulationResults.history[0]?.vessels ?? []}
-                           substrateData={currentSubstrateData}
-                           selectedSubstrate={selectedSubstrate}
-                           tumorRadius={config.tumor_radius}
-                           detailedMode={detailedMode}
-                         />
+                         {viewMode === '2D' ? (
+                           <TumorSimulationGrid
+                             domainSize={config.domain_size}
+                             nanobots={currentStepData?.nanobots ?? []}
+                             tumorCells={currentStepData?.tumor_cells ?? []}
+                             vessels={simulationResults.history[0]?.vessels ?? []}
+                             substrateData={currentSubstrateData}
+                             selectedSubstrate={selectedSubstrate}
+                             tumorRadius={config.tumor_radius}
+                             detailedMode={detailedMode}
+                           />
+                         ) : (
+                           <TumorSimulation3D
+                             domainSize={config.domain_size}
+                             nanobots={currentStepData?.nanobots ?? []}
+                             tumorCells={currentStepData?.tumor_cells ?? []}
+                             vessels={simulationResults.history[0]?.vessels ?? []}
+                             substrateData={currentSubstrateData}
+                             selectedSubstrate={selectedSubstrate}
+                             tumorRadius={config.tumor_radius}
+                             detailedMode={detailedMode}
+                           />
+                         )}
                        </div>
                      </TabsContent>
                    </Tabs>
