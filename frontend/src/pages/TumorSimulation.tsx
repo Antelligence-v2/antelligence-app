@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { SimulationLoading } from "@/components/SimulationLoading";
+import { TumorSimulationLoading } from "@/components/TumorSimulationLoading";
 import { TumorSimulationGrid } from "@/components/TumorSimulationGrid";
 import { TumorSimulation3D } from "@/components/tumor/TumorSimulation3D";
 import { TumorSimulationControls } from "@/components/TumorSimulationControls";
@@ -183,7 +183,7 @@ const TumorSimulation = () => {
 
   return (
     <div className="flex h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 text-foreground">
-      <SimulationLoading 
+      <TumorSimulationLoading 
         isVisible={isLoading}
         progress={loadingProgress}
         currentStep={Math.floor((loadingProgress / 100) * config.max_steps)}
