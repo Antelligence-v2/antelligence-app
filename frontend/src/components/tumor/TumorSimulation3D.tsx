@@ -7,6 +7,7 @@ import { TumorCell3D, TumorCellsInstanced } from './TumorCell3D';
 import { SubstrateField3D } from './SubstrateField3D';
 import { NanobotTrailManager } from './NanobotTrail';
 import { Label3D } from './Label3D';
+import { ScaleBar3D } from './ScaleBar3D';
 
 interface NanobotState {
   id: number;
@@ -137,15 +138,24 @@ export function TumorSimulation3D({
                   : (detailedMode ? 0.3 : 0.15)
               }
             />
-            {/* Substrate field label */}
-            {detailedMode && (
+            {/* Substrate field label - always visible */}
+            <Label3D
+              position={[-domainSize / 2 + 30, -domainSize / 2 + 20, 0]}
+              text={`📊 ${selectedSubstrate.charAt(0).toUpperCase() + selectedSubstrate.slice(1)} Field`}
+              color="#e2e8f0"
+              fontSize={11}
+              backgroundColor="rgba(15, 23, 42, 0.9)"
+              show={true}
+            />
+            {/* Substrate max value - always visible */}
+            {substrateData.max_values?.[selectedSubstrate] && (
               <Label3D
-                position={[-domainSize / 2 + 30, -domainSize / 2 + 20, 0]}
-                text={`📊 ${selectedSubstrate.charAt(0).toUpperCase() + selectedSubstrate.slice(1)} Field`}
-                color="#1f2937"
-                fontSize={11}
-                backgroundColor="rgba(255, 255, 255, 0.9)"
-                show={detailedMode}
+                position={[-domainSize / 2 + 30, -domainSize / 2 + 35, 0]}
+                text={`Max: ${substrateData.max_values[selectedSubstrate].toFixed(1)}`}
+                color="#94a3b8"
+                fontSize={10}
+                backgroundColor="rgba(15, 23, 42, 0.8)"
+                show={true}
               />
             )}
           </>
@@ -157,7 +167,7 @@ export function TumorSimulation3D({
           detailedMode={detailedMode} 
         />
         
-        {/* Blood vessels */}
+        {/* Blood vessels - label only the first one */}
         {vessels3D.map((vessel, index) => (
           <BloodVessel3D
             key={`vessel-${index}`}
@@ -165,6 +175,7 @@ export function TumorSimulation3D({
             index={index}
             detailedMode={detailedMode}
             connectedVessels={vessels3D}
+            showLabel={index === 0} // Only show label for first vessel
           />
         ))}
         
@@ -201,52 +212,67 @@ export function TumorSimulation3D({
           />
         ))}
         
-        {/* Grid helper (optional) */}
+        {/* Grid helper (optional) - updated colors for dark background */}
         {detailedMode && (
-          <gridHelper args={[domainSize, 20, 0x888888, 0x888888]} />
+          <gridHelper args={[domainSize, 20, 0x475569, 0x64748b]} />
         )}
+        
+        {/* Scale bar */}
+        <ScaleBar3D domainSize={domainSize} />
       </Scene3D>
       
-      {/* 3D Legend */}
+      {/* Enhanced 3D Legend */}
       <div className="mt-4 p-4 bg-white rounded-lg border shadow-sm">
         <h4 className="font-bold text-sm text-gray-600 mb-3">🎮 3D Controls & Legend</h4>
-        <div className="grid grid-cols-3 gap-4 text-xs">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
           <div>
             <div className="font-semibold mb-1">Mouse Controls:</div>
-            <div>• Left click + drag: Rotate view</div>
-            <div>• Right click + drag: Pan view</div>
-            <div>• Scroll: Zoom in/out</div>
+            <div>• Left drag: Rotate</div>
+            <div>• Right drag: Pan</div>
+            <div>• Scroll: Zoom</div>
           </div>
           <div>
-            <div className="font-semibold mb-1">3D Elements:</div>
-            <div>• 🔴 Red sphere: Tumor zones</div>
-            <div>• 🟢 Green tubes: Blood vessels</div>
-            <div>• 💎 Blue/Gold: Nanobots</div>
-            <div>• ⭕ Rings: LLM nanobots</div>
-            {detailedMode && (
-              <>
-                <div className="mt-1 pt-1 border-t border-gray-200">
-                  <div className="font-semibold">Labels:</div>
-                  <div>• Zone names on tumor</div>
-                  <div>• Nanobot states shown</div>
-                  <div>• Vessel info displayed</div>
-                </div>
-              </>
-            )}
+            <div className="font-semibold mb-1">🤖 Nanobot States:</div>
+            <div>• <span className="text-gray-500">Searching</span> (?)</div>
+            <div>• <span className="text-yellow-600">Targeting</span> (→)</div>
+            <div>• <span className="text-green-600">Delivering</span> (💊)</div>
+            <div>• <span className="text-blue-600">Returning</span> (←)</div>
+            <div>• <span className="text-purple-600">Reloading</span> (⚡)</div>
+          </div>
+          <div>
+            <div className="font-semibold mb-1">🔬 Tumor Cell Phases:</div>
+            <div>• <span className="text-red-600">Viable</span> (red)</div>
+            <div>• <span className="text-purple-600">Hypoxic</span> (purple)</div>
+            <div>• <span className="text-gray-600">Necrotic</span> (gray)</div>
+            <div>• <span className="text-yellow-600">Apoptotic</span> (yellow)</div>
           </div>
           <div>
             <div className="font-semibold mb-1">Current View:</div>
             <div className="px-2 py-1 bg-blue-50 rounded text-blue-700 font-medium">
               {selectedSubstrate.charAt(0).toUpperCase() + selectedSubstrate.slice(1)} Field
             </div>
-            <div className="mt-2 text-gray-500">
+            {substrateData?.max_values?.[selectedSubstrate] && (
+              <div className="mt-1 text-gray-600 text-xs">
+                Max: {substrateData.max_values[selectedSubstrate].toFixed(1)}
+              </div>
+            )}
+            <div className="mt-2 text-gray-500 text-xs">
               {substrateData && substrateData[selectedSubstrate as keyof SubstrateData] 
                 ? '✓ Data loaded'
-                : '⚠ No data available'}
+                : '⚠ No data'}
             </div>
           </div>
         </div>
+        {detailedMode && (
+          <div className="mt-3 pt-3 border-t border-gray-200">
+            <div className="font-semibold text-xs mb-1">📍 3D Labels (Detailed Mode):</div>
+            <div className="text-xs text-gray-600">
+              Zone names, nanobot states, vessel info, and scale bar are visible
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
 }
+

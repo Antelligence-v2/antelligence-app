@@ -1,6 +1,7 @@
 import React, { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
+import { Label3D } from './Label3D';
 
 interface TumorCellState {
   id: number;
@@ -119,6 +120,18 @@ export function TumorCell3D({ cell, detailedMode = false }: TumorCell3DProps) {
             wireframe
           />
         </mesh>
+      )}
+      
+      {/* Cell phase label (for sample of cells to avoid clutter) */}
+      {detailedMode && cell.id % 10 === 0 && (
+        <Label3D
+          position={[0, 0, 5]}
+          text={`${cell.phase.charAt(0).toUpperCase() + cell.phase.slice(1)} Cell`}
+          color={phaseProps.color}
+          fontSize={8}
+          backgroundColor="rgba(255, 255, 255, 0.8)"
+          show={true}
+        />
       )}
     </group>
   );

@@ -76,15 +76,36 @@ export function TumorSphere({ tumorRadius, detailedMode = false }: TumorSpherePr
         />
       </mesh>
       
-      {/* Tumor boundary - Subtle wireframe, more visible */}
+      {/* Tumor boundary - Prominent outline (like 2D) */}
       <mesh ref={boundaryRef}>
-        <sphereGeometry args={[viableRadius, 16, 16]} />
+        <sphereGeometry args={[viableRadius, 32, 32]} />
         <meshPhongMaterial 
+          color={0xef4444} 
+          transparent 
+          opacity={0.3}
+          emissive={0xdc2626}
+          side={THREE.DoubleSide}
+        />
+      </mesh>
+      
+      {/* Outer boundary ring - prominent like 2D */}
+      <mesh>
+        <torusGeometry args={[viableRadius, 2, 16, 32]} />
+        <meshBasicMaterial 
+          color={0xef4444} 
+          transparent 
+          opacity={0.8}
+        />
+      </mesh>
+      
+      {/* Wireframe boundary for additional clarity */}
+      <mesh>
+        <sphereGeometry args={[viableRadius, 16, 16]} />
+        <meshBasicMaterial 
           color={0xef4444} 
           wireframe
           transparent 
-          opacity={0.4}
-          emissive={0x7f1d1d}
+          opacity={0.5}
         />
       </mesh>
       
@@ -122,46 +143,50 @@ export function TumorSphere({ tumorRadius, detailedMode = false }: TumorSpherePr
         />
       </mesh>
       
-      {/* Zone labels in detailed mode */}
-      {detailedMode && (
-        <group>
-          {/* Zone labels - positioned around the sphere */}
-          <ZoneLabel3D 
-            position={[necroticRadius * 0.7, necroticRadius * 0.7, 0]}
-            zoneName="Necrotic Core"
-            radius={necroticRadius}
-            show={detailedMode}
-          />
-          <ZoneLabel3D 
-            position={[hypoxicRadius * 0.8, -hypoxicRadius * 0.8, 0]}
-            zoneName="Hypoxic Zone"
-            radius={hypoxicRadius}
-            show={detailedMode}
-          />
-          <ZoneLabel3D 
-            position={[-viableRadius * 0.9, 0, viableRadius * 0.9]}
-            zoneName="Viable Tumor"
-            radius={viableRadius}
-            show={detailedMode}
-          />
+      {/* Zone labels - always visible, but detailed labels in detailed mode */}
+      <group>
+        {/* Always-visible zone labels */}
+        <ZoneLabel3D 
+          position={[necroticRadius * 0.7, necroticRadius * 0.7, 0]}
+          zoneName="Necrotic Core"
+          radius={necroticRadius}
+          show={true}
+        />
+        <ZoneLabel3D 
+          position={[hypoxicRadius * 0.8, -hypoxicRadius * 0.8, 0]}
+          zoneName="Hypoxic Zone"
+          radius={hypoxicRadius}
+          show={true}
+        />
+        <ZoneLabel3D 
+          position={[-viableRadius * 0.9, 0, viableRadius * 0.9]}
+          zoneName="Viable Tumor"
+          radius={viableRadius}
+          show={true}
+        />
+        
+        {/* Additional detailed labels in detailed mode */}
+        {detailedMode && (
+          <>
           
-          {/* Zone indicators (visual markers) */}
-          <mesh position={[necroticRadius + 5, 0, 0]}>
-            <sphereGeometry args={[3, 8, 8]} />
-            <meshBasicMaterial color={0x666666} />
-          </mesh>
-          
-          <mesh position={[hypoxicRadius + 5, 0, 0]}>
-            <sphereGeometry args={[2, 8, 8]} />
-            <meshBasicMaterial color={0xa855f7} />
-          </mesh>
-          
-          <mesh position={[viableRadius + 5, 0, 0]}>
-            <sphereGeometry args={[2, 8, 8]} />
-            <meshBasicMaterial color={0xef4444} />
-          </mesh>
-        </group>
-      )}
+            {/* Zone indicators (visual markers) */}
+            <mesh position={[necroticRadius + 5, 0, 0]}>
+              <sphereGeometry args={[3, 8, 8]} />
+              <meshBasicMaterial color={0x666666} />
+            </mesh>
+            
+            <mesh position={[hypoxicRadius + 5, 0, 0]}>
+              <sphereGeometry args={[2, 8, 8]} />
+              <meshBasicMaterial color={0xa855f7} />
+            </mesh>
+            
+            <mesh position={[viableRadius + 5, 0, 0]}>
+              <sphereGeometry args={[2, 8, 8]} />
+              <meshBasicMaterial color={0xef4444} />
+            </mesh>
+          </>
+        )}
+      </group>
       
       {/* Cross-section indicators in detailed mode */}
       {detailedMode && (

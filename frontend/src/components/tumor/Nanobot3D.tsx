@@ -1,6 +1,7 @@
 import React, { useRef, useMemo, useState, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
+import { Html } from '@react-three/drei';
 import { Label3D } from './Label3D';
 
 interface NanobotState {
@@ -231,13 +232,52 @@ export function Nanobot3D({ nanobot, previousPosition, detailedMode = false }: N
         </mesh>
       ) : null}
       
-      {/* State label in detailed mode */}
+      {/* State symbol indicator (like 2D view) */}
+      {detailedMode && (() => {
+        let symbol = '';
+        switch (nanobot.state) {
+          case 'targeting': symbol = '→'; break;
+          case 'delivering': symbol = '💊'; break;
+          case 'returning': symbol = '←'; break;
+          case 'reloading': symbol = '⚡'; break;
+          default: symbol = '?';
+        }
+        
+        return (
+          <Html position={[0, 0, 7]} center>
+            <div
+              style={{
+                fontSize: '16px',
+                fontWeight: 'bold',
+                color: '#ffffff',
+                textShadow: '0 0 4px rgba(0,0,0,0.8)',
+                pointerEvents: 'none',
+                transform: 'translate(-50%, -50%)',
+              }}
+            >
+              {symbol}
+            </div>
+          </Html>
+        );
+      })()}
+      
+      {/* Always-visible nanobot label */}
+      <Label3D
+        position={[0, 0, 12]}
+        text={`${nanobot.is_llm ? '🤖 ' : '💎 '}Nanobot ${nanobot.id}`}
+        color={`#${stateProps.color.toString(16).padStart(6, '0')}`}
+        fontSize={9}
+        backgroundColor="rgba(255, 255, 255, 0.95)"
+        show={true}
+      />
+      
+      {/* Detailed state label in detailed mode */}
       {detailedMode && (
         <Label3D
-          position={[0, 0, 12]}
-          text={`${nanobot.is_llm ? '🤖 ' : ''}${nanobot.state.toUpperCase()}${nanobot.drug_payload > 0 ? ` (${Math.round(nanobot.drug_payload)}%)` : ''}`}
-          color={stateProps.color}
-          fontSize={10}
+          position={[0, 0, 16]}
+          text={`${nanobot.state.toUpperCase()}${nanobot.drug_payload > 0 ? ` (${Math.round(nanobot.drug_payload)}%)` : ''}`}
+          color={`#${stateProps.color.toString(16).padStart(6, '0')}`}
+          fontSize={9}
           backgroundColor="rgba(255, 255, 255, 0.95)"
           show={detailedMode}
         />

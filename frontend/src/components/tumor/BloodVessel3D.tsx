@@ -13,9 +13,10 @@ interface BloodVessel3DProps {
   index: number;
   detailedMode?: boolean;
   connectedVessels?: VesselState[];
+  showLabel?: boolean; // Only show label for one vessel
 }
 
-export function BloodVessel3D({ vessel, index, detailedMode = false, connectedVessels = [] }: BloodVessel3DProps) {
+export function BloodVessel3D({ vessel, index, detailedMode = false, connectedVessels = [], showLabel = false }: BloodVessel3DProps) {
   const vesselRef = useRef<THREE.Mesh>(null);
   const supplyRef = useRef<THREE.Mesh>(null);
   const glowRef = useRef<THREE.Mesh>(null);
@@ -206,6 +207,18 @@ export function BloodVessel3D({ vessel, index, detailedMode = false, connectedVe
             show={detailedMode}
           />
         </group>
+      )}
+      
+      {/* Always-visible vessel label (only for first vessel) */}
+      {showLabel && (
+        <Label3D
+          position={[vesselLength / 2 + 8, 0, 5]}
+          text={`🟢 Blood Vessel`}
+          color="#ffffff"
+          fontSize={9}
+          backgroundColor="rgba(34, 197, 94, 0.85)"
+          show={true}
+        />
       )}
     </group>
   );
