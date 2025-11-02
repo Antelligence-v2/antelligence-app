@@ -169,6 +169,25 @@ class TumorSimulationConfig(BaseModel):
     drug_combination_ratio: float = Field(1.0, gt=0, description="Ratio of drug A to drug B")
 
 
+class BraTSSimulationConfig(BaseModel):
+    """Configuration for BraTS-based tumor nanobot simulation."""
+    patient_id: str = Field(..., description="BraTS patient ID")
+    dataset: Literal["training", "validation", "additional_training"] = "additional_training"
+    slice_idx: Optional[int] = Field(None, description="Axial slice index (None = best slice)")
+    domain_size: float = Field(2000.0, gt=0, description="Simulation domain size in micrometers")
+    voxel_size: float = Field(20.0, gt=0, description="Voxel spacing in micrometers")
+    n_nanobots: int = Field(10, gt=0, le=100, description="Number of nanobots")
+    agent_type: Literal["LLM-Powered", "Rule-Based", "Hybrid"] = "LLM-Powered"
+    selected_model: str = "meta-llama/Llama-3.3-70B-Instruct"
+    use_queen: bool = False
+    use_llm_queen: bool = False
+    max_steps: int = Field(100, gt=0, le=500, description="Maximum simulation steps")
+    
+    # Cell parameters
+    cell_density: float = Field(0.001, gt=0, description="Tumor cells per µm²")
+    vessel_density: float = Field(0.01, gt=0, description="Blood vessels per 100 µm²")
+
+
 class NanobotState(BaseModel):
     """State of a single nanobot at a point in time."""
     id: int

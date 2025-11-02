@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import axios from "axios";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -8,6 +9,8 @@ import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Brain, ChevronDown, ChevronRight } from "lucide-react";
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000";
 
 interface TumorSimulationSidebarProps {
   settings: any;
@@ -30,6 +33,31 @@ export function TumorSimulationSidebar({
   const [nanobotOpen, setNanobotOpen] = useState(false);
   const [queenOpen, setQueenOpen] = useState(false);
   const [simOpen, setSimOpen] = useState(false);
+  const [bratsOpen, setBratsOpen] = useState(false);
+  
+  // BraTS data state
+  const [useBrats, setUseBrats] = useState(false);
+  const [bratsPatients, setBratsPatients] = useState<string[]>([]);
+  const [selectedPatient, setSelectedPatient] = useState<string>("");
+  const [selectedDataset, setSelectedDataset] = useState<"training" | "validation" | "additional_training">("additional_training");
+  
+  // Load BraTS patients on mount
+  useEffect(() => {
+    const loadBratsPatients = async () => {
+      try {
+        const response = await axios.get(`${API_BASE_URL}/brats/patients`);
+        const allPatients = Object.values(response.data.datasets)
+          .flat() as string[];
+        setBratsPatients(allPatients);
+        if (allPatients.length > 0 && !selectedPatient) {
+          setSelectedPatient(allPatients[0]);
+        }
+      } catch (error) {
+        console.error("Failed to load BraTS patients:", error);
+      }
+    };
+    loadBratsPatients();
+  }, []);
 
   return (
     <aside className="w-80 border-r bg-muted/10 overflow-y-auto">
@@ -45,6 +73,71 @@ export function TumorSimulationSidebar({
             </p>
           </CardHeader>
         </Card>
+
+        {/* BraTS Data Settings - Collapsible */}
+        <Collapsible open={bratsOpen} onOpenChange={setBratsOpen}>
+          <Card>
+            <CardHeader className="py-3">
+              <CollapsibleTrigger className="flex items-center justify-between w-full hover:opacity-70">
+                <CardTitle className="text-sm">🏥 BraTS Patient Data</CardTitle>
+                {bratsOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+              </CollapsibleTrigger>
+            </CardHeader>
+            <CollapsibleContent>
+              <CardContent className="space-y-3 pt-0">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="use_brats">Use Real Patient Data</Label>
+                  <Switch
+                    id="use_brats"
+                    checked={useBrats}
+                    onCheckedChange={setUseBrats}
+                  />
+                </div>
+                {useBrats && (
+                  <>
+                    <div>
+                      <Label htmlFor="brats_dataset">Dataset</Label>
+                      <Select
+                        value={selectedDataset}
+                        onValueChange={(value: any) => setSelectedDataset(value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="training">Training (Kaggle)</SelectItem>
+                          <SelectItem value="validation">Validation (Synapse)</SelectItem>
+                          <SelectItem value="additional_training">Additional Training</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label htmlFor="brats_patient">Patient ID</Label>
+                      <Select
+                        value={selectedPatient}
+                        onValueChange={setSelectedPatient}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-[200px]">
+                          {bratsPatients.slice(0, 50).map((patient) => (
+                            <SelectItem key={patient} value={patient}>
+                              {patient}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Showing first 50 of {bratsPatients.length} patients
+                      </p>
+                    </div>
+                  </>
+                )}
+              </CardContent>
+            </CollapsibleContent>
+          </Card>
+        </Collapsible>
 
         {/* Domain Settings - Collapsible */}
         <Collapsible open={domainOpen} onOpenChange={setDomainOpen}>
