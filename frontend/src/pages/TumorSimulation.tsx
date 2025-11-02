@@ -3,15 +3,16 @@ import axios from "axios";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { TumorSimulationLoading } from "@/components/TumorSimulationLoading";
 import { TumorSimulationGrid } from "@/components/TumorSimulationGrid";
 import { TumorSimulation3D } from "@/components/tumor/TumorSimulation3D";
 import { TumorSimulationControls } from "@/components/TumorSimulationControls";
 import { TumorSimulationSidebar } from "@/components/TumorSimulationSidebar";
-// Removed TumorPerformanceCharts import - moved to visualization tab
+import { TumorAnalysisCharts } from "@/components/tumor/TumorAnalysisCharts";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Brain, Activity, Zap, Home } from "lucide-react";
+import { Brain, Activity, Zap, Home, Microscope, Sparkles, BarChart3 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8001";
@@ -188,6 +189,7 @@ const TumorSimulation = () => {
         progress={loadingProgress}
         currentStep={Math.floor((loadingProgress / 100) * config.max_steps)}
         totalSteps={config.max_steps}
+        config={config}
       />
       
       <TumorSimulationSidebar
@@ -198,44 +200,45 @@ const TumorSimulation = () => {
       />
 
       <main className="flex-1 flex flex-col overflow-hidden">
-        {/* Header with gradient background */}
-        <div className="p-4 border-b bg-gradient-to-r from-white via-blue-50 to-indigo-50 dark:from-slate-800 dark:via-slate-700 dark:to-slate-600 shadow-sm">
+        {/* Modern Header with gradient background */}
+        <div className="p-5 border-b bg-gradient-to-r from-white via-blue-50/80 to-indigo-50/80 dark:from-slate-900 dark:via-slate-800 dark:to-slate-700 shadow-md backdrop-blur-sm">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-5">
               <Button
                 onClick={() => navigate('/')}
                 variant="ghost"
                 size="sm"
-                className="text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-300 dark:hover:text-slate-100 dark:hover:bg-slate-700 transition-all duration-200"
+                className="text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 dark:text-slate-300 dark:hover:text-slate-100 dark:hover:bg-slate-700/80 transition-all duration-200 rounded-lg"
               >
                 <Home className="w-4 h-4 mr-2" />
                 Back to Home
               </Button>
-              <div className="h-6 w-px bg-slate-300 dark:bg-slate-600" />
-              <div className="flex items-center gap-3">
+              <Separator orientation="vertical" className="h-8" />
+              <div className="flex items-center gap-4">
+                <div className="p-2 rounded-xl bg-gradient-to-br from-pink-500/10 to-purple-500/10 dark:from-pink-500/20 dark:to-purple-500/20">
+                  <Microscope className="w-5 h-5 text-pink-600 dark:text-pink-400" />
+                </div>
                 <div>
-                  <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100">
+                  <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">
                     Tumor Nanobot Simulation
                   </h1>
-                  <p className="text-sm text-slate-600 dark:text-slate-400">
-                    Glioblastoma Treatment Analysis
+                  <p className="text-sm text-slate-600 dark:text-slate-400 mt-0.5">
+                    Glioblastoma Treatment Analysis Platform
                   </p>
                 </div>
               </div>
             </div>
             
             {simulationResults && (
-              <div className="flex items-center gap-4 text-sm">
-                <div className="px-3 py-1 bg-blue-100 dark:bg-blue-900 rounded-full">
-                  <span className="font-semibold text-blue-800 dark:text-blue-200">
-                    Step {currentStep + 1}/{simulationResults.history.length}
-                  </span>
-                </div>
-                <div className="px-3 py-1 bg-green-100 dark:bg-green-900 rounded-full">
-                  <span className="font-semibold text-green-800 dark:text-green-200">
-                    {metrics.time.toFixed(2)}m
-                  </span>
-                </div>
+              <div className="flex items-center gap-3">
+                <Badge variant="secondary" className="px-4 py-1.5 bg-blue-500/10 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800 hover:bg-blue-500/20 transition-colors">
+                  <Activity className="w-3.5 h-3.5 mr-1.5" />
+                  Step {currentStep + 1}/{simulationResults.history.length}
+                </Badge>
+                <Badge variant="secondary" className="px-4 py-1.5 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-500/20 transition-colors">
+                  <Sparkles className="w-3.5 h-3.5 mr-1.5" />
+                  {metrics.time.toFixed(2)} min
+                </Badge>
               </div>
             )}
           </div>
@@ -260,19 +263,32 @@ const TumorSimulation = () => {
           />
         )}
 
-         <div className="flex-1 overflow-auto bg-gradient-to-b from-slate-50/50 to-blue-50/30 dark:from-slate-900/50 dark:to-slate-800/30">
+         <div className="flex-1 overflow-auto bg-gradient-to-b from-slate-50/70 via-blue-50/40 to-indigo-50/30 dark:from-slate-900/70 dark:via-slate-800/40 dark:to-slate-900/30">
            <div className="p-6 space-y-6">
-             <Card className="border-0 shadow-xl bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
-               <CardHeader className="pb-4">
-                 <div className="flex items-center justify-between">
-                   <div className="flex items-center gap-3">
+             <Card className="border border-slate-200/80 dark:border-slate-700/80 shadow-2xl bg-white/90 dark:bg-slate-800/90 backdrop-blur-md hover:shadow-3xl transition-shadow duration-300">
+               <CardHeader className="pb-5">
+                 <div className="flex items-start justify-between">
+                   <div className="flex items-start gap-4">
+                     <div className="p-2.5 rounded-xl bg-gradient-to-br from-pink-500/10 to-purple-500/10 dark:from-pink-500/20 dark:to-purple-500/20 mt-0.5">
+                       <Microscope className="w-6 h-6 text-pink-600 dark:text-pink-400" />
+                     </div>
                      <div>
-                       <CardTitle className="text-2xl font-bold bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-transparent">
+                       <CardTitle className="text-3xl font-bold bg-gradient-to-r from-pink-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent tracking-tight">
                          Glioblastoma Tumor Microenvironment
                        </CardTitle>
-                       <CardDescription className="text-base mt-1">
+                       <CardDescription className="text-base mt-2 text-slate-600 dark:text-slate-400">
                          {simulationResults 
-                           ? `Step ${currentStep + 1} of ${simulationResults.history.length} • Time: ${metrics.time.toFixed(3)} min`
+                           ? (
+                             <div className="flex items-center gap-3 flex-wrap">
+                               <Badge variant="outline" className="text-xs">
+                                 Step {currentStep + 1} of {simulationResults.history.length}
+                               </Badge>
+                               <span className="text-slate-400">•</span>
+                               <Badge variant="outline" className="text-xs">
+                                 Time: {metrics.time.toFixed(3)} min
+                               </Badge>
+                             </div>
+                           )
                            : "Configure nanobot parameters and start simulation"
                          }
                        </CardDescription>
@@ -280,15 +296,15 @@ const TumorSimulation = () => {
                    </div>
                    
                    {simulationResults && (
-                     <div className="flex gap-2">
+                     <div className="flex gap-2 flex-wrap">
                        <Button
                          size="sm"
                          variant={viewMode === '2D' ? "default" : "outline"}
                          onClick={() => setViewMode('2D')}
-                         className={`transition-all duration-200 ${
+                         className={`transition-all duration-200 rounded-lg ${
                            viewMode === '2D' 
-                             ? "bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 shadow-lg" 
-                             : "hover:bg-green-50 dark:hover:bg-green-900/20"
+                             ? "bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 shadow-md text-white border-0" 
+                             : "hover:bg-emerald-50 dark:hover:bg-emerald-900/20 border-slate-200 dark:border-slate-700"
                          }`}
                        >
                          📊 2D View
@@ -297,37 +313,38 @@ const TumorSimulation = () => {
                          size="sm"
                          variant={viewMode === '3D' ? "default" : "outline"}
                          onClick={() => setViewMode('3D')}
-                         className={`transition-all duration-200 ${
+                         className={`transition-all duration-200 rounded-lg ${
                            viewMode === '3D' 
-                             ? "bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 shadow-lg" 
-                             : "hover:bg-purple-50 dark:hover:bg-purple-900/20"
+                             ? "bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 shadow-md text-white border-0" 
+                             : "hover:bg-purple-50 dark:hover:bg-purple-900/20 border-slate-200 dark:border-slate-700"
                          }`}
                        >
                          🎮 3D View
                        </Button>
+                       <Separator orientation="vertical" className="h-6 mx-1" />
                        <Button
                          size="sm"
                          variant={!detailedMode ? "default" : "outline"}
                          onClick={() => setDetailedMode(false)}
-                         className={`transition-all duration-200 ${
+                         className={`transition-all duration-200 rounded-lg ${
                            !detailedMode 
-                             ? "bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 shadow-lg" 
-                             : "hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                             ? "bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 shadow-md text-white border-0" 
+                             : "hover:bg-blue-50 dark:hover:bg-blue-900/20 border-slate-200 dark:border-slate-700"
                          }`}
                        >
-                         👤 Simple Mode
+                         👤 Simple
                        </Button>
                        <Button
                          size="sm"
                          variant={detailedMode ? "default" : "outline"}
                          onClick={() => setDetailedMode(true)}
-                         className={`transition-all duration-200 ${
+                         className={`transition-all duration-200 rounded-lg ${
                            detailedMode 
-                             ? "bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 shadow-lg" 
-                             : "hover:bg-purple-50 dark:hover:bg-purple-900/20"
+                             ? "bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 shadow-md text-white border-0" 
+                             : "hover:bg-indigo-50 dark:hover:bg-indigo-900/20 border-slate-200 dark:border-slate-700"
                          }`}
                        >
-                         🔬 Detailed Mode
+                         🔬 Detailed
                        </Button>
                      </div>
                    )}
@@ -335,89 +352,117 @@ const TumorSimulation = () => {
                </CardHeader>
                <CardContent>
                  {simulationResults ? (
-                  <Tabs value={selectedSubstrate} onValueChange={setSelectedSubstrate} className="w-full">
-                    <TabsList className="grid w-full grid-cols-9 bg-slate-100 dark:bg-slate-700 p-1 rounded-lg">
-                      <TabsTrigger 
-                        value="oxygen" 
-                        className="data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-blue-600 dark:data-[state=active]:bg-slate-800 dark:data-[state=active]:text-blue-400 transition-all duration-200"
-                      >
-                        🫁 Oxygen
-                      </TabsTrigger>
-                      <TabsTrigger 
-                        value="drug"
-                        className="data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-green-600 dark:data-[state=active]:bg-slate-800 dark:data-[state=active]:text-green-400 transition-all duration-200"
-                      >
-                        💊 Drug
-                      </TabsTrigger>
-                      <TabsTrigger 
-                        value="ifn_gamma"
-                        className="data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-purple-600 dark:data-[state=active]:bg-slate-800 dark:data-[state=active]:text-purple-400 transition-all duration-200"
-                      >
-                        🦠 IFN-γ
-                      </TabsTrigger>
-                      <TabsTrigger 
-                        value="tnf_alpha"
-                        className="data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-orange-600 dark:data-[state=active]:bg-slate-800 dark:data-[state=active]:text-orange-400 transition-all duration-200"
-                      >
-                        🔥 TNF-α
-                      </TabsTrigger>
-                      <TabsTrigger 
-                        value="perforin"
-                        className="data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-red-600 dark:data-[state=active]:bg-slate-800 dark:data-[state=active]:text-red-400 transition-all duration-200"
-                      >
-                        ⚡ Perforin
-                      </TabsTrigger>
-                      <TabsTrigger 
-                        value="chemokine_signal"
-                        className="data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-cyan-600 dark:data-[state=active]:bg-slate-800 dark:data-[state=active]:text-cyan-400 transition-all duration-200"
-                      >
-                        🧪 Chemokine
-                      </TabsTrigger>
-                      <TabsTrigger 
-                        value="trail"
-                        className="data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-emerald-600 dark:data-[state=active]:bg-slate-800 dark:data-[state=active]:text-emerald-400 transition-all duration-200"
-                      >
-                        🛤️ Trail
-                      </TabsTrigger>
-                      <TabsTrigger 
-                        value="alarm"
-                        className="data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-red-600 dark:data-[state=active]:bg-slate-800 dark:data-[state=active]:text-red-400 transition-all duration-200"
-                      >
-                        🚨 Alarm
-                      </TabsTrigger>
-                      <TabsTrigger 
-                        value="recruitment"
-                        className="data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-blue-600 dark:data-[state=active]:bg-slate-800 dark:data-[state=active]:text-blue-400 transition-all duration-200"
-                      >
-                        📢 Recruitment
-                      </TabsTrigger>
-                    </TabsList>
-                     <TabsContent value={selectedSubstrate} className="mt-6">
-                       <div className="rounded-xl border-2 border-dashed border-slate-200 dark:border-slate-700 p-4 bg-slate-50/50 dark:bg-slate-800/50">
-                         {viewMode === '2D' ? (
-                           <TumorSimulationGrid
-                             domainSize={config.domain_size}
-                             nanobots={currentStepData?.nanobots ?? []}
-                             tumorCells={currentStepData?.tumor_cells ?? []}
-                             vessels={simulationResults.history[0]?.vessels ?? []}
-                             substrateData={currentSubstrateData}
-                             selectedSubstrate={selectedSubstrate}
-                             tumorRadius={config.tumor_radius}
-                             detailedMode={detailedMode}
-                           />
-                         ) : (
-                           <TumorSimulation3D
-                             domainSize={config.domain_size}
-                             nanobots={currentStepData?.nanobots ?? []}
-                             tumorCells={currentStepData?.tumor_cells ?? []}
-                             vessels={simulationResults.history[0]?.vessels ?? []}
-                             substrateData={currentSubstrateData}
-                             selectedSubstrate={selectedSubstrate}
-                             tumorRadius={config.tumor_radius}
-                             detailedMode={detailedMode}
-                           />
-                         )}
-                       </div>
+                   <Tabs defaultValue="visualization" className="w-full">
+                     <TabsList className="grid w-full grid-cols-2 bg-slate-100 dark:bg-slate-700 p-1 rounded-lg mb-6">
+                       <TabsTrigger 
+                         value="visualization" 
+                         className="data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-blue-600 dark:data-[state=active]:bg-slate-800 dark:data-[state=active]:text-blue-400 transition-all duration-200"
+                       >
+                         <Microscope className="w-4 h-4 mr-2" />
+                         Visualization
+                       </TabsTrigger>
+                       <TabsTrigger 
+                         value="analysis" 
+                         className="data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-purple-600 dark:data-[state=active]:bg-slate-800 dark:data-[state=active]:text-purple-400 transition-all duration-200"
+                       >
+                         <BarChart3 className="w-4 h-4 mr-2" />
+                         Performance Analysis
+                       </TabsTrigger>
+                     </TabsList>
+                     
+                     <TabsContent value="visualization" className="mt-0">
+                       <Tabs value={selectedSubstrate} onValueChange={setSelectedSubstrate} className="w-full">
+                         <TabsList className="grid w-full grid-cols-9 bg-slate-100 dark:bg-slate-700 p-1 rounded-lg">
+                           <TabsTrigger 
+                             value="oxygen" 
+                             className="data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-blue-600 dark:data-[state=active]:bg-slate-800 dark:data-[state=active]:text-blue-400 transition-all duration-200"
+                           >
+                             🫁 Oxygen
+                           </TabsTrigger>
+                           <TabsTrigger 
+                             value="drug" 
+                             className="data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-green-600 dark:data-[state=active]:bg-slate-800 dark:data-[state=active]:text-green-400 transition-all duration-200"
+                           >
+                             💊 Drug
+                           </TabsTrigger>
+                           <TabsTrigger 
+                             value="ifn_gamma" 
+                             className="data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-purple-600 dark:data-[state=active]:bg-slate-800 dark:data-[state=active]:text-purple-400 transition-all duration-200"
+                           >
+                             🦠 IFN-γ
+                           </TabsTrigger>
+                           <TabsTrigger 
+                             value="tnf_alpha" 
+                             className="data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-orange-600 dark:data-[state=active]:bg-slate-800 dark:data-[state=active]:text-orange-400 transition-all duration-200"
+                           >
+                             🔥 TNF-α
+                           </TabsTrigger>
+                           <TabsTrigger 
+                             value="perforin" 
+                             className="data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-red-600 dark:data-[state=active]:bg-slate-800 dark:data-[state=active]:text-red-400 transition-all duration-200"
+                           >
+                             ⚡ Perforin
+                           </TabsTrigger>
+                           <TabsTrigger 
+                             value="chemokine_signal" 
+                             className="data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-cyan-600 dark:data-[state=active]:bg-slate-800 dark:data-[state=active]:text-cyan-400 transition-all duration-200"
+                           >
+                             🧪 Chemokine
+                           </TabsTrigger>
+                           <TabsTrigger 
+                             value="trail" 
+                             className="data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-emerald-600 dark:data-[state=active]:bg-slate-800 dark:data-[state=active]:text-emerald-400 transition-all duration-200"
+                           >
+                             🛤️ Trail
+                           </TabsTrigger>
+                           <TabsTrigger 
+                             value="alarm" 
+                             className="data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-red-600 dark:data-[state=active]:bg-slate-800 dark:data-[state=active]:text-red-400 transition-all duration-200"
+                           >
+                             🚨 Alarm
+                           </TabsTrigger>
+                           <TabsTrigger 
+                             value="recruitment" 
+                             className="data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-blue-600 dark:data-[state=active]:bg-slate-800 dark:data-[state=active]:text-blue-400 transition-all duration-200"
+                           >
+                             📢 Recruitment
+                           </TabsTrigger>
+                         </TabsList>
+                         <TabsContent value={selectedSubstrate} className="mt-6">
+                           <div className="rounded-xl border-2 border-dashed border-slate-200 dark:border-slate-700 p-4 bg-slate-50/50 dark:bg-slate-800/50">
+                             {viewMode === '2D' ? (
+                               <TumorSimulationGrid
+                                 domainSize={config.domain_size}
+                                 nanobots={currentStepData?.nanobots ?? []}
+                                 tumorCells={currentStepData?.tumor_cells ?? []}
+                                 vessels={simulationResults.history[0]?.vessels ?? []}
+                                 substrateData={currentSubstrateData}
+                                 selectedSubstrate={selectedSubstrate}
+                                 tumorRadius={config.tumor_radius}
+                                 detailedMode={detailedMode}
+                               />
+                             ) : (
+                               <TumorSimulation3D
+                                 domainSize={config.domain_size}
+                                 nanobots={currentStepData?.nanobots ?? []}
+                                 tumorCells={currentStepData?.tumor_cells ?? []}
+                                 vessels={simulationResults.history[0]?.vessels ?? []}
+                                 substrateData={currentSubstrateData}
+                                 selectedSubstrate={selectedSubstrate}
+                                 tumorRadius={config.tumor_radius}
+                                 detailedMode={detailedMode}
+                               />
+                             )}
+                           </div>
+                         </TabsContent>
+                       </Tabs>
+                     </TabsContent>
+                     
+                     <TabsContent value="analysis" className="mt-0">
+                       <TumorAnalysisCharts 
+                         simulationResults={simulationResults}
+                         currentStep={currentStep}
+                       />
                      </TabsContent>
                    </Tabs>
                  ) : (
@@ -451,34 +496,36 @@ const TumorSimulation = () => {
                </CardContent>
             </Card>
 
-            {/* Simple Legend - only show after simulation starts */}
+            {/* Modern Legend - only show after simulation starts */}
             {simulationResults && (
-              <Card className="border-0 shadow-lg bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <div className="p-1 rounded-lg bg-gradient-to-r from-indigo-500 to-purple-500">
-                      <span className="text-white text-sm">🎨</span>
+              <Card className="border border-slate-200/80 dark:border-slate-700/80 shadow-xl bg-white/80 dark:bg-slate-800/80 backdrop-blur-md hover:shadow-2xl transition-shadow duration-300">
+                <CardHeader className="pb-4">
+                  <CardTitle className="text-xl flex items-center gap-3">
+                    <div className="p-2 rounded-xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 dark:from-indigo-500/30 dark:to-purple-500/30">
+                      <Sparkles className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
                     </div>
-                    Visualization Legend
+                    <span className="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                      Visualization Legend
+                    </span>
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div className="flex items-center gap-3 p-2 rounded-lg bg-blue-50 dark:bg-blue-950/30">
-                      <div className="w-4 h-4 bg-blue-500 rounded-full shadow-sm"></div>
-                      <span className="font-medium text-sm">Nanobots</span>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div className="flex items-center gap-3 p-3 rounded-xl bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-950/40 dark:to-blue-900/20 border border-blue-200/50 dark:border-blue-800/50 hover:shadow-md transition-all duration-200">
+                      <div className="w-5 h-5 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full shadow-sm ring-2 ring-blue-200 dark:ring-blue-800"></div>
+                      <span className="font-semibold text-sm text-blue-900 dark:text-blue-200">Nanobots</span>
                     </div>
-                    <div className="flex items-center gap-3 p-2 rounded-lg bg-red-50 dark:bg-red-950/30">
-                      <div className="w-4 h-4 bg-red-500 rounded-full shadow-sm"></div>
-                      <span className="font-medium text-sm">Tumor Cells</span>
+                    <div className="flex items-center gap-3 p-3 rounded-xl bg-gradient-to-br from-red-50 to-red-100/50 dark:from-red-950/40 dark:to-red-900/20 border border-red-200/50 dark:border-red-800/50 hover:shadow-md transition-all duration-200">
+                      <div className="w-5 h-5 bg-gradient-to-br from-red-500 to-red-600 rounded-full shadow-sm ring-2 ring-red-200 dark:ring-red-800"></div>
+                      <span className="font-semibold text-sm text-red-900 dark:text-red-200">Tumor Cells</span>
                     </div>
-                    <div className="flex items-center gap-3 p-2 rounded-lg bg-green-50 dark:bg-green-950/30">
-                      <div className="w-4 h-4 bg-green-500 rounded-full shadow-sm"></div>
-                      <span className="font-medium text-sm">Blood Vessels</span>
+                    <div className="flex items-center gap-3 p-3 rounded-xl bg-gradient-to-br from-emerald-50 to-emerald-100/50 dark:from-emerald-950/40 dark:to-emerald-900/20 border border-emerald-200/50 dark:border-emerald-800/50 hover:shadow-md transition-all duration-200">
+                      <div className="w-5 h-5 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-full shadow-sm ring-2 ring-emerald-200 dark:ring-emerald-800"></div>
+                      <span className="font-semibold text-sm text-emerald-900 dark:text-emerald-200">Blood Vessels</span>
                     </div>
-                    <div className="flex items-center gap-3 p-2 rounded-lg bg-purple-50 dark:bg-purple-950/30">
-                      <div className="w-4 h-4 bg-purple-500 rounded-full shadow-sm"></div>
-                      <span className="font-medium text-sm">Hypoxic Regions</span>
+                    <div className="flex items-center gap-3 p-3 rounded-xl bg-gradient-to-br from-purple-50 to-purple-100/50 dark:from-purple-950/40 dark:to-purple-900/20 border border-purple-200/50 dark:border-purple-800/50 hover:shadow-md transition-all duration-200">
+                      <div className="w-5 h-5 bg-gradient-to-br from-purple-500 to-purple-600 rounded-full shadow-sm ring-2 ring-purple-200 dark:ring-purple-800"></div>
+                      <span className="font-semibold text-sm text-purple-900 dark:text-purple-200">Hypoxic Regions</span>
                     </div>
                   </div>
                 </CardContent>

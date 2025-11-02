@@ -16,13 +16,17 @@ const AGENT_COLORS: Record<string, string> = {
 };
 
 export function HistoricalPerformance({ onUpdate }: HistoricalPerformanceProps) {
-  const [stats, setStats] = React.useState(() => getAggregatedStats());
+  const [stats, setStats] = React.useState(() => {
+    const result = getAggregatedStats();
+    return Array.isArray(result) ? result : [];
+  });
   const [simulationCount, setSimulationCount] = React.useState(() => getSimulationCount());
 
   // Refresh stats when component mounts or when onUpdate is called
   React.useEffect(() => {
     const refreshStats = () => {
-      setStats(getAggregatedStats());
+      const result = getAggregatedStats();
+      setStats(Array.isArray(result) ? result : []);
       setSimulationCount(getSimulationCount());
     };
 

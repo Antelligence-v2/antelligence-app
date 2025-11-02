@@ -1,22 +1,24 @@
 import React, { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
+import { PheromoneParticle } from './PheromoneParticle';
 
 interface NanobotTrailProps {
   positions: [number, number, number][];
   color?: number;
   opacity?: number;
   maxLength?: number;
+  showParticles?: boolean; // Option to show pheromone particles
 }
 
 export function NanobotTrail({ 
   positions, 
   color = 0x3b82f6, 
   opacity = 0.5,
-  maxLength = 50 
+  maxLength = 50,
+  showParticles = true
 }: NanobotTrailProps) {
   const trailRef = useRef<THREE.Mesh>(null);
-  const lineRef = useRef<THREE.Line>(null);
 
   // Limit trail length
   const trailPositions = useMemo(() => {
@@ -41,12 +43,13 @@ export function NanobotTrail({
     return new THREE.CatmullRomCurve3(points, false, 'catmullrom', 0);
   }, [trailPositions]);
 
-  // Create tube geometry for the trail
+  // Create tube geometry for the trail - thicker for better visibility
   const tubeGeometry = useMemo(() => {
     if (!curve || trailPositions.length < 2) return null;
     
     try {
-      const tube = new THREE.TubeGeometry(curve, Math.max(trailPositions.length * 2, 4), 0.5, 6, false);
+      // Increased radius from 0.5 to 1.0 for better pheromone visibility
+      const tube = new THREE.TubeGeometry(curve, Math.max(trailPositions.length * 2, 4), 1.0, 8, false);
       return tube;
     } catch (e) {
       // Fallback to line if curve creation fails
@@ -63,19 +66,9 @@ export function NanobotTrail({
       const fade = Math.sin(time * 0.5) * 0.1 + (0.9 - trailPositions.length / maxLength * 0.5);
       (trailRef.current.material as THREE.MeshBasicMaterial).opacity = opacity * fade;
     }
-    
-    if (lineRef.current && lineRef.current.material) {
-      const fade = Math.sin(time * 0.5) * 0.1 + (0.9 - trailPositions.length / maxLength * 0.5);
-      (lineRef.current.material as THREE.LineBasicMaterial).opacity = opacity * fade * 0.5;
-    }
   });
 
   if (!tubeGeometry || !curve) return null;
-
-  // Create points array for line
-  const linePoints = useMemo(() => {
-    return trailPositions.map(pos => new THREE.Vector3(...pos));
-  }, [trailPositions]);
 
   return (
     <group>
@@ -89,38 +82,20 @@ export function NanobotTrail({
         />
       </mesh>
       
-      {/* Line trail for subtle effect */}
-      <line ref={lineRef}>
-        <bufferGeometry>
-          <bufferAttribute
-            attach="attributes-position"
-            count={linePoints.length}
-            array={new Float32Array(linePoints.flatMap(p => [p.x, p.y, p.z]))}
-            itemSize={3}
-          />
-        </bufferGeometry>
-        <lineBasicMaterial 
+      {/* Pheromone particles - animated floating particles */}
+      {showParticles && trailPositions.filter((_, i) => i % 3 === 0).map((pos, index) => (
+        <PheromoneParticle
+          key={index}
+          position={pos}
           color={color}
-          transparent
-          opacity={opacity * 0.5}
-          linewidth={1}
+          opacity={opacity}
+          index={index}
         />
-      </line>
-      
-      {/* Trail particles */}
-      {trailPositions.filter((_, i) => i % 5 === 0).map((pos, index) => (
-        <mesh key={index} position={pos}>
-          <sphereGeometry args={[0.3, 4, 4]} />
-          <meshBasicMaterial 
-            color={color}
-            transparent
-            opacity={opacity * 0.6}
-          />
-        </mesh>
       ))}
     </group>
   );
 }
+
 
 interface NanobotTrailManagerProps {
   nanobots: Array<{
@@ -130,10 +105,17 @@ interface NanobotTrailManagerProps {
   }>;
   trails: Map<number, [number, number, number][]>;
   detailedMode?: boolean;
+  selectedSubstrate?: string; // Track which pheromone type is selected
 }
 
-export function NanobotTrailManager({ nanobots, trails, detailedMode = false }: NanobotTrailManagerProps) {
-  if (!detailedMode || trails.size === 0) return null;
+export function NanobotTrailManager({ 
+  nanobots, 
+  trails, 
+  detailedMode = false,
+  selectedSubstrate = 'trail' 
+}: NanobotTrailManagerProps) {
+  // Always show trails (not just in detailed mode), but with different opacity
+  if (trails.size === 0) return null;
 
   return (
     <>
@@ -141,9 +123,19 @@ export function NanobotTrailManager({ nanobots, trails, detailedMode = false }: 
         const trail = trails.get(nanobot.id);
         if (!trail || trail.length < 2) return null;
 
-        // Get color based on state
-        const getTrailColor = (state: string) => {
-          switch (state) {
+        // Get color based on pheromone type if showing pheromones, otherwise based on state
+        const getTrailColor = () => {
+          // If showing pheromone substrate, use pheromone-specific colors
+          if (selectedSubstrate === 'trail') {
+            return 0x10b981; // Emerald green for trail pheromone
+          } else if (selectedSubstrate === 'alarm') {
+            return 0xef4444; // Red for alarm pheromone
+          } else if (selectedSubstrate === 'recruitment') {
+            return 0x3b82f6; // Blue for recruitment pheromone
+          }
+          
+          // Otherwise use state-based colors
+          switch (nanobot.state) {
             case "targeting":
               return 0xfbbf24;
             case "delivering":
@@ -157,13 +149,23 @@ export function NanobotTrailManager({ nanobots, trails, detailedMode = false }: 
           }
         };
 
+        // Different opacity based on mode and pheromone type
+        const getOpacity = () => {
+          if (selectedSubstrate === 'trail' || selectedSubstrate === 'alarm' || selectedSubstrate === 'recruitment') {
+            // More visible when showing pheromones
+            return detailedMode ? 0.7 : 0.5;
+          }
+          // Less visible for regular movement trails
+          return detailedMode ? 0.4 : 0.2;
+        };
+
         return (
           <NanobotTrail
             key={`trail-${nanobot.id}`}
             positions={trail}
-            color={getTrailColor(nanobot.state)}
-            opacity={0.4}
-            maxLength={30}
+            color={getTrailColor()}
+            opacity={getOpacity()}
+            maxLength={50} // Longer trails for better pheromone visualization
           />
         );
       })}

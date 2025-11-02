@@ -195,11 +195,12 @@ export function TumorSimulation3D({
           ))
         )}
         
-        {/* Nanobot trails */}
+        {/* Nanobot trails - always visible to show pheromone paths */}
         <NanobotTrailManager
           nanobots={nanobots}
           trails={trailsRef.current}
           detailedMode={detailedMode}
+          selectedSubstrate={selectedSubstrate}
         />
         
         {/* Nanobots */}

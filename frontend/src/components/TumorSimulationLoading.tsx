@@ -1,21 +1,45 @@
-import React, { useState, useEffect } from 'react';
-import { Canvas } from '@react-three/fiber';
+import React, { useState, useEffect, useRef } from 'react';
+import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, Html } from '@react-three/drei';
 import * as THREE from 'three';
+
+interface TumorSimulationConfig {
+  domain_size?: number;
+  n_nanobots?: number;
+  tumor_radius?: number;
+  agent_type?: string;
+  max_steps?: number;
+  cell_density?: number;
+  vessel_density?: number;
+}
 
 interface TumorSimulationLoadingProps {
   isVisible: boolean;
   progress?: number;
   currentStep?: number;
   totalSteps?: number;
+  config?: TumorSimulationConfig; // Pass config for real-time metrics
 }
 
 // Mini 3D components for the loading preview
 function LoadingTumorSphere({ show, tumorRadius }: { show: boolean; tumorRadius: number }) {
+  const tumorRef = useRef<THREE.Group>(null);
+  
+  // Growth animation
+  useFrame((state) => {
+    if (tumorRef.current && show) {
+      const time = state.clock.getElapsedTime();
+      // Grow from 0 to full size over first 2 seconds
+      const growthProgress = Math.min(time / 2, 1);
+      const scale = 0.3 + (growthProgress * 0.7); // Start at 30% and grow to 100%
+      tumorRef.current.scale.setScalar(scale);
+    }
+  });
+
   if (!show) return null;
 
   return (
-    <group>
+    <group ref={tumorRef}>
       {/* Necrotic core */}
       <mesh>
         <sphereGeometry args={[tumorRadius * 0.25, 16, 16]} />
@@ -32,9 +56,9 @@ function LoadingTumorSphere({ show, tumorRadius }: { show: boolean; tumorRadius:
         <meshPhongMaterial color={0xef4444} transparent opacity={0.4} />
       </mesh>
       
-      {/* Label */}
+      {/* Label - title only */}
       <Html position={[0, tumorRadius + 20, 0]} center>
-        <div className="bg-red-600/90 text-white px-3 py-1 rounded-lg text-xs font-bold shadow-lg border border-red-400">
+        <div className="bg-red-600/95 text-white px-3 py-1 rounded-lg text-xs font-bold shadow-lg border border-red-400">
           🔴 Tumor Zones
         </div>
       </Html>
@@ -43,10 +67,27 @@ function LoadingTumorSphere({ show, tumorRadius }: { show: boolean; tumorRadius:
 }
 
 function LoadingBloodVessel({ show, position }: { show: boolean; position: [number, number, number] }) {
+  const vesselRef = useRef<THREE.Group>(null);
+  
+  // Growth animation
+  useFrame((state) => {
+    if (vesselRef.current && show) {
+      const time = state.clock.getElapsedTime();
+      const delay = 2; // Start after tumor appears
+      if (time > delay) {
+        const growthProgress = Math.min((time - delay) / 1.5, 1);
+        const scale = 0.1 + (growthProgress * 0.9); // Grow from 10% to 100%
+        vesselRef.current.scale.setScalar(scale);
+      } else {
+        vesselRef.current.scale.setScalar(0.1);
+      }
+    }
+  });
+
   if (!show) return null;
 
   return (
-    <group position={position}>
+    <group position={position} ref={vesselRef}>
       {/* Vessel tube */}
       <mesh>
         <cylinderGeometry args={[5, 5, 30, 8]} />
@@ -58,9 +99,9 @@ function LoadingBloodVessel({ show, position }: { show: boolean; position: [numb
         <meshPhongMaterial color={0x22c55e} transparent opacity={0.2} />
       </mesh>
       
-      {/* Label */}
+      {/* Label - title only */}
       <Html position={[0, 20, 0]} center>
-        <div className="bg-green-600/90 text-white px-3 py-1 rounded-lg text-xs font-bold shadow-lg border border-green-400">
+        <div className="bg-green-600/95 text-white px-3 py-1 rounded-lg text-xs font-bold shadow-lg border border-green-400">
           🟢 Blood Vessel
         </div>
       </Html>
@@ -69,23 +110,81 @@ function LoadingBloodVessel({ show, position }: { show: boolean; position: [numb
 }
 
 function LoadingTumorCell({ show, position }: { show: boolean; position: [number, number, number] }) {
+  const cellRef = useRef<THREE.Group>(null);
+  
+  // Pop-in animation with slight delay
+  useFrame((state) => {
+    if (cellRef.current && show) {
+      const time = state.clock.getElapsedTime();
+      const delay = 3.5; // Start after vessels appear
+      if (time > delay) {
+        const index = position[0] === 40 ? 0 : position[0] === -40 ? 1 : 2;
+        const growthProgress = Math.min((time - delay - index * 0.2) / 1, 1);
+        const scale = Math.max(0, growthProgress);
+        cellRef.current.scale.setScalar(scale);
+      } else {
+        cellRef.current.scale.setScalar(0);
+      }
+    }
+  });
+
   if (!show) return null;
 
   return (
-    <group position={position}>
+    <group position={position} ref={cellRef}>
       <mesh>
         <sphereGeometry args={[2, 8, 8]} />
         <meshPhongMaterial color={0xef4444} emissive={0x991b1b} />
       </mesh>
+      {/* Label for first cell - title only */}
+      {position[0] === 40 && position[1] === 40 && (
+        <Html position={[0, 5, 0]} center>
+          <div className="bg-red-600/95 text-white px-3 py-1 rounded-lg text-xs font-bold shadow-lg border border-red-400">
+            🔴 Tumor Cell
+          </div>
+        </Html>
+      )}
     </group>
   );
 }
 
 function LoadingNanobot({ show, position }: { show: boolean; position: [number, number, number] }) {
+  const nanobotRef = useRef<THREE.Group>(null);
+  
+  // Fly-in animation from edges
+  useFrame((state) => {
+    if (nanobotRef.current && show) {
+      const time = state.clock.getElapsedTime();
+      const delay = 5; // Start after cells appear
+      if (time > delay) {
+        const index = position[0] === 100 ? 0 : position[0] === -100 ? 1 : 2;
+        const arrivalProgress = Math.min((time - delay - index * 0.3) / 1.5, 1);
+        
+        // Fly in from edge
+        const startDistance = 200;
+        const currentDistance = startDistance * (1 - arrivalProgress);
+        const angle = Math.atan2(position[2], position[0]);
+        const currentX = Math.cos(angle) * currentDistance;
+        const currentZ = Math.sin(angle) * currentDistance;
+        
+        nanobotRef.current.position.set(currentX, position[1], currentZ);
+        nanobotRef.current.scale.setScalar(Math.min(arrivalProgress * 1.5, 1));
+      } else {
+        const angle = Math.atan2(position[2], position[0]);
+        nanobotRef.current.position.set(
+          Math.cos(angle) * 200,
+          position[1],
+          Math.sin(angle) * 200
+        );
+        nanobotRef.current.scale.setScalar(0);
+      }
+    }
+  });
+
   if (!show) return null;
 
   return (
-    <group position={position}>
+    <group position={position} ref={nanobotRef}>
       <mesh>
         <octahedronGeometry args={[3, 0]} />
         <meshPhongMaterial color={0x3b82f6} emissive={0x1e40af} />
@@ -98,10 +197,10 @@ function LoadingNanobot({ show, position }: { show: boolean; position: [number, 
         </mesh>
       )}
       
-      {/* Label */}
+      {/* Label - title only */}
       <Html position={[0, 8, 0]} center>
-        <div className="bg-blue-600/90 text-white px-3 py-1 rounded-lg text-xs font-bold shadow-lg border border-blue-400">
-          💎 Nanobot
+        <div className="bg-blue-600/95 text-white px-3 py-1 rounded-lg text-xs font-bold shadow-lg border border-blue-400">
+          {position[0] > 0 || position[2] > 0 ? "🤖 LLM Nanobot" : "💎 Nanobot"}
         </div>
       </Html>
     </group>
@@ -112,7 +211,8 @@ export const TumorSimulationLoading: React.FC<TumorSimulationLoadingProps> = ({
   isVisible,
   progress = 0,
   currentStep = 0,
-  totalSteps = 0
+  totalSteps = 0,
+  config
 }) => {
   const [stage, setStage] = useState(0);
 
@@ -124,6 +224,25 @@ export const TumorSimulationLoading: React.FC<TumorSimulationLoadingProps> = ({
     else if (progress < 80) setStage(3); // Nanobots
     else setStage(4); // Complete
   }, [progress]);
+
+
+  // Narrative text - tells the story
+  const getNarrativeText = () => {
+    switch (stage) {
+      case 0:
+        return "The tumor microenvironment begins to form...";
+      case 1:
+        return "Blood vessels extend their network, creating pathways for oxygen and nutrients...";
+      case 2:
+        return "Tumor cells populate the environment, each in different states of survival...";
+      case 3:
+        return "Nanobots enter the scene, ready to navigate and deliver targeted therapy...";
+      case 4:
+        return "The simulation is complete. Preparing to show you the results...";
+      default:
+        return "Initializing the biological simulation...";
+    }
+  };
 
   const getStageMessage = () => {
     switch (stage) {
@@ -158,6 +277,7 @@ export const TumorSimulationLoading: React.FC<TumorSimulationLoadingProps> = ({
         return "";
     }
   };
+
 
   if (!isVisible) return null;
 
@@ -237,6 +357,18 @@ export const TumorSimulationLoading: React.FC<TumorSimulationLoadingProps> = ({
               <p className="text-slate-400 text-sm">
                 Building your 3D microenvironment
               </p>
+            </div>
+
+            {/* Narrative Text - Story-driven */}
+            <div className="bg-gradient-to-r from-blue-900/50 to-purple-900/50 rounded-lg p-4 border border-blue-600/30">
+              <div className="flex items-start gap-3">
+                <div className="text-2xl mt-1">📖</div>
+                <div className="flex-1">
+                  <p className="text-white font-medium text-base italic leading-relaxed">
+                    "{getNarrativeText()}"
+                  </p>
+                </div>
+              </div>
             </div>
 
             {/* Current Stage */}
