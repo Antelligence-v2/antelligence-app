@@ -405,14 +405,34 @@ class NanobotAgent:
         print(f"[NANOBOT {self.nanobot_id}] 🔄 Attempting blockchain report: {pin_name} at ({int(x)}, {int(y)}) priority={priority}")
         
         try:
+            # Pre-transaction validation checks
+            if not tumor_intel_contract:
+                raise Exception("tumor_intel_contract is None - contract not initialized")
+            if not TUMOR_INTEL_CONTRACT_ADDRESS:
+                raise Exception("TUMOR_INTEL_CONTRACT_ADDRESS is None - check .env file")
+            if not w3.is_connected():
+                raise Exception("Web3 not connected to RPC")
+            
+            # Check account balance before attempting transaction
+            balance_wei = w3.eth.get_balance(acct.address)
+            balance_eth = w3.from_wei(balance_wei, 'ether')
+            print(f"[NANOBOT {self.nanobot_id}]   Account balance: {balance_eth:.6f} ETH ({acct.address})")
+            
+            if balance_eth == 0:
+                raise Exception(f"Account has 0 ETH. Transactions will fail. Please fund the account: {acct.address}")
+            
             # Use centralized nonce manager to prevent conflicts
             with self.model.nonce_lock:
                 nonce = self.model.current_nonce
                 self.model.current_nonce += 1
             
-            gas_price = w3.eth.gas_price
+            # Get current gas price and add buffer to avoid underpricing
+            base_gas_price = w3.eth.gas_price
+            gas_price = int(base_gas_price * 1.1)
             
-            print(f"[NANOBOT {self.nanobot_id}]   Building transaction: nonce={nonce}, gas_price={gas_price}")
+            # Get current chain ID
+            chain_id = w3.eth.chain_id
+            print(f"[NANOBOT {self.nanobot_id}]   Building transaction: nonce={nonce}, gas_price={gas_price} (base: {base_gas_price}), chainId={chain_id}")
             
             txn = tumor_intel_contract.functions.reportIntel(
                 int(x), int(y), pin_type, priority
@@ -421,16 +441,29 @@ class NanobotAgent:
                 'nonce': nonce,
                 'gas': 200000,
                 'gasPrice': gas_price,
+                'chainId': chain_id,  # Add chainId to match network
             })
             
-            print(f"[NANOBOT {self.nanobot_id}]   Signing transaction...")
-            
             # Sign and send
+            print(f"[NANOBOT {self.nanobot_id}]   Signing transaction...")
             signed = acct.sign_transaction(txn)
-            tx_hash = w3.eth.send_raw_transaction(signed.rawTransaction)
             
-            print(f"[NANOBOT {self.nanobot_id}] ✅ Intel reported to blockchain!")
-            print(f"[NANOBOT {self.nanobot_id}]   Transaction: https://sepolia.basescan.org/tx/{tx_hash.hex()}")
+            # Use raw_transaction (snake_case) for newer web3.py versions, with fallback
+            raw_tx = signed.raw_transaction if hasattr(signed, 'raw_transaction') else signed.rawTransaction
+            print(f"[NANOBOT {self.nanobot_id}]   Sending raw transaction to network...")
+            tx_hash = w3.eth.send_raw_transaction(raw_tx)
+            
+            print(f"[NANOBOT {self.nanobot_id}]   Transaction hash: {tx_hash.hex()}")
+            print(f"[NANOBOT {self.nanobot_id}]   Transaction URL: https://sepolia.basescan.org/tx/{tx_hash.hex()}")
+            
+            # Wait for transaction receipt to confirm it was mined
+            print(f"[NANOBOT {self.nanobot_id}]   Waiting for transaction confirmation...")
+            receipt = w3.eth.wait_for_transaction_receipt(tx_hash, timeout=60)
+            
+            if receipt['status'] == 1:
+                print(f"[NANOBOT {self.nanobot_id}] ✅ Intel reported to blockchain! (Gas used: {receipt['gasUsed']})")
+            else:
+                raise Exception(f"Transaction failed with status: {receipt['status']}")
             
             # Add to model's blockchain logs
             if hasattr(self.model, 'blockchain_logs'):
@@ -1039,7 +1072,17 @@ class TumorNanobotModel:
         self.blockchain_enabled = BLOCKCHAIN_ENABLED
         self.nonce_lock = threading.Lock()
         if self.blockchain_enabled:
-            self.current_nonce = w3.eth.get_transaction_count(acct.address)
+            try:
+                # Test blockchain connection before using it
+                self.current_nonce = w3.eth.get_transaction_count(acct.address)
+                print("[TUMOR MODEL] ✅ Blockchain connection verified")
+            except Exception as e:
+                print(f"[TUMOR MODEL] ⚠️ Blockchain connection failed: {e}")
+                print("[TUMOR MODEL] ⚠️ Continuing without blockchain integration")
+                self.blockchain_enabled = False
+                self.current_nonce = 0
+        else:
+            self.current_nonce = 0
 
         self.nonce = 0
         # Initialize Queen

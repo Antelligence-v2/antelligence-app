@@ -679,7 +679,9 @@ async def run_tumor_simulation(config: TumorSimulationConfig):
             'initial_hypoxic': len([c for c in model.geometry.tumor_cells if c.phase.value == 'hypoxic']),
             'final_hypoxic': final_stats['phase_distribution'].get('hypoxic', 0),
             'apoptotic_cells': final_stats['phase_distribution'].get('apoptotic', 0),
-            'necrotic_cells': final_stats['phase_distribution'].get('necrotic', 0)
+            'necrotic_cells': final_stats['phase_distribution'].get('necrotic', 0),
+            'initial_cell_type_distribution': initial_stats.get('cell_type_distribution', {}),
+            'cell_type_distribution': final_stats.get('cell_type_distribution', {})
         }
         
         # Get final substrate data
@@ -1003,6 +1005,26 @@ async def run_brats_simulation(config: BraTSSimulationConfig):
         
         # Get final statistics
         final_stats = model.geometry.get_tumor_statistics()
+        # Use the initial_stats we saved at the beginning (line 950)
+        
+        # Calculate tumor statistics (same structure as regular simulation)
+        initial_living = initial_stats['living_cells']
+        final_living = final_stats['living_cells']
+        cells_killed = initial_living - final_living
+        
+        tumor_statistics = {
+            'initial_living_cells': initial_living,
+            'final_living_cells': final_living,
+            'cells_killed': cells_killed,
+            'kill_rate': cells_killed / initial_living if initial_living > 0 else 0,
+            'initial_hypoxic': final_stats['phase_distribution'].get('hypoxic', 0),
+            'final_hypoxic': final_stats['phase_distribution'].get('hypoxic', 0),
+            'apoptotic_cells': final_stats['phase_distribution'].get('apoptotic', 0),
+            'necrotic_cells': final_stats['phase_distribution'].get('necrotic', 0),
+            'initial_cell_type_distribution': initial_stats.get('cell_type_distribution', {}),
+            'cell_type_distribution': final_stats.get('cell_type_distribution', {})
+        }
+        
         final_substrate_data = convert_substrate_maps(model)
         blockchain_logs = []
         
