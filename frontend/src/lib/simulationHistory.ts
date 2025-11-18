@@ -4,7 +4,7 @@
 
 import axios from "axios";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8001";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000";
 
 export interface CachedSimulation {
   id: string;
@@ -66,9 +66,14 @@ export async function getSimulationHistory(
     const params = simulationType ? { simulation_type: simulationType } : {};
     const response = await axios.get(`${API_BASE_URL}/simulation/history`, { params });
     return response.data.simulations;
-  } catch (error) {
+  } catch (error: any) {
+    // Handle 404 gracefully - endpoint might not exist yet
+    if (error.response?.status === 404) {
+      console.log("Simulation history endpoint not available, returning empty array");
+      return [];
+    }
     console.error("Error fetching simulation history:", error);
-    throw error;
+    return []; // Return empty array instead of throwing
   }
 }
 
@@ -134,7 +139,13 @@ export async function getAggregatedStats(): Promise<{
     };
   } catch (error) {
     console.error("Error getting aggregated stats:", error);
-    throw error;
+    // Return default values instead of throwing
+    return {
+      totalSimulations: 0,
+      averageCellsKilled: 0,
+      averageEfficiency: 0,
+      topPerformingModel: "N/A"
+    };
   }
 }
 
@@ -147,7 +158,7 @@ export async function getSimulationCount(simulationType?: "ant" | "tumor"): Prom
     return history.length;
   } catch (error) {
     console.error("Error getting simulation count:", error);
-    throw error;
+    return 0; // Return 0 instead of throwing
   }
 }
 

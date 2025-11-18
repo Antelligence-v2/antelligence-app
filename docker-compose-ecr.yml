@@ -6,12 +6,23 @@ services:
     ports:
       - "8001:8001"
     environment:
-      - IO_SECRET_KEY=${IO_SECRET_KEY:-your_api_key_here}
-      - CHAIN_RPC=${CHAIN_RPC:-http://127.0.0.1:8545}
-      - SEPOLIA_RPC_URL=${SEPOLIA_RPC_URL:-}
+      # API Keys - Required for LLM functionality
+      - IO_SECRET_KEY=${IO_SECRET_KEY:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - MISTRAL_API_KEY=${MISTRAL_API_KEY:-}
+      
+      # Blockchain Configuration - Base Sepolia Testnet
+      - BASE_SEPOLIA_RPC_URL=${BASE_SEPOLIA_RPC_URL:-}
+      - CHAIN_RPC=${CHAIN_RPC:-}
       - PRIVATE_KEY=${PRIVATE_KEY:-}
       - FOOD_ADDR=${FOOD_ADDR:-}
       - MEMORY_ADDR=${MEMORY_ADDR:-}
+      - TUMOR_INTEL_ADDR=${TUMOR_INTEL_ADDR:-}
+      
+      # Production Environment
+      - PYTHONUNBUFFERED=1
+      - PYTHONDONTWRITEBYTECODE=1
     volumes:
       - ./logs:/app/logs
     restart: unless-stopped

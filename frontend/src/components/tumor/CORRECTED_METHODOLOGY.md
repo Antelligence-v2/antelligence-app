@@ -65,3 +65,4 @@ The kill rate calculation (0.1% per day) is the **mechanism** that produces this
 
 The volumetric reduction data (~20-24%) is what we're **validating against**, not what we're **calculating from**. The 0.1% effective kill rate is the **input** that should produce this result when run through our simulation model.
 
+

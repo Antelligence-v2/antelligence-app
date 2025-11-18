@@ -3,12 +3,10 @@ uvicorn[standard]
 openai
 numpy
 python-dotenv
-pandas
 web3
+eth-account
 google-generativeai
 mistralai
-httpx
 scipy
 nibabel
-scikit-image
 pydantic

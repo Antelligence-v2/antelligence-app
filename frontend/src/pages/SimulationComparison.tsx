@@ -7,10 +7,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { ArrowLeft, Play, Download } from "lucide-react";
+import { ArrowLeft, Play, Download, BarChart3 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8001";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000";
 
 interface ComparisonConfig {
   foodCounts: number[];
@@ -142,7 +142,6 @@ export default function SimulationComparison() {
     URL.revokeObjectURL(url);
   };
 
-  // Group results for charts
   const foodCollectionChart = results.reduce((acc, r) => {
     const existing = acc.find(item => item.config === r.config);
     if (existing) {
@@ -160,252 +159,271 @@ export default function SimulationComparison() {
   }));
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-amber-50 to-orange-100 dark:from-gray-900 dark:to-gray-800">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <div className="border-b bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+      <div className="border-b border-border bg-background/95 backdrop-blur sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
           <Button
             variant="ghost"
+            size="sm"
             onClick={() => navigate('/')}
-            className="gap-2"
+            className="gap-2 text-muted-foreground hover:text-foreground"
           >
             <ArrowLeft className="h-4 w-4" />
-            Back to Simulation
+            Back
           </Button>
-          <h1 className="text-2xl font-bold text-amber-900 dark:text-amber-100">
-            🔬 Simulation Comparison Lab
-          </h1>
-          <div className="w-32" />
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded bg-primary/10 flex items-center justify-center">
+              <BarChart3 className="h-4 w-4 text-primary" />
+            </div>
+            <h1 className="text-lg font-semibold">
+              Simulation Comparison Lab
+            </h1>
+          </div>
+          <div className="w-20" />
         </div>
       </div>
 
-      <div className="container mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="max-w-7xl mx-auto px-4 py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           {/* Configuration Panel */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Configuration</CardTitle>
-              <CardDescription>
-                Set up batch comparison parameters
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Label>Food Counts</Label>
-                <div className="flex gap-2 mt-2">
-                  {[5, 10, 15, 20, 25].map(count => (
-                    <Button
-                      key={count}
-                      size="sm"
-                      variant={config.foodCounts.includes(count) ? "default" : "outline"}
-                      onClick={() => {
-                        setConfig(prev => ({
-                          ...prev,
-                          foodCounts: prev.foodCounts.includes(count)
-                            ? prev.foodCounts.filter(c => c !== count)
-                            : [...prev.foodCounts, count]
-                        }));
-                      }}
-                    >
-                      {count}
-                    </Button>
-                  ))}
+          <div className="lg:col-span-4 space-y-6">
+            <Card className="border-border shadow-sm">
+              <CardHeader>
+                <CardTitle className="text-lg">Batch Configuration</CardTitle>
+                <CardDescription>
+                  Define parameters for multiple parallel runs
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="space-y-3">
+                  <Label className="text-xs uppercase tracking-wider text-muted-foreground">Food Sources</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {[5, 10, 15, 20, 25].map(count => (
+                      <Button
+                        key={count}
+                        size="sm"
+                        variant={config.foodCounts.includes(count) ? "default" : "outline"}
+                        onClick={() => {
+                          setConfig(prev => ({
+                            ...prev,
+                            foodCounts: prev.foodCounts.includes(count)
+                              ? prev.foodCounts.filter(c => c !== count)
+                              : [...prev.foodCounts, count]
+                          }));
+                        }}
+                        className="h-8"
+                      >
+                        {count}
+                      </Button>
+                    ))}
+                  </div>
                 </div>
-              </div>
 
-              <div>
-                <Label>Ant Counts</Label>
-                <div className="flex gap-2 mt-2">
-                  {[5, 10, 15, 20].map(count => (
-                    <Button
-                      key={count}
-                      size="sm"
-                      variant={config.antCounts.includes(count) ? "default" : "outline"}
-                      onClick={() => {
-                        setConfig(prev => ({
-                          ...prev,
-                          antCounts: prev.antCounts.includes(count)
-                            ? prev.antCounts.filter(c => c !== count)
-                            : [...prev.antCounts, count]
-                        }));
-                      }}
-                    >
-                      {count}
-                    </Button>
-                  ))}
+                <div className="space-y-3">
+                  <Label className="text-xs uppercase tracking-wider text-muted-foreground">Agent Count</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {[5, 10, 15, 20].map(count => (
+                      <Button
+                        key={count}
+                        size="sm"
+                        variant={config.antCounts.includes(count) ? "default" : "outline"}
+                        onClick={() => {
+                          setConfig(prev => ({
+                            ...prev,
+                            antCounts: prev.antCounts.includes(count)
+                              ? prev.antCounts.filter(c => c !== count)
+                              : [...prev.antCounts, count]
+                          }));
+                        }}
+                         className="h-8"
+                      >
+                        {count}
+                      </Button>
+                    ))}
+                  </div>
                 </div>
-              </div>
 
-              <div>
-                <Label>Agent Types</Label>
-                <div className="flex gap-2 mt-2">
-                  {['Rule-Based', 'LLM-Powered'].map(type => (
-                    <Button
-                      key={type}
-                      size="sm"
-                      variant={config.agentTypes.includes(type) ? "default" : "outline"}
-                      onClick={() => {
-                        setConfig(prev => ({
-                          ...prev,
-                          agentTypes: prev.agentTypes.includes(type)
-                            ? prev.agentTypes.filter(t => t !== type)
-                            : [...prev.agentTypes, type]
-                        }));
-                      }}
-                    >
-                      {type}
-                    </Button>
-                  ))}
+                <div className="space-y-3">
+                  <Label className="text-xs uppercase tracking-wider text-muted-foreground">Intelligence Model</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {['Rule-Based', 'LLM-Powered'].map(type => (
+                      <Button
+                        key={type}
+                        size="sm"
+                        variant={config.agentTypes.includes(type) ? "default" : "outline"}
+                        onClick={() => {
+                          setConfig(prev => ({
+                            ...prev,
+                            agentTypes: prev.agentTypes.includes(type)
+                              ? prev.agentTypes.filter(t => t !== type)
+                              : [...prev.agentTypes, type]
+                          }));
+                        }}
+                         className="h-8"
+                      >
+                        {type}
+                      </Button>
+                    ))}
+                  </div>
                 </div>
-              </div>
 
-              <div>
-                <Label>Iterations per config</Label>
-                <Select
-                  value={config.iterations.toString()}
-                  onValueChange={(value) => setConfig(prev => ({ ...prev, iterations: parseInt(value) }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="1">1 iteration</SelectItem>
-                    <SelectItem value="2">2 iterations</SelectItem>
-                    <SelectItem value="3">3 iterations</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="pt-4 border-t">
-                <div className="text-sm text-muted-foreground mb-2">
-                  Total simulations: {totalRuns}
+                <div className="space-y-3">
+                  <Label className="text-xs uppercase tracking-wider text-muted-foreground">Iterations per Config</Label>
+                  <Select
+                    value={config.iterations.toString()}
+                    onValueChange={(value) => setConfig(prev => ({ ...prev, iterations: parseInt(value) }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="1">1 Run</SelectItem>
+                      <SelectItem value="2">2 Runs</SelectItem>
+                      <SelectItem value="3">3 Runs</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
-                <Button
-                  className="w-full"
-                  onClick={runComparison}
-                  disabled={isRunning || config.foodCounts.length === 0 || config.antCounts.length === 0}
-                >
-                  <Play className="h-4 w-4 mr-2" />
-                  {isRunning ? 'Running...' : 'Start Comparison'}
-                </Button>
-              </div>
 
-              {isRunning && (
-                <div>
-                  <div className="text-xs text-muted-foreground mb-2">{currentRun}</div>
-                  <Progress value={progress} />
+                <div className="pt-6 border-t border-border">
+                  <div className="flex justify-between items-center mb-4 text-sm">
+                    <span className="text-muted-foreground">Total Runs:</span>
+                    <span className="font-mono font-bold">{totalRuns}</span>
+                  </div>
+                  <Button
+                    className="w-full"
+                    onClick={runComparison}
+                    disabled={isRunning || config.foodCounts.length === 0 || config.antCounts.length === 0}
+                  >
+                    {isRunning ? (
+                       <>Processing...</>
+                    ) : (
+                       <>
+                         <Play className="h-4 w-4 mr-2" />
+                         Start Batch Processing
+                       </>
+                    )}
+                  </Button>
                 </div>
-              )}
-            </CardContent>
-          </Card>
+
+                {isRunning && (
+                  <div className="space-y-2 bg-muted/30 p-3 rounded border border-border/50">
+                    <div className="text-xs font-mono text-muted-foreground truncate">{currentRun}</div>
+                    <Progress value={progress} className="h-1.5" />
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
 
           {/* Results Panel */}
-          <div className="lg:col-span-2 space-y-6">
-            {results.length > 0 && (
-              <>
-                <Card>
-                  <CardHeader>
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <CardTitle>Food Collection Performance</CardTitle>
-                        <CardDescription>Food collected by configuration</CardDescription>
-                      </div>
-                      <Button size="sm" variant="outline" onClick={exportResults}>
-                        <Download className="h-4 w-4 mr-2" />
-                        Export CSV
-                      </Button>
+          <div className="lg:col-span-8 space-y-8">
+            {results.length > 0 ? (
+              <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <Card className="border-border shadow-sm">
+                    <CardHeader>
+                      <CardTitle className="text-base">Resource Acquisition</CardTitle>
+                      <CardDescription>Food collected across configurations</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <ResponsiveContainer width="100%" height={250}>
+                        <BarChart data={foodCollectionChart}>
+                          <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+                          <XAxis dataKey="config" hide />
+                          <YAxis tick={{fontSize: 12}} axisLine={false} tickLine={false} />
+                          <Tooltip cursor={{fill: 'transparent'}} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} />
+                          <Bar dataKey="collected" fill="var(--primary)" radius={[4, 4, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="border-border shadow-sm">
+                    <CardHeader>
+                      <CardTitle className="text-base">System Efficiency</CardTitle>
+                      <CardDescription>Steps vs. Blockchain Latency</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <ResponsiveContainer width="100%" height={250}>
+                        <BarChart data={performanceChart}>
+                          <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+                          <XAxis dataKey="config" hide />
+                          <YAxis yAxisId="left" orientation="left" tick={{fontSize: 12}} axisLine={false} tickLine={false} />
+                          <YAxis yAxisId="right" orientation="right" tick={{fontSize: 12}} axisLine={false} tickLine={false} />
+                          <Tooltip cursor={{fill: 'transparent'}} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} />
+                          <Bar yAxisId="left" dataKey="steps" fill="var(--secondary)" radius={[4, 4, 0, 0]} />
+                          <Bar yAxisId="right" dataKey="latency" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                <Card className="border-border shadow-sm overflow-hidden">
+                  <CardHeader className="bg-muted/20 border-b border-border flex flex-row items-center justify-between">
+                    <div>
+                       <CardTitle className="text-base">Comparative Data Table</CardTitle>
                     </div>
+                    <Button size="sm" variant="outline" onClick={exportResults} className="h-8">
+                      <Download className="h-3.5 w-3.5 mr-2" />
+                      CSV
+                    </Button>
                   </CardHeader>
-                  <CardContent>
-                    <ResponsiveContainer width="100%" height={300}>
-                      <BarChart data={foodCollectionChart}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="config" angle={-45} textAnchor="end" height={100} tick={{ fontSize: 10 }} />
-                        <YAxis label={{ value: 'Food Collected', angle: -90, position: 'insideLeft' }} />
-                        <Tooltip />
-                        <Legend />
-                        <Bar dataKey="collected" fill="#f59e0b" name="Food Collected" />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Efficiency Metrics</CardTitle>
-                    <CardDescription>Steps to complete vs blockchain latency</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <ResponsiveContainer width="100%" height={300}>
-                      <BarChart data={performanceChart}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="config" angle={-45} textAnchor="end" height={100} tick={{ fontSize: 10 }} />
-                        <YAxis yAxisId="left" label={{ value: 'Steps', angle: -90, position: 'insideLeft' }} />
-                        <YAxis yAxisId="right" orientation="right" label={{ value: 'Latency (ms)', angle: 90, position: 'insideRight' }} />
-                        <Tooltip />
-                        <Legend />
-                        <Bar yAxisId="left" dataKey="steps" fill="#3b82f6" name="Steps to Complete" />
-                        <Bar yAxisId="right" dataKey="latency" fill="#8b5cf6" name="Avg Blockchain Latency" />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Detailed Results</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm">
-                        <thead>
-                          <tr className="border-b">
-                            <th className="text-left p-2">Config</th>
-                            <th className="text-right p-2">Food</th>
-                            <th className="text-right p-2">Ants</th>
-                            <th className="text-left p-2">Type</th>
-                            <th className="text-right p-2">Collected</th>
-                            <th className="text-right p-2">Steps</th>
-                            <th className="text-right p-2">Latency</th>
-                            <th className="text-right p-2">Success</th>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-border bg-muted/10">
+                          <th className="text-left p-3 font-medium text-muted-foreground">Config ID</th>
+                          <th className="text-right p-3 font-medium text-muted-foreground">Food</th>
+                          <th className="text-right p-3 font-medium text-muted-foreground">Agents</th>
+                          <th className="text-left p-3 font-medium text-muted-foreground">Model</th>
+                          <th className="text-right p-3 font-medium text-muted-foreground">Collected</th>
+                          <th className="text-right p-3 font-medium text-muted-foreground">Steps</th>
+                          <th className="text-right p-3 font-medium text-muted-foreground">Latency</th>
+                          <th className="text-right p-3 font-medium text-muted-foreground">Success</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {results.map((result, idx) => (
+                          <tr key={idx} className="border-b border-border last:border-0 hover:bg-muted/20 transition-colors">
+                            <td className="p-3 font-mono text-xs text-muted-foreground">{result.config}</td>
+                            <td className="text-right p-3">{result.foodCount}</td>
+                            <td className="text-right p-3">{result.antCount}</td>
+                            <td className="p-3">
+                              <span className={`px-2 py-1 rounded-full text-[10px] font-medium border ${
+                                result.agentType === 'LLM-Powered' 
+                                  ? 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800' 
+                                  : 'bg-gray-50 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700'
+                              }`}>
+                                {result.agentType}
+                              </span>
+                            </td>
+                            <td className="text-right p-3 font-semibold">{result.foodCollected}</td>
+                            <td className="text-right p-3 text-muted-foreground">{result.stepsToComplete}</td>
+                            <td className="text-right p-3 font-mono text-xs">{result.avgLatency}ms</td>
+                            <td className="text-right p-3">
+                               <span className="text-emerald-600 font-medium">{result.successRate}%</span>
+                            </td>
                           </tr>
-                        </thead>
-                        <tbody>
-                          {results.map((result, idx) => (
-                            <tr key={idx} className="border-b hover:bg-muted/50">
-                              <td className="p-2 font-mono text-xs">{result.config}</td>
-                              <td className="text-right p-2">{result.foodCount}</td>
-                              <td className="text-right p-2">{result.antCount}</td>
-                              <td className="p-2">
-                                <span className={`px-2 py-1 rounded text-xs ${
-                                  result.agentType === 'LLM-Powered' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'
-                                }`}>
-                                  {result.agentType}
-                                </span>
-                              </td>
-                              <td className="text-right p-2 font-semibold">{result.foodCollected}</td>
-                              <td className="text-right p-2">{result.stepsToComplete}</td>
-                              <td className="text-right p-2">{result.avgLatency}ms</td>
-                              <td className="text-right p-2 text-green-600">{result.successRate}%</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </CardContent>
-                </Card>
-              </>
-            )}
-
-            {results.length === 0 && !isRunning && (
-              <Card>
-                <CardContent className="py-12 text-center">
-                  <div className="text-muted-foreground">
-                    <div className="text-4xl mb-4">📊</div>
-                    <div>Configure your comparison and click "Start Comparison" to begin</div>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
-                </CardContent>
-              </Card>
+                </Card>
+              </div>
+            ) : (
+              <div className="h-full flex items-center justify-center min-h-[400px] border-2 border-dashed border-border/50 rounded-xl bg-muted/5">
+                <div className="text-center space-y-4 max-w-sm px-4">
+                  <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+                    <BarChart3 className="h-8 w-8 text-muted-foreground" />
+                  </div>
+                  <h3 className="text-lg font-semibold">No Data Available</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Configure your simulation parameters on the left and click "Start Batch Processing" to generate comparative data.
+                  </p>
+                </div>
+              </div>
             )}
           </div>
         </div>
@@ -413,4 +431,3 @@ export default function SimulationComparison() {
     </div>
   );
 }
-

@@ -29,8 +29,23 @@ if [ $? -ne 0 ]; then
 fi
 
 # Build the Docker image
-echo "🔨 Building Docker image..."
-docker build -t antelligence .
+# Use --no-cache flag if frontend needs to be rebuilt: ./deploy-ecr.sh --no-cache
+BUILD_TIMESTAMP=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
+BUILD_VERSION=$(date +%s)
+
+if [ "$1" == "--no-cache" ]; then
+    echo "🔨 Building Docker image (no cache - fresh frontend build)..."
+    docker build --no-cache \
+        --build-arg BUILD_TIMESTAMP="$BUILD_TIMESTAMP" \
+        --build-arg BUILD_VERSION="$BUILD_VERSION" \
+        -t antelligence .
+else
+    echo "🔨 Building Docker image..."
+    docker build \
+        --build-arg BUILD_TIMESTAMP="$BUILD_TIMESTAMP" \
+        --build-arg BUILD_VERSION="$BUILD_VERSION" \
+        -t antelligence .
+fi
 
 if [ $? -eq 0 ]; then
     echo "✅ Docker image built successfully!"

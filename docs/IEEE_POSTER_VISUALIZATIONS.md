@@ -60,3 +60,4 @@ Integration with real-world clinical data and validation against experimental mo
 ### Conclusion:
 Our LLM-powered nanobot swarm platform demonstrates superior tumor reduction, precision targeting of resistant cells, and efficient self-organizing coordination compared to traditional chemotherapy. This *in silico* framework enables testing of adaptive delivery strategies for next-generation precision cancer therapy.
 
+

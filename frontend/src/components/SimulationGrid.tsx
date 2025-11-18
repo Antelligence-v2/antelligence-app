@@ -33,12 +33,12 @@ interface PheromoneData {
   trail: number[][];
   alarm: number[][];
   recruitment: number[][];
-  fear?: number[][]; // Add fear pheromone (optional for backward compatibility)
+  fear?: number[][];
   max_values: {
     trail: number;
     alarm: number;
     recruitment: number;
-    fear?: number; // Add fear max value (optional for backward compatibility)
+    fear?: number;
   };
 }
 
@@ -64,19 +64,18 @@ export const SimulationGrid = ({
   pheromoneData
 }: SimulationGridProps) => {
   const getAntEmoji = (ant: Ant) => {
-    if (ant.is_queen) return "👸";
-    return "🐜"; // All worker ants use the same emoji
+    if (ant.is_queen) return "👑"; // Changed to crown for queen
+    return "🐜";
   };
 
   const getAntColor = (ant: Ant) => {
-    if (ant.is_queen) return "gold";
-    if (ant.carrying_food) return "#ff6b35"; // Orange for carrying food
+    if (ant.is_queen) return "var(--primary)";
+    if (ant.carrying_food) return "#f59e0b"; // Amber/Orange for carrying food
     return ant.is_llm ? "#3b82f6" : "#10b981"; // Blue for LLM, green for rule-based
   };
 
   const cellSize = Math.min(600 / gridWidth, 600 / gridHeight);
   
-  // Default nest position to center if not provided
   const nest = nestPosition || [Math.floor(gridWidth / 2), Math.floor(gridHeight / 2)];
 
   // Create enhanced efficiency overlay with dynamic heatmap
@@ -92,26 +91,8 @@ export const SimulationGrid = ({
           row.map((value, x) => {
             if (value === 0) return null;
             const intensity = Math.min(value / maxEfficiency, 1.0);
-            if (intensity < 0.05) return null; // Skip very low values for better performance
+            if (intensity < 0.05) return null;
             
-            // Enhanced color gradient: yellow -> orange -> red based on intensity
-            let color;
-            let glowIntensity;
-            
-            if (intensity < 0.3) {
-              // Low intensity: yellow-green
-              color = `rgba(255, 215, 0, ${intensity * 0.8})`; // Gold
-              glowIntensity = intensity * 0.4;
-            } else if (intensity < 0.7) {
-              // Medium intensity: orange
-              color = `rgba(255, 140, 0, ${intensity * 0.9})`; // Dark orange
-              glowIntensity = intensity * 0.6;
-            } else {
-              // High intensity: red-orange (hotspots)
-              color = `rgba(255, 69, 0, ${intensity * 1.0})`; // Red-orange
-              glowIntensity = intensity * 0.8;
-            }
-
             return (
               <div
                 key={`efficiency-${x}-${y}`}
@@ -121,10 +102,8 @@ export const SimulationGrid = ({
                   top: y * cellSize,
                   width: cellSize,
                   height: cellSize,
-                  backgroundColor: color,
-                  border: intensity > 0.3 ? `2px solid rgba(255, 140, 0, ${0.8 + intensity * 0.2})` : 'none',
-                  boxShadow: intensity > 0.2 ? `0 0 ${8 + intensity * 8}px rgba(255, 140, 0, ${glowIntensity})` : 'none',
-                  borderRadius: intensity > 0.5 ? '4px' : '0px',
+                  backgroundColor: `rgba(245, 158, 11, ${intensity * 0.6})`, // Amber glow
+                  borderRadius: '2px',
                 }}
               />
             );
@@ -134,7 +113,6 @@ export const SimulationGrid = ({
     );
   };
 
-  // Create enhanced pheromone overlay with intense colors and better visualization
   const renderPheromoneOverlay = () => {
     if (!pheromoneData) return null;
 
@@ -142,133 +120,93 @@ export const SimulationGrid = ({
     
     return (
       <div className="absolute inset-0 pointer-events-none">
-        {/* Trail pheromones (green gradient) - Food paths */}
+        {/* Trail pheromones (Green) */}
         {trail.map((row, y) =>
           row.map((value, x) => {
             if (value === 0) return null;
             const intensity = Math.min(value / max_values.trail, 1.0);
             if (intensity < 0.03) return null;
             
-            // Enhanced green gradient for trail pheromones
-            let color;
-            if (intensity < 0.4) {
-              color = `rgba(34, 197, 94, ${intensity * 0.8})`; // Light green
-            } else {
-              color = `rgba(16, 185, 129, ${intensity * 1.0})`; // Bright emerald
-            }
-            
             return (
               <div
                 key={`trail-${x}-${y}`}
-                className="absolute"
+                className="absolute rounded-sm"
                 style={{
                   left: x * cellSize,
                   top: y * cellSize,
                   width: cellSize,
                   height: cellSize,
-                  backgroundColor: color,
-                  border: intensity > 0.3 ? '2px solid rgba(16, 185, 129, 0.8)' : 'none',
-                  boxShadow: intensity > 0.4 ? '0 0 6px rgba(16, 185, 129, 0.6)' : 'none',
+                  backgroundColor: `rgba(16, 185, 129, ${intensity * 0.5})`,
+                  border: intensity > 0.5 ? '1px solid rgba(16, 185, 129, 0.3)' : 'none',
                 }}
               />
             );
           })
         )}
         
-        {/* Alarm pheromones (red gradient) - Danger zones */}
+        {/* Alarm pheromones (Red) */}
         {alarm.map((row, y) =>
           row.map((value, x) => {
             if (value === 0) return null;
             const intensity = Math.min(value / max_values.alarm, 1.0);
             if (intensity < 0.03) return null;
             
-            // Enhanced red gradient for alarm pheromones
-            let color;
-            if (intensity < 0.4) {
-              color = `rgba(239, 68, 68, ${intensity * 0.7})`; // Light red
-            } else {
-              color = `rgba(220, 38, 38, ${intensity * 0.9})`; // Dark red
-            }
-            
             return (
               <div
                 key={`alarm-${x}-${y}`}
-                className="absolute"
+                className="absolute rounded-sm"
                 style={{
                   left: x * cellSize,
                   top: y * cellSize,
                   width: cellSize,
                   height: cellSize,
-                  backgroundColor: color,
-                  border: intensity > 0.3 ? '2px solid rgba(220, 38, 38, 0.9)' : 'none',
-                  boxShadow: intensity > 0.4 ? '0 0 8px rgba(220, 38, 38, 0.7)' : 'none',
+                  backgroundColor: `rgba(239, 68, 68, ${intensity * 0.5})`,
                 }}
               />
             );
           })
         )}
         
-        {/* Recruitment pheromones (blue gradient) - Help requests */}
+        {/* Recruitment pheromones (Blue) */}
         {recruitment.map((row, y) =>
           row.map((value, x) => {
             if (value === 0) return null;
             const intensity = Math.min(value / max_values.recruitment, 1.0);
             if (intensity < 0.03) return null;
             
-            // Enhanced blue gradient for recruitment pheromones
-            let color;
-            if (intensity < 0.4) {
-              color = `rgba(59, 130, 246, ${intensity * 0.7})`; // Light blue
-            } else {
-              color = `rgba(37, 99, 235, ${intensity * 0.9})`; // Dark blue
-            }
-            
             return (
               <div
                 key={`recruitment-${x}-${y}`}
-                className="absolute"
+                className="absolute rounded-sm"
                 style={{
                   left: x * cellSize,
                   top: y * cellSize,
                   width: cellSize,
                   height: cellSize,
-                  backgroundColor: color,
-                  border: intensity > 0.3 ? '2px solid rgba(37, 99, 235, 0.8)' : 'none',
-                  boxShadow: intensity > 0.4 ? '0 0 6px rgba(37, 99, 235, 0.6)' : 'none',
+                  backgroundColor: `rgba(59, 130, 246, ${intensity * 0.5})`,
                 }}
               />
             );
           })
         )}
 
-        {/* Fear pheromones (orange-red gradient) - Predator areas */}
+        {/* Fear pheromones (Purple) */}
         {fear && fear.map((row, y) =>
           row.map((value, x) => {
             if (value === 0) return null;
             const intensity = Math.min(value / (max_values.fear || 1), 1.0);
             if (intensity < 0.03) return null;
             
-            // Enhanced orange-red gradient for fear pheromones (predator hotspots)
-            let color;
-            if (intensity < 0.4) {
-              color = `rgba(249, 115, 22, ${intensity * 0.8})`; // Light orange
-            } else {
-              color = `rgba(234, 88, 12, ${intensity * 1.0})`; // Dark orange-red
-            }
-            
             return (
               <div
                 key={`fear-${x}-${y}`}
-                className="absolute"
+                className="absolute rounded-sm"
                 style={{
                   left: x * cellSize,
                   top: y * cellSize,
                   width: cellSize,
                   height: cellSize,
-                  backgroundColor: color,
-                  border: intensity > 0.3 ? '3px solid rgba(234, 88, 12, 0.9)' : 'none',
-                  boxShadow: intensity > 0.4 ? '0 0 10px rgba(234, 88, 12, 0.8)' : 'none',
-                  borderRadius: intensity > 0.5 ? '3px' : '0px',
+                  backgroundColor: `rgba(168, 85, 247, ${intensity * 0.6})`,
                 }}
               />
             );
@@ -282,17 +220,16 @@ export const SimulationGrid = ({
     <TooltipProvider>
       <div className="relative flex flex-col items-center">
         <div
-          className="relative rounded-xl overflow-hidden shadow-xl border border-amber-300 dark:border-amber-700"
+          className="relative rounded-md overflow-hidden bg-card border border-border shadow-sm"
           style={{
             width: gridWidth * cellSize,
             height: gridHeight * cellSize,
+            // Modern grid pattern
             backgroundImage: `
-              linear-gradient(to right, rgba(139, 69, 19, 0.1) 1px, transparent 1px),
-              linear-gradient(to bottom, rgba(139, 69, 19, 0.1) 1px, transparent 1px),
-              radial-gradient(circle at center, #f4e4bc, #e6d7a8)
+              linear-gradient(to right, var(--border) 1px, transparent 1px),
+              linear-gradient(to bottom, var(--border) 1px, transparent 1px)
             `,
-            backgroundSize: `${cellSize}px ${cellSize}px, ${cellSize}px ${cellSize}px, cover`,
-            backgroundBlendMode: "overlay",
+            backgroundSize: `${cellSize}px ${cellSize}px`,
           }}
         >
           {/* Pheromone overlay (bottom layer) */}
@@ -301,19 +238,16 @@ export const SimulationGrid = ({
           {/* Efficiency overlay (middle layer) */}
           {renderEfficiencyOverlay()}
 
-          {/* Nest/Home - only show if no queen is at this position */}
+          {/* Nest/Home */}
           {!ants.some(ant => ant.is_queen && ant.pos[0] === nest[0] && ant.pos[1] === nest[1]) && (
             <div
-              className="absolute text-2xl z-10"
+              className="absolute flex items-center justify-center text-2xl z-10"
               style={{
                 left: nest[0] * cellSize,
                 top: nest[1] * cellSize,
                 width: cellSize,
                 height: cellSize,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                filter: "drop-shadow(0 0 8px rgba(139, 69, 19, 0.8))",
+                opacity: 0.8,
               }}
             >
               🏠
@@ -324,20 +258,15 @@ export const SimulationGrid = ({
           {food.map((pile, index) => (
             <div
               key={`food-${index}`}
-              className="absolute text-lg"
+              className="absolute flex items-center justify-center text-lg z-10 animate-in zoom-in duration-300"
               style={{
                 left: pile[0] * cellSize,
                 top: pile[1] * cellSize,
                 width: cellSize,
                 height: cellSize,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                filter: "drop-shadow(0 0 4px rgba(59, 130, 246, 0.5))",
-                zIndex: 10,
               }}
             >
-              🧊
+              🍩
             </div>
           ))}
 
@@ -346,37 +275,33 @@ export const SimulationGrid = ({
             <Tooltip key={ant.id}>
               <TooltipTrigger asChild>
                 <div
-                  className="absolute transition-all duration-200"
+                  className="absolute transition-all duration-300 ease-out"
                   style={{
                     left: ant.pos[0] * cellSize,
                     top: ant.pos[1] * cellSize,
                     width: cellSize,
                     height: cellSize,
-                    fontSize: ant.is_queen ? '1.5rem' : '1.25rem',
+                    fontSize: ant.is_queen ? '1.5rem' : '1.2rem',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    filter: ant.is_queen ? 'drop-shadow(0 0 6px gold)' : `drop-shadow(0 0 3px ${getAntColor(ant)})`,
-                    zIndex: ant.is_queen ? 30 : 20, // Queen has highest z-index, workers above food/nest
+                    zIndex: ant.is_queen ? 30 : 20,
+                    filter: ant.carrying_food ? 'drop-shadow(0 0 2px rgba(245, 158, 11, 0.5))' : 'none',
                   }}
                 >
                   {getAntEmoji(ant)}
                   {ant.carrying_food && !ant.is_queen && (
-                    <div className="absolute -top-1 -right-1 text-xs">🧊</div>
+                    <div className="absolute -top-1 -right-1 text-[10px] leading-none">🍩</div>
                   )}
                 </div>
               </TooltipTrigger>
-              <TooltipContent>
-                <div className="space-y-1 text-sm">
-                  <div><strong>ID:</strong> {ant.id}</div>
-                  <div><strong>Type:</strong> {
-                    ant.is_queen ? "Queen" : (ant.is_llm ? "LLM Worker" : "Rule-Based Worker")
+              <TooltipContent className="text-xs bg-popover/95 backdrop-blur-sm">
+                <div className="space-y-1">
+                  <div><span className="font-semibold">ID:</span> {ant.id}</div>
+                  <div><span className="font-semibold">Type:</span> {
+                    ant.is_queen ? "Queen" : (ant.is_llm ? "LLM Agent" : "Rule Agent")
                   }</div>
-                  <div><strong>Position:</strong> ({ant.pos[0]}, {ant.pos[1]})</div>
-                  <div><strong>Carrying Food:</strong> {ant.carrying_food ? "Yes" : "No"}</div>
-                  {ant.steps_since_food !== undefined && !ant.is_queen && (
-                    <div><strong>Steps Since Food:</strong> {ant.steps_since_food}</div>
-                  )}
+                  <div><span className="font-semibold">Pos:</span> {ant.pos[0]}, {ant.pos[1]}</div>
                 </div>
               </TooltipContent>
             </Tooltip>
@@ -387,7 +312,7 @@ export const SimulationGrid = ({
             <Tooltip key={predator.id}>
               <TooltipTrigger asChild>
                 <div
-                  className="absolute transition-all duration-200"
+                  className="absolute transition-all duration-300"
                   style={{
                     left: predator.pos[0] * cellSize,
                     top: predator.pos[1] * cellSize,
@@ -397,62 +322,24 @@ export const SimulationGrid = ({
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    filter: 'drop-shadow(0 0 8px rgba(139, 0, 0, 0.8))',
-                    zIndex: 25, // Above ants but below queen
+                    zIndex: 25,
                   }}
                 >
-                  {predator.is_llm ? '🦗' : '🐺'}
+                  🕷️
                   {predator.energy < 50 && (
-                    <div className="absolute -bottom-1 -right-1 text-xs">💤</div>
+                    <div className="absolute -bottom-1 -right-1 text-[10px]">💤</div>
                   )}
                 </div>
               </TooltipTrigger>
-              <TooltipContent>
-                <div className="space-y-1 text-sm">
-                  <div><strong>ID:</strong> {predator.id}</div>
-                  <div><strong>Type:</strong> {predator.is_llm ? "🧠 LLM Predator" : "⚡ Rule Predator"}</div>
-                  <div><strong>Position:</strong> ({predator.pos[0]}, {predator.pos[1]})</div>
-                  <div><strong>Energy:</strong> {predator.energy}/100</div>
-                  <div><strong>Ants Caught:</strong> {predator.ants_caught}</div>
-                  <div><strong>Hunt Cooldown:</strong> {predator.hunt_cooldown}</div>
+              <TooltipContent className="text-xs bg-destructive/90 text-destructive-foreground">
+                <div className="space-y-1">
+                  <div><span className="font-semibold">ID:</span> {predator.id}</div>
+                  <div><span className="font-semibold">Energy:</span> {predator.energy}/100</div>
                 </div>
               </TooltipContent>
             </Tooltip>
           ))}
-
-          {/* Hotspot indicators */}
-          {efficiencyData?.hotspot_locations.slice(0, 5).map(([x, y], index) => (
-            <div
-              key={`hotspot-${index}`}
-              className="absolute pointer-events-none"
-              style={{
-                left: x * cellSize + cellSize * 0.25,
-                top: y * cellSize + cellSize * 0.25,
-                width: cellSize * 0.5,
-                height: cellSize * 0.5,
-                borderRadius: '50%',
-                backgroundColor: 'rgba(255, 107, 53, 0.4)',
-                border: '2px solid rgba(255, 107, 53, 0.8)',
-                animation: `pulse 2s infinite ${index * 0.2}s`,
-                zIndex: 5,
-              }}
-            />
-          ))}
         </div>
-
-        {/* Status bar below grid */}
-        {efficiencyData && (
-          <div className="mt-4 p-3 bg-gray-100 dark:bg-gray-800 rounded-lg text-sm">
-            <div className="flex gap-6 text-center">
-              {efficiencyData && (
-                <div>
-                  <div className="font-semibold">🔥 Max Efficiency</div>
-                  <div className="text-orange-600">{efficiencyData.max_efficiency.toFixed(2)}</div>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
       </div>
     </TooltipProvider>
   );

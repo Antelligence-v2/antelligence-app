@@ -48,3 +48,4 @@ export function PheromoneParticle({ position, color, opacity, index }: Pheromone
   );
 }
 
+

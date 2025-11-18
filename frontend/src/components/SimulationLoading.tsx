@@ -11,126 +11,61 @@ interface SimulationLoadingProps {
 export const SimulationLoading: React.FC<SimulationLoadingProps> = ({
   isVisible,
   progress = 0,
-  message = "Building ant colony...",
   currentStep = 0,
   totalSteps = 0
 }) => {
   if (!isVisible) return null;
 
-  const steps = [
-    "🏗️ Constructing ant colony...",
-    "🧠 Initializing AI agents...",
-    "🍯 Placing food resources...",
-    "🔗 Setting up blockchain...",
-    "🚀 Starting simulation..."
-  ];
-
-  const currentStepIndex = Math.floor((progress / 100) * steps.length);
-  const currentMessage = steps[Math.min(currentStepIndex, steps.length - 1)] || message;
-
-  // Show step progress if available, otherwise show percentage
-  const progressText = totalSteps > 0 
-    ? `Step ${Math.max(1, currentStep)}/${totalSteps} done`
-    : `${progress.toFixed(0)}%`;
-
-  // More granular step display for better user experience
+  const stepPercentage = totalSteps > 0 ? (currentStep / totalSteps) * 100 : 0;
+  
   const getStepMessage = () => {
-    if (totalSteps === 0) return currentMessage;
-    
-    const stepPercentage = (currentStep / totalSteps) * 100;
-    
-    if (stepPercentage < 20) return "🏗️ Constructing ant colony...";
-    if (stepPercentage < 40) return "🧠 Initializing AI agents...";
-    if (stepPercentage < 60) return "🍯 Placing food resources...";
-    if (stepPercentage < 80) return "🔗 Setting up blockchain...";
-    if (stepPercentage < 95) return "🚀 Running simulation steps...";
-    return "✨ Finalizing results...";
+    if (stepPercentage < 20) return "Booting Agent Environment...";
+    if (stepPercentage < 40) return "Initializing Neural Networks...";
+    if (stepPercentage < 60) return "Generating Resource Grid...";
+    if (stepPercentage < 80) return "Establishing Blockchain Ledger...";
+    if (stepPercentage < 95) return "Executing Simulation Steps...";
+    return "Finalizing Analysis...";
   };
 
   return (
-    <div className="fixed inset-0 bg-amber-900/60 backdrop-blur-sm z-50 flex items-center justify-center">
-      <div className="bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-800 dark:to-orange-800 rounded-2xl p-8 shadow-2xl max-w-sm mx-4 border border-amber-200 dark:border-amber-700">
-        <div className="text-center space-y-6">
-          {/* Cool Spinning Ant Animation */}
-          <div className="relative">
-            {/* Central spinning ant */}
-            <div className="text-4xl animate-spin" style={{ animationDuration: '2s' }}>
-              🐜
-            </div>
-            
-            {/* Orbiting ants */}
-            <div className="absolute inset-0">
-              <div 
-                className="absolute text-2xl animate-spin"
-                style={{ 
-                  animationDuration: '1.5s',
-                  top: '10%',
-                  left: '20%'
-                }}
-              >
-                🐜
-              </div>
-              <div 
-                className="absolute text-2xl animate-spin"
-                style={{ 
-                  animationDuration: '1.8s',
-                  top: '20%',
-                  right: '10%'
-                }}
-              >
-                🐜
-              </div>
-              <div 
-                className="absolute text-2xl animate-spin"
-                style={{ 
-                  animationDuration: '2.2s',
-                  bottom: '10%',
-                  left: '30%'
-                }}
-              >
-                🐜
-              </div>
-            </div>
-            
-            {/* Queen ant in center */}
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="text-3xl animate-pulse">
-                👸
-              </div>
-            </div>
+    <div className="fixed inset-0 bg-background/80 backdrop-blur-md z-50 flex items-center justify-center animate-in fade-in duration-200">
+      <div className="w-full max-w-md p-6 bg-card rounded-xl shadow-2xl border border-border">
+        <div className="space-y-8 text-center">
+          
+          {/* Modern Minimalist Loader */}
+          <div className="relative w-16 h-16 mx-auto">
+             <div className="absolute inset-0 border-4 border-muted rounded-full"></div>
+             <div className="absolute inset-0 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+             <div className="absolute inset-0 flex items-center justify-center text-xl animate-pulse">
+               🐜
+             </div>
           </div>
 
-          {/* Progress and Message */}
-          <div className="space-y-3">
-            <h3 className="text-lg font-semibold text-amber-800 dark:text-amber-200">
+          <div className="space-y-2">
+            <h3 className="text-lg font-semibold tracking-tight text-foreground">
               {getStepMessage()}
             </h3>
-            
-            {/* Cool progress bar */}
-            <div className="relative">
-              <div className="w-full bg-amber-200 dark:bg-amber-700 rounded-full h-3 overflow-hidden">
-                <div 
-                  className="h-3 bg-gradient-to-r from-amber-500 to-orange-500 rounded-full transition-all duration-300 relative"
-                  style={{ width: `${progress}%` }}
-                >
-                  {/* Shimmer effect */}
-                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-pulse"></div>
-                </div>
-              </div>
-              <div className="text-center mt-2">
-                <span className="text-sm font-mono text-amber-600 dark:text-amber-400">
-                  {progressText}
-                </span>
-              </div>
-            </div>
+            <p className="text-xs font-mono text-muted-foreground">
+              {totalSteps > 0 ? `Step ${currentStep} / ${totalSteps}` : `${progress.toFixed(0)}%`}
+            </p>
           </div>
 
-          {/* Fun fact */}
-          <div className="text-xs text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-800 p-3 rounded-lg">
-            <p>💡 Ants can communicate through pheromones and can lift 50x their weight!</p>
+          <div className="space-y-2">
+             <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
+               <div 
+                  className="h-full bg-primary transition-all duration-300 ease-out rounded-full"
+                  style={{ width: `${Math.max(5, progress)}%` }}
+               />
+             </div>
+             <div className="flex justify-between text-[10px] text-muted-foreground uppercase tracking-widest">
+                <span>System Init</span>
+                <span>Simulation</span>
+                <span>Analysis</span>
+             </div>
           </div>
+
         </div>
       </div>
     </div>
   );
-}; 
+};

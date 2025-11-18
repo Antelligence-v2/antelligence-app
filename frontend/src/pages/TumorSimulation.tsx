@@ -15,7 +15,37 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Brain, Activity, Zap, Home, Microscope, Sparkles, BarChart3 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000";
+// Auto-detect API base URL based on current host
+const getApiBaseUrl = () => {
+  // Check if explicitly set via environment variable
+  if (import.meta.env.VITE_API_BASE_URL) {
+    return import.meta.env.VITE_API_BASE_URL;
+  }
+  
+  // Auto-detect based on current host
+  if (typeof window !== 'undefined') {
+    const host = window.location.host;
+    const protocol = window.location.protocol;
+    
+    // Production domain
+    if (host.includes('antelligence.co')) {
+      return `${protocol}//${host}`;
+    }
+    
+    // Direct IP access (EC2)
+    if (host.includes('44.220.130.72')) {
+      return `http://${host.split(':')[0]}:8001`;
+    }
+    
+    // Local development
+    return "http://127.0.0.1:8000";
+  }
+  
+  return "http://127.0.0.1:8000";
+};
+
+const API_BASE_URL = getApiBaseUrl();
+console.log('🌐 API Base URL:', API_BASE_URL);
 
 interface TumorSimulationConfig {
   domain_size: number;
@@ -69,8 +99,9 @@ const TumorSimulation = () => {
     const isBratsMode = config.use_brats && config.brats_patient;
     toast.info(isBratsMode ? "Starting BraTS patient simulation..." : "Starting tumor nanobot simulation...");
 
+    let progressInterval: NodeJS.Timeout | null = null;
     try {
-      const progressInterval = setInterval(() => {
+      progressInterval = setInterval(() => {
         setLoadingProgress(prev => Math.min(prev + 1, 90));
       }, 200);
 
@@ -97,9 +128,12 @@ const TumorSimulation = () => {
           }
         : config;
 
+      console.log('📡 Calling API endpoint:', endpoint);
+      console.log('📦 Request config:', requestConfig);
+      
       const response = await axios.post(endpoint, requestConfig);
       
-      clearInterval(progressInterval);
+      if (progressInterval) clearInterval(progressInterval);
       setLoadingProgress(100);
 
       setSimulationResults(response.data);
@@ -117,10 +151,21 @@ const TumorSimulation = () => {
       }, 800);
       
     } catch (error: any) {
-      console.error("Tumor simulation API error:", error);
+      if (progressInterval) clearInterval(progressInterval);
+      console.error("❌ Tumor simulation API error:", error);
+      console.error("❌ Error response:", error.response);
+      console.error("❌ Error status:", error.response?.status);
+      console.error("❌ Error data:", error.response?.data);
       setIsLoading(false);
       setLoadingProgress(0);
-      toast.error(`Failed to run simulation: ${error.response?.data?.detail || error.message}`);
+      
+      const errorMessage = error.response?.data?.detail || error.response?.data?.message || error.message || 'Unknown error';
+      const statusCode = error.response?.status || 'N/A';
+      console.error(`❌ API Error (${statusCode}):`, errorMessage);
+      
+      toast.error(`Failed to run simulation (${statusCode}): ${errorMessage}`, {
+        duration: 10000,
+      });
     }
   }, [config]);
 

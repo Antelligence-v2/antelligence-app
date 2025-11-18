@@ -20,8 +20,14 @@ import openai
 import os
 from dotenv import load_dotenv
 import threading
-from biofvm import Microenvironment
-from tumor_environment import TumorGeometry, TumorCell, VesselPoint, CellPhase, CellType
+# Handle imports for both Docker (backend.*) and local development
+try:
+    from backend.biofvm import Microenvironment
+    from backend.tumor_environment import TumorGeometry, TumorCell, VesselPoint, CellPhase, CellType
+except ImportError:
+    # Fallback for local development
+    from biofvm import Microenvironment
+    from tumor_environment import TumorGeometry, TumorCell, VesselPoint, CellPhase, CellType
 
 load_dotenv()
 IO_API_KEY = os.getenv("IO_SECRET_KEY")
@@ -1023,7 +1029,10 @@ class TumorNanobotModel:
         )
         
         # Add substrates
-        from biofvm import create_oxygen_substrate, create_drug_substrate, create_pheromone_substrate
+        try:
+            from backend.biofvm import create_oxygen_substrate, create_drug_substrate, create_pheromone_substrate
+        except ImportError:
+            from biofvm import create_oxygen_substrate, create_drug_substrate, create_pheromone_substrate
         
         create_oxygen_substrate(self.microenv, boundary_value=38.0)
         create_drug_substrate(self.microenv, diffusion_coeff=1e-7)
@@ -1045,7 +1054,10 @@ class TumorNanobotModel:
         self.microenv.add_substrate('drug_b', diffusion_coefficient=1e-7, decay_rate=0.05)  # Secondary drug
         
         # Generate tumor geometry
-        from tumor_environment import create_simple_tumor_environment
+        try:
+            from backend.tumor_environment import create_simple_tumor_environment
+        except ImportError:
+            from tumor_environment import create_simple_tumor_environment
         
         self.geometry = create_simple_tumor_environment(
             domain_size=domain_size,

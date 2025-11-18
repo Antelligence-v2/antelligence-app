@@ -32,7 +32,7 @@ try:
         BraTSSimulationConfig
     )
 except ImportError:
-    # Fallback for local development
+    # Fallback for local development when running from backend/ directory
     from simulation import SimpleForagingModel
     from nanobot_simulation import TumorNanobotModel
     from tumor_environment import CellPhase
@@ -101,17 +101,22 @@ origins = [
     "http://localhost:8080",  # Your current frontend port
     "http://127.0.0.1:5173",  # Vite sometimes uses 127.0.0.1 instead of localhost
     "http://127.0.0.1:8080",  # Your current frontend port (127.0.0.1 variant)
-    "https://yourdomain.com",  # Replace with your production domain
-    "https://antelligence.yourdomain.com",  # Replace with your production subdomain
+    "https://antelligence.co",  # Production domain
+    "http://antelligence.co",  # Production domain (HTTP)
+    "https://www.antelligence.co",  # Production domain with www
+    "http://www.antelligence.co",  # Production domain with www (HTTP)
 ]
 
 # Add the CORS middleware to the application
+# For production, allow all origins (*) to ensure compatibility
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
+    allow_origins=["*"],  # Allow all origins for production
+    allow_credentials=False,  # Must be False when using allow_origins=["*"]
     allow_methods=["*"],  # Allow all methods including OPTIONS
     allow_headers=["*"],  # Allow all headers to prevent CORS preflight issues
+    expose_headers=["*"],
+    max_age=3600,  # Cache preflight for 1 hour
 )
 
 def convert_pheromone_maps(model) -> PheromoneMapData:
@@ -884,13 +889,22 @@ async def run_brats_simulation(config: BraTSSimulationConfig):
         print(f"[BRATS SIM] Starting BraTS simulation for patient: {config.patient_id}")
         
         # Import BraTS loader
-        from brats_loader import (
-            load_brats_segmentation,
-            find_brats_segmentation_file,
-            get_patient_metadata
-        )
-        from tumor_environment import create_brats_tumor_geometry
-        from brats_loader import BRATS_TRAINING_PATH, BRATS_VALIDATION_PATH, BRATS_ADDITIONAL_TRAINING_PATH
+        try:
+            from backend.brats_loader import (
+                load_brats_segmentation,
+                find_brats_segmentation_file,
+                get_patient_metadata,
+                BRATS_TRAINING_PATH, BRATS_VALIDATION_PATH, BRATS_ADDITIONAL_TRAINING_PATH
+            )
+            from backend.tumor_environment import create_brats_tumor_geometry
+        except ImportError:
+            from brats_loader import (
+                load_brats_segmentation,
+                find_brats_segmentation_file,
+                get_patient_metadata,
+                BRATS_TRAINING_PATH, BRATS_VALIDATION_PATH, BRATS_ADDITIONAL_TRAINING_PATH
+            )
+            from tumor_environment import create_brats_tumor_geometry
         
         # Find patient directory based on dataset
         if config.dataset == 'training':
@@ -1055,7 +1069,10 @@ async def list_brats_patients():
     List all available BraTS patients across all datasets.
     """
     try:
-        from brats_loader import list_brats_patients, BRATS_TRAINING_PATH, BRATS_VALIDATION_PATH, BRATS_ADDITIONAL_TRAINING_PATH
+        try:
+            from backend.brats_loader import list_brats_patients, BRATS_TRAINING_PATH, BRATS_VALIDATION_PATH, BRATS_ADDITIONAL_TRAINING_PATH
+        except ImportError:
+            from brats_loader import list_brats_patients, BRATS_TRAINING_PATH, BRATS_VALIDATION_PATH, BRATS_ADDITIONAL_TRAINING_PATH
         
         datasets = {}
         

@@ -10,6 +10,8 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
+console.log('✅ Antelligence App initialized - NANOBOT UI LOADED');
+
 const App = () => (
   <div className="dark">
     <QueryClientProvider client={queryClient}>

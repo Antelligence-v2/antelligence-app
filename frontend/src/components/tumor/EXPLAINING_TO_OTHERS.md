@@ -90,3 +90,4 @@ A: "That's a valid concern. We're comparing the rate of cell elimination, not th
 
 🎯 **Point to the info box at bottom**: "We clearly label what's real simulation data vs. clinical trial data"
 
+

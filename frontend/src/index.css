@@ -2,85 +2,98 @@
 @tailwind components;
 @tailwind utilities;
 
-@keyframes pulse {
-  0% { opacity: 0.4; transform: scale(1); }
-  50% { opacity: 0.8; transform: scale(1.2); }
-  100% { opacity: 0.4; transform: scale(1); }
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 240 10% 3.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 3.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 3.9%;
+    --primary: 240 5.9% 10%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 240 4.8% 95.9%;
+    --secondary-foreground: 240 5.9% 10%;
+    --muted: 240 4.8% 95.9%;
+    --muted-foreground: 240 3.8% 46.1%;
+    --accent: 240 4.8% 95.9%;
+    --accent-foreground: 240 5.9% 10%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 5.9% 90%;
+    --input: 240 5.9% 90%;
+    --ring: 240 5.9% 10%;
+    --radius: 0.5rem;
+    
+    /* Custom simulation colors - modernized */
+    --ant-rule-based: 221 83% 53%; /* Blue */
+    --ant-llm: 262 83% 58%; /* Purple */
+    --ant-hybrid: 190 90% 50%; /* Cyan */
+    --food-color: 142 76% 36%; /* Green */
+    --grid-cell: 240 5% 96%;
+    --grid-border: 240 6% 90%;
+  }
+
+  .dark {
+    --background: 240 10% 3.9%;
+    --foreground: 0 0% 98%;
+    --card: 240 10% 3.9%;
+    --card-foreground: 0 0% 98%;
+    --popover: 240 10% 3.9%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 0 0% 98%;
+    --primary-foreground: 240 5.9% 10%;
+    --secondary: 240 3.7% 15.9%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 240 3.7% 15.9%;
+    --muted-foreground: 240 5% 64.9%;
+    --accent: 240 3.7% 15.9%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 3.7% 15.9%;
+    --input: 240 3.7% 15.9%;
+    --ring: 240 4.9% 83.9%;
+    
+    --grid-cell: 240 4% 10%;
+    --grid-border: 240 4% 16%;
+  }
 }
 
-/* Scientific Simulation Design System - Nature & Ant Colony Theme */
-:root {
-  --background: 45 27% 94%; /* Warm sandy beige */
-  --foreground: 25 15% 15%; /* Dark brown */
-  --card: 45 30% 96%; /* Light sandy */
-  --card-foreground: 25 15% 15%;
-  --popover: 45 30% 96%;
-  --popover-foreground: 25 15% 15%;
-  --primary: 35 60% 45%; /* Rich amber */
-  --primary-foreground: 45 27% 94%;
-  --secondary: 30 40% 85%; /* Warm light brown */
-  --secondary-foreground: 25 15% 15%;
-  --muted: 45 25% 90%; /* Muted sandy */
-  --muted-foreground: 25 20% 40%;
-  --accent: 35 50% 80%; /* Light amber */
-  --accent-foreground: 25 15% 15%;
-  --destructive: 0 70% 50%;
-  --destructive-foreground: 45 27% 94%;
-  --border: 45 25% 85%; /* Sandy border */
-  --input: 45 25% 90%;
-  --ring: 35 60% 45%;
-  --radius: 0.5rem;
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
 }
 
-.dark {
-  --background: 25 15% 8%; /* Dark brown */
-  --foreground: 45 25% 90%; /* Light sandy */
-  --card: 25 15% 12%; /* Darker brown */
-  --card-foreground: 45 25% 90%;
-  --popover: 25 15% 12%;
-  --popover-foreground: 45 25% 90%;
-  --primary: 35 60% 55%; /* Brighter amber for dark mode */
-  --primary-foreground: 25 15% 8%;
-  --secondary: 25 20% 18%; /* Dark brown */
-  --secondary-foreground: 45 25% 90%;
-  --muted: 25 15% 15%; /* Dark muted */
-  --muted-foreground: 45 25% 70%;
-  --accent: 35 40% 25%; /* Dark amber */
-  --accent-foreground: 45 25% 90%;
-  --destructive: 0 70% 50%;
-  --destructive-foreground: 45 25% 90%;
-  --border: 25 15% 20%; /* Dark border */
-  --input: 25 15% 15%;
-  --ring: 35 60% 55%;
-}
-
-/* Nature-themed scrollbar */
+/* Modern scrollbar */
 ::-webkit-scrollbar {
-  width: 8px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: hsl(var(--muted));
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: hsl(var(--primary));
-  border-radius: 4px;
+  @apply bg-muted-foreground/20 rounded-full;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--primary) / 0.8);
+  @apply bg-muted-foreground/40;
 }
 
-/* Ant colony background pattern */
-.ant-colony-bg {
-  background-image: 
-    radial-gradient(circle at 20% 80%, rgba(139, 69, 19, 0.1) 0%, transparent 50%),
-    radial-gradient(circle at 80% 20%, rgba(160, 82, 45, 0.1) 0%, transparent 50%),
-    radial-gradient(circle at 40% 40%, rgba(210, 180, 140, 0.05) 0%, transparent 50%);
+/* Animation utilities */
+.animate-fade-in {
+  animation: fadeIn 0.5s ease-in-out;
 }
 
-/* Sandy texture overlay */
-.sandy-texture {
-  background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100' height='100' filter='url(%23noise)' opacity='0.1'/%3E%3C/svg%3E");
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }

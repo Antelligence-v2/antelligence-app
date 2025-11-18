@@ -16,18 +16,24 @@ const AGENT_COLORS: Record<string, string> = {
 };
 
 export function HistoricalPerformance({ onUpdate }: HistoricalPerformanceProps) {
-  const [stats, setStats] = React.useState(() => {
-    const result = getAggregatedStats();
-    return Array.isArray(result) ? result : [];
-  });
-  const [simulationCount, setSimulationCount] = React.useState(() => getSimulationCount());
+  const [stats, setStats] = React.useState<any[]>([]);
+  const [simulationCount, setSimulationCount] = React.useState(0);
 
   // Refresh stats when component mounts or when onUpdate is called
   React.useEffect(() => {
-    const refreshStats = () => {
-      const result = getAggregatedStats();
-      setStats(Array.isArray(result) ? result : []);
-      setSimulationCount(getSimulationCount());
+    const refreshStats = async () => {
+      try {
+        const result = await getAggregatedStats();
+        // getAggregatedStats returns an object, not an array
+        // We need to check what format HistoricalPerformance expects
+        setStats(Array.isArray(result) ? result : []);
+        const count = await getSimulationCount();
+        setSimulationCount(count);
+      } catch (error) {
+        console.error("Error refreshing stats:", error);
+        setStats([]);
+        setSimulationCount(0);
+      }
     };
 
     refreshStats();

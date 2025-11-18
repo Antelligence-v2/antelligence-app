@@ -4,21 +4,29 @@
 # Stage 1: Frontend build
 FROM node:18-alpine AS frontend-builder
 
+# Build argument to force cache invalidation
+ARG BUILD_TIMESTAMP
+ARG BUILD_VERSION=latest
+
 # Set working directory
 WORKDIR /app/frontend
 
 # Copy frontend package files first for better caching
 COPY frontend/package*.json ./
-COPY frontend/bun.lockb ./
 
-# Install dependencies with production optimizations
-RUN npm ci --only=production --silent && npm cache clean --force
+# Install ALL dependencies (including dev dependencies needed for build)
+RUN npm ci --silent && npm cache clean --force
 
-# Copy frontend source code
+# Copy ALL frontend source files (except node_modules and dist per .dockerignore)
+# This COPY will invalidate cache if any frontend source files change
 COPY frontend/ ./
 
 # Build frontend to static files with optimizations
-RUN npm run build
+# Force rebuild by using build args (changes every build)
+RUN echo "Build timestamp: ${BUILD_TIMESTAMP:-$(date -u +'%Y-%m-%dT%H:%M:%SZ')}" && \
+    echo "Build version: ${BUILD_VERSION}" && \
+    npm run build && \
+    echo "✅ Frontend build completed at $(date -u +'%Y-%m-%dT%H:%M:%SZ')"
 
 # Stage 2: Backend with frontend static files
 FROM python:3.11-slim AS backend-prod
@@ -63,11 +71,13 @@ OPENAI_API_KEY=\n\
 GEMINI_API_KEY=\n\
 MISTRAL_API_KEY=\n\
 \n\
-# Blockchain Configuration\n\
-SEPOLIA_RPC_URL=\n\
+# Blockchain Configuration (Base Sepolia Testnet)\n\
+BASE_SEPOLIA_RPC_URL=\n\
+CHAIN_RPC=\n\
 PRIVATE_KEY=\n\
 FOOD_ADDR=\n\
-MEMORY_ADDR=" > .env
+MEMORY_ADDR=\n\
+TUMOR_INTEL_ADDR=" > .env
 
 # Set Python path and production environment
 ENV PYTHONPATH=/app

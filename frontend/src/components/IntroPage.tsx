@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useNavigate } from 'react-router-dom';
-import { Brain } from 'lucide-react';
-import antFrontpageImage from '/ant-frontpage.jpg';
+import { ArrowRight, Brain, Network, Activity, ChevronDown } from 'lucide-react';
+import { SwarmBackground } from './SwarmBackground';
 
 interface IntroPageProps {
   onEnter: () => void;
@@ -24,7 +24,6 @@ export const IntroPage: React.FC<IntroPageProps> = ({ onEnter }) => {
     navigate('/tumor');
   };
 
-  // Handle keyboard enter
   useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent) => {
       if (event.key === 'Enter') {
@@ -38,165 +37,155 @@ export const IntroPage: React.FC<IntroPageProps> = ({ onEnter }) => {
 
   if (!isVisible) {
     return (
-      <div className="fixed inset-0 bg-amber-900/60 backdrop-blur-sm z-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-4xl animate-spin mb-4">🐜</div>
-          <div className="text-lg text-amber-800 dark:text-amber-200">Loading simulation...</div>
+      <div className="fixed inset-0 bg-background z-50 flex items-center justify-center transition-opacity duration-500 opacity-0">
+        <div className="text-center space-y-4">
+          <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto"></div>
+          <div className="text-sm font-medium tracking-widest uppercase text-muted-foreground">Initializing Environment</div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-cover bg-center bg-no-repeat bg-fixed"
-         style={{ backgroundImage: `url(${antFrontpageImage})` }}>
+    <div className="min-h-screen text-foreground selection:bg-primary selection:text-primary-foreground relative">
+      
       {/* Hero Section */}
-      <div className="relative z-10 flex items-center justify-center min-h-screen p-4">
-        <div className="text-center -mt-48">
-          <h1 className="text-8xl font-black text-black mb-12 tracking-tight drop-shadow-2xl" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
-          Antelligence
-          </h1>
-          <div className="flex flex-col gap-4 items-center">
+      <div className="relative min-h-screen flex flex-col items-center justify-center p-6 overflow-hidden z-0">
+        
+        {/* Swarm Background - Positioned Absolutely */}
+        <div className="absolute inset-0 -z-10">
+            <SwarmBackground />
+        </div>
+        
+        {/* Content Container */}
+        <div className="max-w-4xl mx-auto text-center space-y-12 z-10 pointer-events-none">
+          <div className="space-y-6 animate-fade-in pointer-events-auto">
+            <h1 className="text-6xl md:text-8xl font-black tracking-tighter leading-tight drop-shadow-[0_0_15px_rgba(0,242,255,0.3)] text-white">
+              Antelligence
+            </h1>
+            <p className="text-xl md:text-2xl text-gray-300 max-w-2xl mx-auto font-light leading-relaxed drop-shadow-md">
+              Emergent swarm intelligence powered by Large Language Models.
+              <br className="hidden md:block" />
+              Simulating complex adaptive systems in real-time.
+            </p>
+          </div>
+
+          <div className="flex flex-col md:flex-row gap-6 justify-center items-center w-full max-w-md mx-auto animate-fade-in delay-200 pointer-events-auto">
             <Button 
               onClick={handleEnter}
               size="lg"
-              className="w-80 h-14 text-lg font-semibold"
+              className="w-full h-14 text-base font-medium rounded-full transition-transform hover:scale-105 active:scale-95 shadow-[0_0_20px_rgba(0,242,255,0.2)] bg-cyan-500 hover:bg-cyan-400 text-black border-none"
             >
-              Ant Colony Simulation
+              Enter Colony Simulation
+              <ArrowRight className="ml-2 w-4 h-4" />
             </Button>
             <Button 
               onClick={handleTumorSimulation}
               size="lg"
               variant="outline"
-              className="w-80 h-14 text-lg font-semibold border-2 border-slate-300 hover:border-slate-400 bg-slate-100 text-slate-800 hover:bg-slate-200 hover:text-slate-800"
+              className="w-full h-14 text-base font-medium rounded-full hover:bg-white/10 border-white/20 text-white backdrop-blur-sm"
             >
-              Tumor Nanobot Simulation
+              Medical Nanobots
             </Button>
           </div>
-          <p className="text-gray-800 mt-4 text-lg drop-shadow-md font-medium">
-            Choose your simulation experience
-          </p>
+        </div>
+
+        <div className="absolute bottom-12 left-1/2 -translate-x-1/2 animate-bounce text-cyan-400/70">
+          <ChevronDown className="w-6 h-6" />
         </div>
       </div>
 
-      {/* Scroll Indicator */}
-      <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 z-20 text-center">
-        <div className="flex flex-col items-center space-y-2">
-          <p className="text-white font-semibold drop-shadow-lg">
-            Scroll down for more information
-          </p>
-          <div className="animate-bounce">
-            <svg 
-              className="w-6 h-6 text-white drop-shadow-lg" 
-              fill="none" 
-              stroke="currentColor" 
-              viewBox="0 0 24 24"
-            >
-              <path 
-                strokeLinecap="round" 
-                strokeLinejoin="round" 
-                strokeWidth={2} 
-                d="M19 14l-7 7m0 0l-7-7m7 7V3" 
-              />
-            </svg>
+      {/* Features Section */}
+      <div className="bg-background/95 backdrop-blur-lg py-24 border-t border-white/10 relative z-10">
+        <div className="max-w-6xl mx-auto px-6">
+          <div className="grid md:grid-cols-3 gap-12">
+            <div className="space-y-4">
+              <div className="w-12 h-12 bg-cyan-500/10 rounded-2xl flex items-center justify-center text-cyan-400 mb-6">
+                <Network className="w-6 h-6" />
+              </div>
+              <h3 className="text-xl font-bold tracking-tight">Decentralized Control</h3>
+              <p className="text-muted-foreground leading-relaxed">
+                No central coordinator. Agents operate autonomously based on local information and LLM-driven decision making logic.
+              </p>
+            </div>
+            
+            <div className="space-y-4">
+              <div className="w-12 h-12 bg-cyan-500/10 rounded-2xl flex items-center justify-center text-cyan-400 mb-6">
+                <Brain className="w-6 h-6" />
+              </div>
+              <h3 className="text-xl font-bold tracking-tight">Cognitive Agents</h3>
+              <p className="text-muted-foreground leading-relaxed">
+                Each agent is powered by advanced language models, allowing for complex reasoning beyond simple heuristic rule sets.
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              <div className="w-12 h-12 bg-cyan-500/10 rounded-2xl flex items-center justify-center text-cyan-400 mb-6">
+                <Activity className="w-6 h-6" />
+              </div>
+              <h3 className="text-xl font-bold tracking-tight">Emergent Behavior</h3>
+              <p className="text-muted-foreground leading-relaxed">
+                Observe how complex patterns and efficient solutions naturally emerge from the interactions of simple individual agents.
+              </p>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Information Section */}
-      <div className="relative z-10 bg-background">
-        <div className="max-w-4xl mx-auto px-6 py-16">
-          <Card className="shadow-lg">
-            <CardHeader className="text-center">
-              <CardTitle className="text-3xl font-bold">Swarm Intelligence</CardTitle>
-              <CardDescription className="text-lg mt-4">
-                The power of collective behavior emerges from simple individual actions
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-8">
-              
-              {/* Core Concept */}
-              <div className="text-center space-y-4">
-                <p className="text-muted-foreground text-lg leading-relaxed">
-                  Swarm intelligence demonstrates how complex, intelligent behavior can emerge from simple rules 
-                  followed by many individual agents. No single ant knows the entire path to food, yet together 
-                  they create efficient foraging networks through local interactions.
+      {/* Deep Dive Grid */}
+      <div className="bg-background py-24 px-6 relative z-10">
+        <div className="max-w-6xl mx-auto">
+            <div className="grid md:grid-cols-2 gap-8">
+            <Card className="group cursor-pointer border border-white/10 shadow-sm hover:shadow-cyan-500/10 transition-all duration-300 bg-card/50 overflow-hidden">
+                <div className="h-1 bg-gradient-to-r from-cyan-500 to-blue-500 w-full origin-left transform transition-transform duration-500 scale-x-0 group-hover:scale-x-100"></div>
+                <CardHeader>
+                <CardTitle className="text-2xl mb-2">Colony Simulation</CardTitle>
+                <p className="text-muted-foreground">Foraging optimization & resource management</p>
+                </CardHeader>
+                <CardContent className="space-y-4 text-sm text-muted-foreground">
+                <p>
+                    Watch digital ants use pheromone trails and AI decision-making to efficiently collect food. 
+                    Features blockchain logging for immutable history of agent actions.
                 </p>
-              </div>
+                <ul className="space-y-2 mt-4 pt-4 border-t border-white/5">
+                    <li className="flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-cyan-500"></span>
+                    LLM-powered decision making
+                    </li>
+                    <li className="flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-cyan-500"></span>
+                    Pheromone communication grids
+                    </li>
+                </ul>
+                </CardContent>
+            </Card>
 
-              {/* Two Projects */}
-              <div className="grid md:grid-cols-2 gap-8">
-                
-                {/* Ant Colony Simulation */}
-                <Card className="border-2">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      🐜 Ant Colony Simulation
-                    </CardTitle>
-                    <CardDescription>
-                      AI-powered ants foraging for food
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <p className="text-sm text-muted-foreground">
-                      Watch digital ants use pheromone trails and AI decision-making to efficiently collect food. 
-                      Each ant follows simple rules, but together they demonstrate emergent intelligence.
-                    </p>
-                    <ul className="text-sm space-y-1">
-                      <li>• LLM-powered decision making</li>
-                      <li>• Pheromone communication</li>
-                      <li>• Blockchain transaction logging</li>
-                    </ul>
-                  </CardContent>
-                </Card>
-
-                {/* Tumor Nanobot Simulation */}
-                <Card className="border-2">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      🧠 Tumor Nanobot Simulation
-                    </CardTitle>
-                    <CardDescription>
-                      Medical nanobots targeting cancer cells
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <p className="text-sm text-muted-foreground">
-                      Explore how nanobots navigate tumor microenvironments to deliver targeted drug therapy. 
-                      Similar swarm principles applied to medical treatment scenarios.
-                    </p>
-                    <ul className="text-sm space-y-1">
-                      <li>• Hypoxic zone targeting</li>
-                      <li>• Drug delivery optimization</li>
-                      <li>• Biological signal processing</li>
-                    </ul>
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* Common Principles */}
-              <div className="text-center space-y-4">
-                <h3 className="text-xl font-semibold">Common Principles</h3>
-                <div className="grid grid-cols-3 gap-4 text-sm">
-                  <div className="p-4 bg-muted rounded-lg">
-                    <div className="font-semibold mb-2">Decentralized Control</div>
-                    <p className="text-muted-foreground">No central coordinator needed</p>
-                  </div>
-                  <div className="p-4 bg-muted rounded-lg">
-                    <div className="font-semibold mb-2">Local Interactions</div>
-                    <p className="text-muted-foreground">Agents respond to immediate environment</p>
-                  </div>
-                  <div className="p-4 bg-muted rounded-lg">
-                    <div className="font-semibold mb-2">Emergent Behavior</div>
-                    <p className="text-muted-foreground">Complex patterns from simple rules</p>
-                  </div>
-                </div>
-              </div>
-
-            </CardContent>
-          </Card>
+            <Card className="group cursor-pointer border border-white/10 shadow-sm hover:shadow-rose-500/10 transition-all duration-300 bg-card/50 overflow-hidden">
+                <div className="h-1 bg-gradient-to-r from-rose-500 to-purple-500 w-full origin-left transform transition-transform duration-500 scale-x-0 group-hover:scale-x-100"></div>
+                <CardHeader>
+                <CardTitle className="text-2xl mb-2">Tumor Nanobots</CardTitle>
+                <p className="text-muted-foreground">Medical targeting & drug delivery</p>
+                </CardHeader>
+                <CardContent className="space-y-4 text-sm text-muted-foreground">
+                <p>
+                    Explore how nanobots navigate tumor microenvironments. Applies swarm principles to 
+                    targeted drug therapy and hypoxia detection.
+                </p>
+                <ul className="space-y-2 mt-4 pt-4 border-t border-white/5">
+                    <li className="flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+                    Gradient descent navigation
+                    </li>
+                    <li className="flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+                    Biological signal processing
+                    </li>
+                </ul>
+                </CardContent>
+            </Card>
+            </div>
         </div>
       </div>
     </div>
   );
-}; 
+};
