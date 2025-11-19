@@ -58,15 +58,15 @@ export const SimulationSidebar: React.FC<SimulationSidebarProps> = ({
         <h2 className="text-sm font-medium uppercase tracking-wider text-muted-foreground flex items-center gap-2">
           <Settings2 className="h-4 w-4" />
           Configuration
-        </h2>
-        <Button
-          onClick={onToggleCollapse}
-          variant="ghost"
-          size="icon"
+          </h2>
+          <Button
+            onClick={onToggleCollapse}
+            variant="ghost"
+            size="icon"
           className="h-8 w-8"
-        >
-          <ChevronRight className="h-4 w-4" />
-        </Button>
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
       </div>
 
       {/* Content */}
@@ -210,7 +210,7 @@ export const SimulationSidebar: React.FC<SimulationSidebarProps> = ({
 
         {/* Advanced Settings (Queen, Predators, Blockchain) */}
         <Collapsible open={isQueenOpen} onOpenChange={setIsQueenOpen} className="space-y-2">
-           <CollapsibleTrigger asChild>
+          <CollapsibleTrigger asChild>
             <Button variant="ghost" className="w-full justify-between p-0 h-auto hover:bg-transparent">
               <span className="text-sm font-semibold flex items-center gap-2">
                 <Zap className="h-4 w-4 text-primary" />
@@ -221,14 +221,14 @@ export const SimulationSidebar: React.FC<SimulationSidebarProps> = ({
           </CollapsibleTrigger>
           
           <CollapsibleContent className="space-y-4 pt-2 px-1">
-             <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between">
               <Label className="text-xs font-medium text-muted-foreground">Queen Agent</Label>
               <Switch
                 checked={settings.use_queen}
                 onCheckedChange={(checked) => handleChange("use_queen", checked)}
               />
             </div>
-             <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between">
               <Label className="text-xs font-medium text-muted-foreground">Predators</Label>
               <Switch
                 checked={settings.enable_predators}
@@ -251,7 +251,7 @@ export const SimulationSidebar: React.FC<SimulationSidebarProps> = ({
             <Label className="text-xs font-medium text-muted-foreground flex items-center gap-2">
               <Clock className="h-3 w-3" />
               Max Steps
-            </Label>
+          </Label>
             <span className="text-xs font-mono">{settings.max_steps}</span>
           </div>
           <Slider

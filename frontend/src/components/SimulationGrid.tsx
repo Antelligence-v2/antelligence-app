@@ -64,7 +64,7 @@ export const SimulationGrid = ({
   pheromoneData
 }: SimulationGridProps) => {
   const getAntEmoji = (ant: Ant) => {
-    if (ant.is_queen) return "👑"; // Changed to crown for queen
+    if (ant.is_queen) return "👑"; 
     return "🐜";
   };
 
@@ -86,7 +86,7 @@ export const SimulationGrid = ({
     if (maxEfficiency === 0) return null;
 
     return (
-      <div className="absolute inset-0 pointer-events-none">
+      <div className="absolute inset-0 pointer-events-none mix-blend-soft-light">
         {efficiencyData.efficiency_grid.map((row, y) =>
           row.map((value, x) => {
             if (value === 0) return null;
@@ -220,16 +220,21 @@ export const SimulationGrid = ({
     <TooltipProvider>
       <div className="relative flex flex-col items-center">
         <div
-          className="relative rounded-md overflow-hidden bg-card border border-border shadow-sm"
+          className="relative rounded-xl overflow-hidden shadow-xl border border-border/50"
           style={{
             width: gridWidth * cellSize,
             height: gridHeight * cellSize,
-            // Modern grid pattern
+            // Vibrant, multi-color gradient background
+            backgroundColor: '#1a1b26', // Deep dark blue/black base
             backgroundImage: `
-              linear-gradient(to right, var(--border) 1px, transparent 1px),
-              linear-gradient(to bottom, var(--border) 1px, transparent 1px)
+              linear-gradient(to right, rgba(255, 255, 255, 0.1) 1px, transparent 1px),
+              linear-gradient(to bottom, rgba(255, 255, 255, 0.1) 1px, transparent 1px),
+              radial-gradient(circle at 0% 0%, rgba(59, 130, 246, 0.15), transparent 50%),
+              radial-gradient(circle at 100% 0%, rgba(236, 72, 153, 0.15), transparent 50%),
+              radial-gradient(circle at 100% 100%, rgba(16, 185, 129, 0.15), transparent 50%),
+              radial-gradient(circle at 0% 100%, rgba(245, 158, 11, 0.15), transparent 50%)
             `,
-            backgroundSize: `${cellSize}px ${cellSize}px`,
+            backgroundSize: `${cellSize}px ${cellSize}px, ${cellSize}px ${cellSize}px, cover, cover, cover, cover`,
           }}
         >
           {/* Pheromone overlay (bottom layer) */}
@@ -241,13 +246,13 @@ export const SimulationGrid = ({
           {/* Nest/Home */}
           {!ants.some(ant => ant.is_queen && ant.pos[0] === nest[0] && ant.pos[1] === nest[1]) && (
             <div
-              className="absolute flex items-center justify-center text-2xl z-10"
+              className="absolute flex items-center justify-center text-2xl z-10 animate-pulse"
               style={{
                 left: nest[0] * cellSize,
                 top: nest[1] * cellSize,
                 width: cellSize,
                 height: cellSize,
-                opacity: 0.8,
+                filter: 'drop-shadow(0 0 8px rgba(255, 255, 255, 0.5))',
               }}
             >
               🏠
@@ -264,6 +269,7 @@ export const SimulationGrid = ({
                 top: pile[1] * cellSize,
                 width: cellSize,
                 height: cellSize,
+                filter: 'drop-shadow(0 0 4px rgba(16, 185, 129, 0.6))',
               }}
             >
               🍩
@@ -281,17 +287,19 @@ export const SimulationGrid = ({
                     top: ant.pos[1] * cellSize,
                     width: cellSize,
                     height: cellSize,
-                    fontSize: ant.is_queen ? '1.5rem' : '1.2rem',
+                    fontSize: ant.is_queen ? '1.8rem' : '1.4rem',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     zIndex: ant.is_queen ? 30 : 20,
-                    filter: ant.carrying_food ? 'drop-shadow(0 0 2px rgba(245, 158, 11, 0.5))' : 'none',
+                    filter: ant.carrying_food 
+                      ? 'drop-shadow(0 0 4px rgba(245, 158, 11, 0.8))' 
+                      : `drop-shadow(0 0 2px ${getAntColor(ant)})`,
                   }}
                 >
                   {getAntEmoji(ant)}
                   {ant.carrying_food && !ant.is_queen && (
-                    <div className="absolute -top-1 -right-1 text-[10px] leading-none">🍩</div>
+                    <div className="absolute -top-1 -right-1 text-[10px] leading-none animate-bounce">🍩</div>
                   )}
                 </div>
               </TooltipTrigger>
@@ -318,11 +326,12 @@ export const SimulationGrid = ({
                     top: predator.pos[1] * cellSize,
                     width: cellSize,
                     height: cellSize,
-                    fontSize: '1.5rem',
+                    fontSize: '1.6rem',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     zIndex: 25,
+                    filter: 'drop-shadow(0 0 6px rgba(239, 68, 68, 0.6))',
                   }}
                 >
                   🕷️

@@ -77,15 +77,17 @@ export const IntroPage: React.FC<IntroPageProps> = ({ onEnter }) => {
               className="w-full h-14 text-base font-medium rounded-full transition-transform hover:scale-105 active:scale-95 shadow-[0_0_20px_rgba(0,242,255,0.2)] bg-cyan-500 hover:bg-cyan-400 text-black border-none"
             >
               Enter Colony Simulation
-              <ArrowRight className="ml-2 w-4 h-4" />
             </Button>
             <Button 
               onClick={handleTumorSimulation}
               size="lg"
               variant="outline"
-              className="w-full h-14 text-base font-medium rounded-full hover:bg-white/10 border-white/20 text-white backdrop-blur-sm"
+              className="w-full h-14 text-base font-medium rounded-full hover:bg-white/10 border-white/20 text-white backdrop-blur-sm relative overflow-hidden group"
             >
-              Medical Nanobots
+              <span className="relative z-10 group-hover:text-cyan-300 transition-colors flex items-center justify-center gap-2">
+                Medical Nanobots <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              </span>
+              <div className="absolute inset-0 bg-white/5 transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left duration-300 ease-out"></div>
             </Button>
           </div>
         </div>

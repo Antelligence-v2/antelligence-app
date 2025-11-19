@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Slider } from "@/components/ui/slider";
 import { Play, Pause, SkipForward, SkipBack, RotateCcw, ChevronsLeft, ChevronsRight } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface TumorSimulationControlsProps {
   isRunning: boolean;
@@ -51,124 +51,93 @@ export function TumorSimulationControls({
   ];
 
   return (
-    <Card className="border-b rounded-none">
-      <CardContent className="py-4">
-        <div className="flex items-center justify-between gap-4">
-          {/* Playback Controls */}
-          <div className="flex items-center gap-2">
-            <Button
-              onClick={onGoToStart}
-              disabled={!isSimulationLoaded}
-              size="sm"
-              variant="outline"
-            >
-              <ChevronsLeft className="w-4 h-4" />
-            </Button>
-            <Button
-              onClick={onStepBackward}
-              disabled={!isSimulationLoaded || currentStep === 0}
-              size="sm"
-              variant="outline"
-            >
-              <SkipBack className="w-4 h-4" />
-            </Button>
-            <Button
-              onClick={isRunning ? onPause : onStart}
-              disabled={!isSimulationLoaded}
-              size="sm"
-              className="w-20"
-            >
-              {isRunning ? (
-                <>
-                  <Pause className="w-4 h-4 mr-1" /> Pause
-                </>
-              ) : (
-                <>
-                  <Play className="w-4 h-4 mr-1" /> Play
-                </>
-              )}
-            </Button>
-            <Button
-              onClick={onStep}
-              disabled={!isSimulationLoaded || currentStep >= totalSteps - 1}
-              size="sm"
-              variant="outline"
-            >
-              <SkipForward className="w-4 h-4" />
-            </Button>
-            <Button
-              onClick={onGoToEnd}
-              disabled={!isSimulationLoaded}
-              size="sm"
-              variant="outline"
-            >
-              <ChevronsRight className="w-4 h-4" />
-            </Button>
-            <Button
-              onClick={onReset}
-              disabled={!isSimulationLoaded}
-              size="sm"
-              variant="outline"
-            >
-              <RotateCcw className="w-4 h-4 mr-1" /> Reset
-            </Button>
-          </div>
+    <div className="flex items-center justify-between gap-4">
+      {/* Playback Controls */}
+      <div className="flex items-center gap-1 bg-muted/30 p-1 rounded-lg border border-border/50">
+        <div className="flex gap-0.5">
+          <Button onClick={onGoToStart} variant="ghost" disabled={!isSimulationLoaded} size="icon" className="h-8 w-8">
+            <ChevronsLeft className="h-4 w-4" />
+          </Button>
+          <Button onClick={onStepBackward} variant="ghost" disabled={!isSimulationLoaded} size="icon" className="h-8 w-8">
+            <SkipBack className="h-4 w-4" />
+          </Button>
+        </div>
 
-          {/* Metrics Display */}
-          <div className="flex items-center gap-6 text-sm">
-            <div>
-              <span className="font-semibold">Step:</span> {metrics.currentStep}/{metrics.totalSteps}
-            </div>
-            <div>
-              <span className="font-semibold">Time:</span> {metrics.time.toFixed(2)} min
-            </div>
-            <div>
-              <span className="font-semibold">Killed:</span> {metrics.cellsKilled} cells
-            </div>
-            <div>
-              <span className="font-semibold">Deliveries:</span> {metrics.deliveries}
-            </div>
-            <div>
-              <span className="font-semibold">Drug:</span> {metrics.drugDelivered.toFixed(0)} units
-            </div>
-          </div>
+        <div className="w-px h-4 bg-border mx-1" />
 
-          {/* Speed Control */}
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-semibold">Speed:</span>
-            <div className="flex gap-1">
-              {speedOptions.map((option) => (
-                <Button
-                  key={option.value}
-                  onClick={() => onSpeedChange(option.value)}
-                  size="sm"
-                  variant={playbackSpeed === option.value ? "default" : "outline"}
-                  className="w-12"
-                >
-                  {option.label}
-                </Button>
-              ))}
-            </div>
+        <Button
+          onClick={isRunning ? onPause : onStart}
+          disabled={!isSimulationLoaded}
+          size="sm"
+          className="h-8 px-3 font-medium min-w-[80px]"
+        >
+          {isRunning ? (
+            <>
+              <Pause className="w-3.5 h-3.5 mr-1.5 fill-current" /> Pause
+            </>
+          ) : (
+            <>
+              <Play className="w-3.5 h-3.5 mr-1.5 fill-current" /> Play
+            </>
+          )}
+        </Button>
+
+        <div className="w-px h-4 bg-border mx-1" />
+
+        <div className="flex gap-0.5">
+          <Button onClick={onStep} variant="ghost" disabled={!isSimulationLoaded} size="icon" className="h-8 w-8">
+            <SkipForward className="h-4 w-4" />
+          </Button>
+          <Button onClick={onGoToEnd} variant="ghost" disabled={!isSimulationLoaded} size="icon" className="h-8 w-8">
+            <ChevronsRight className="h-4 w-4" />
+          </Button>
+        </div>
+
+        <div className="w-px h-4 bg-border mx-1" />
+
+        <Button onClick={onReset} variant="ghost" disabled={!isSimulationLoaded} size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
+          <RotateCcw className="h-4 w-4" />
+        </Button>
+      </div>
+
+      <div className="flex items-center gap-4">
+        {/* Metrics Display */}
+        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+          <div className="flex flex-col items-center">
+            <span className="text-[10px] uppercase tracking-wider opacity-70">Killed</span>
+            <span className="font-mono font-medium text-foreground">{metrics.cellsKilled}</span>
+          </div>
+          <Separator orientation="vertical" className="h-8" />
+          <div className="flex flex-col items-center">
+            <span className="text-[10px] uppercase tracking-wider opacity-70">Deliveries</span>
+            <span className="font-mono font-medium text-foreground">{metrics.deliveries}</span>
+          </div>
+          <Separator orientation="vertical" className="h-8" />
+          <div className="flex flex-col items-center">
+            <span className="text-[10px] uppercase tracking-wider opacity-70">Drug Units</span>
+            <span className="font-mono font-medium text-foreground">{metrics.drugDelivered.toFixed(0)}</span>
           </div>
         </div>
 
-        {/* Progress Bar */}
-        {isSimulationLoaded && (
-          <div className="mt-3">
-            <Slider
-              value={[currentStep]}
-              max={totalSteps - 1}
-              step={1}
-              onValueChange={([value]) => {
-                // This would require a new handler in the parent
-                // For now, it's just visual
-              }}
-              className="w-full"
-            />
-          </div>
-        )}
-      </CardContent>
-    </Card>
+        <Separator orientation="vertical" className="h-8" />
+
+        {/* Speed Control */}
+        <Select 
+          value={playbackSpeed.toString()} 
+          onValueChange={(value) => onSpeedChange(Number(value))}
+        >
+          <SelectTrigger className="w-[70px] h-8 text-xs bg-muted/30 border-border/50">
+            <SelectValue placeholder="Speed" />
+          </SelectTrigger>
+          <SelectContent>
+            {speedOptions.map((option) => (
+              <SelectItem key={option.value} value={option.value.toString()} className="text-xs">
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+    </div>
   );
 }
-

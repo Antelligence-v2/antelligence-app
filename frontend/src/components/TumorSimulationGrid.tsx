@@ -89,8 +89,8 @@ export function TumorSimulationGrid({
     canvas.width = size;
     canvas.height = size;
 
-    // Clear canvas with light background
-    ctx.fillStyle = "#fafafa";
+    // Clear canvas with dark background
+    ctx.fillStyle = "#0a0a0a";
     ctx.fillRect(0, 0, size, size);
 
     // Scale factor to convert µm to pixels
@@ -101,37 +101,38 @@ export function TumorSimulationGrid({
     // Draw tumor boundary regions FIRST (as background)
     // Necrotic core (darkest)
     const necroticRadius = (tumorRadius * 0.25) * scale;
-    ctx.fillStyle = "rgba(100, 100, 100, 0.15)";
+    ctx.fillStyle = "rgba(50, 50, 50, 0.3)";
     ctx.beginPath();
     ctx.arc(centerPx[0], centerPx[1], necroticRadius, 0, Math.PI * 2);
     ctx.fill();
 
     // Hypoxic zone (purple tint)
     const hypoxicRadius = (tumorRadius * 0.7) * scale;
-    ctx.fillStyle = "rgba(168, 85, 247, 0.08)";
+    ctx.fillStyle = "rgba(168, 85, 247, 0.1)";
     ctx.beginPath();
     ctx.arc(centerPx[0], centerPx[1], hypoxicRadius, 0, Math.PI * 2);
     ctx.fill();
 
     // Viable tumor region (light red tint)
     const tumorRadiusPx = tumorRadius * scale;
-    ctx.fillStyle = "rgba(239, 68, 68, 0.05)";
+    ctx.fillStyle = "rgba(239, 68, 68, 0.08)";
     ctx.beginPath();
     ctx.arc(centerPx[0], centerPx[1], tumorRadiusPx, 0, Math.PI * 2);
     ctx.fill();
 
     // Draw tumor boundary (prominent circle)
-    ctx.strokeStyle = "#ef4444";
-    ctx.lineWidth = 3;
-    ctx.setLineDash([]);
+    ctx.strokeStyle = "rgba(239, 68, 68, 0.5)";
+    ctx.lineWidth = 2;
+    ctx.setLineDash([5, 5]);
     ctx.beginPath();
     ctx.arc(centerPx[0], centerPx[1], tumorRadiusPx, 0, Math.PI * 2);
     ctx.stroke();
+    ctx.setLineDash([]);
 
     // Add zone labels if in detailed mode
     if (detailedMode) {
       ctx.font = "bold 12px sans-serif";
-      ctx.fillStyle = "#374151";
+      ctx.fillStyle = "#9ca3af";
       ctx.textAlign = "center";
       
       // Necrotic core label
@@ -160,7 +161,7 @@ export function TumorSimulationGrid({
 
             // Color mapping based on substrate type (reduced opacity for clarity)
             let color;
-            const baseOpacity = detailedMode ? 0.4 : 0.25;
+            const baseOpacity = detailedMode ? 0.5 : 0.3;
             switch (selectedSubstrate) {
               case "oxygen":
                 // Blue (low O2/hypoxic) to Red (high O2/normoxic)
@@ -202,7 +203,7 @@ export function TumorSimulationGrid({
     }
 
     // Draw grid
-    ctx.strokeStyle = "rgba(200, 200, 200, 0.2)";
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.05)";
     ctx.lineWidth = 0.5;
     const gridLines = 20;
     const gridSpacing = size / gridLines;
@@ -225,7 +226,7 @@ export function TumorSimulationGrid({
 
       // Pulsing supply radius
       const pulseIntensity = Math.sin(pulsePhase + index * 0.5) * 0.5 + 0.5;
-      ctx.fillStyle = `rgba(16, 185, 129, ${0.08 + pulseIntensity * 0.12})`;
+      ctx.fillStyle = `rgba(16, 185, 129, ${0.1 + pulseIntensity * 0.15})`;
       ctx.beginPath();
       ctx.arc(x, y, radius, 0, Math.PI * 2);
       ctx.fill();
@@ -239,22 +240,22 @@ export function TumorSimulationGrid({
       // Main vessel body
       ctx.fillStyle = "#10b981";
       ctx.strokeStyle = "#047857";
-      ctx.lineWidth = 3;
+      ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.arc(x, y, 8, 0, Math.PI * 2);
+      ctx.arc(x, y, 6, 0, Math.PI * 2);
       ctx.fill();
       ctx.stroke();
 
       // Inner highlight
       ctx.fillStyle = "#6ee7b7";
       ctx.beginPath();
-      ctx.arc(x - 2, y - 2, 3, 0, Math.PI * 2);
+      ctx.arc(x - 2, y - 2, 2, 0, Math.PI * 2);
       ctx.fill();
 
       // Label for vessels in detailed mode
       if (detailedMode) {
         ctx.font = "bold 10px sans-serif";
-        ctx.fillStyle = "#047857";
+        ctx.fillStyle = "#34d399";
         ctx.textAlign = "center";
         ctx.fillText("O₂+Drug", x, y + radius + 12);
       }
@@ -282,11 +283,11 @@ export function TumorSimulationGrid({
           strokeColor = "#6b21a8";
           break;
         case "necrotic":
-          color = "#6b7280";
-          strokeColor = "#374151";
+          color = "#4b5563";
+          strokeColor = "#1f2937";
           break;
         case "apoptotic":
-          color = "#fbbf24";
+          color = "#f59e0b";
           strokeColor = "#92400e";
           break;
         default:
@@ -308,7 +309,7 @@ export function TumorSimulationGrid({
       nanobots.forEach((nanobot) => {
         const trail = nanobotTrails.get(nanobot.id) || [];
         if (trail.length > 1) {
-          ctx.strokeStyle = "rgba(59, 130, 246, 0.3)";
+          ctx.strokeStyle = "rgba(59, 130, 246, 0.4)";
           ctx.lineWidth = 2;
           ctx.setLineDash([2, 2]);
           ctx.beginPath();
@@ -353,12 +354,12 @@ export function TumorSimulationGrid({
           stateName = "⚡";
           break;
         default: // searching
-          outerColor = "#6b7280";
+          outerColor = "#9ca3af";
           stateName = "?";
       }
 
       // Glow effect
-      ctx.shadowBlur = 8;
+      ctx.shadowBlur = 10;
       ctx.shadowColor = outerColor;
 
       // Outer circle (LARGER)
@@ -370,8 +371,8 @@ export function TumorSimulationGrid({
       ctx.shadowBlur = 0;
 
       // Border for definition
-      ctx.strokeStyle = "#fff";
-      ctx.lineWidth = 2;
+      ctx.strokeStyle = "#000";
+      ctx.lineWidth = 1.5;
       ctx.beginPath();
       ctx.arc(x, y, 7, 0, Math.PI * 2);
       ctx.stroke();
@@ -396,7 +397,7 @@ export function TumorSimulationGrid({
       // Direction indicator in detailed mode
       if (detailedMode && stateName) {
         ctx.font = "10px sans-serif";
-        ctx.fillStyle = "#fff";
+        ctx.fillStyle = "#000";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         ctx.fillText(stateName, x, y);
@@ -404,12 +405,12 @@ export function TumorSimulationGrid({
     });
 
     // Draw scale bar (bottom right)
-    ctx.fillStyle = "#374151";
+    ctx.fillStyle = "#9ca3af";
     ctx.font = "bold 12px sans-serif";
     ctx.textAlign = "right";
     ctx.fillText(`${domainSize} µm`, size - 20, size - 25);
-    ctx.strokeStyle = "#374151";
-    ctx.lineWidth = 3;
+    ctx.strokeStyle = "#9ca3af";
+    ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(size - 120, size - 15);
     ctx.lineTo(size - 20, size - 15);
@@ -419,7 +420,7 @@ export function TumorSimulationGrid({
     if (substrateData && substrateData.max_values) {
       const maxVal = substrateData.max_values[selectedSubstrate] || 1;
       ctx.font = "bold 11px sans-serif";
-      ctx.fillStyle = "#374151";
+      ctx.fillStyle = "#9ca3af";
       ctx.textAlign = "right";
       ctx.fillText(`${selectedSubstrate.toUpperCase()}`, size - 10, 20);
       ctx.font = "10px sans-serif";
@@ -432,119 +433,119 @@ export function TumorSimulationGrid({
     <div className="flex flex-col items-center">
       <canvas 
         ref={canvasRef} 
-        className="border-2 border-gray-300 rounded-lg shadow-2xl bg-white"
+        className="border border-border rounded-lg shadow-lg"
+        style={{ background: '#0a0a0a' }} // Ensure dark background for the grid
       />
       
       {/* Legend below canvas */}
-      <div className="mt-6 w-full max-w-3xl">
+      <div className="mt-6 w-full max-w-3xl p-4 bg-card/50 rounded-lg border border-border shadow-sm">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
           {/* Nanobot States */}
-          <div className="bg-white rounded-lg border p-3 shadow-sm">
-            <h4 className="font-bold text-xs text-gray-600 mb-2">🤖 NANOBOT STATES</h4>
+          <div className="space-y-1">
+            <h4 className="font-bold text-xs text-muted-foreground mb-2">🤖 NANOBOT STATES</h4>
             <div className="space-y-1 text-xs">
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 bg-gray-500 rounded-full"></div>
-                <span className="text-gray-800">Searching (?)</span>
+                <span className="text-foreground">Searching (?)</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
-                <span className="text-gray-800">Targeting (→)</span>
+                <span className="text-foreground">Targeting (→)</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                <span className="text-gray-800">Delivering (💊)</span>
+                <span className="text-foreground">Delivering (💊)</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                <span className="text-gray-800">Returning (←)</span>
+                <span className="text-foreground">Returning (←)</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
-                <span className="text-gray-800">Reloading (⚡)</span>
+                <span className="text-foreground">Reloading (⚡)</span>
               </div>
             </div>
           </div>
 
           {/* Tumor Zones */}
-          <div className="bg-white rounded-lg border p-3 shadow-sm">
-            <h4 className="font-bold text-xs text-gray-600 mb-2">🧠 TUMOR ZONES</h4>
+          <div className="space-y-1">
+            <h4 className="font-bold text-xs text-muted-foreground mb-2">🧠 TUMOR ZONES</h4>
             <div className="space-y-1 text-xs">
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 bg-red-500 rounded-full border-2 border-red-600"></div>
-                <span className="text-gray-800">Tumor Boundary</span>
+                <span className="text-foreground">Tumor Boundary</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 bg-red-200 rounded-full"></div>
-                <span className="text-gray-800">Viable Region</span>
+                <span className="text-foreground">Viable Region</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 bg-purple-200 rounded-full"></div>
-                <span className="text-gray-800">Hypoxic Zone</span>
+                <span className="text-foreground">Hypoxic Zone</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 bg-gray-400 rounded-full"></div>
-                <span className="text-gray-800">Necrotic Core</span>
+                <span className="text-foreground">Necrotic Core</span>
               </div>
             </div>
           </div>
 
           {/* Key Elements */}
-          <div className="bg-white rounded-lg border p-3 shadow-sm">
-            <h4 className="font-bold text-xs text-gray-600 mb-2">💡 KEY ELEMENTS</h4>
+          <div className="space-y-1">
+            <h4 className="font-bold text-xs text-muted-foreground mb-2">💡 KEY ELEMENTS</h4>
             <div className="space-y-1 text-xs">
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 bg-green-500 rounded-full border-2 border-green-700"></div>
-                <span className="text-gray-800">Blood Vessel (O₂+Drug)</span>
+                <span className="text-foreground">Blood Vessel (O₂+Drug)</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-                <span className="text-gray-800">Viable Cancer Cells</span>
+                <span className="text-foreground">Viable Cancer Cells</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
-                <span className="text-gray-800">Hypoxic Cells</span>
+                <span className="text-foreground">Hypoxic Cells</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
-                <span className="text-gray-800">Killed Cells</span>
+                <span className="text-foreground">Killed Cells</span>
               </div>
             </div>
           </div>
 
           {/* Substrate Fields */}
-          <div className="bg-white rounded-lg border p-3 shadow-sm">
-            <h4 className="font-bold text-xs text-gray-600 mb-2">🧪 SUBSTRATE FIELDS</h4>
+          <div className="space-y-1">
+            <h4 className="font-bold text-xs text-muted-foreground mb-2">🧪 SUBSTRATE FIELDS</h4>
             <div className="space-y-1 text-xs">
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                <span className="text-gray-800">Oxygen (O₂)</span>
+                <span className="text-foreground">Oxygen (O₂)</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
-                <span className="text-gray-800">Drug Concentration</span>
+                <span className="text-foreground">Drug Concentration</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 bg-lime-500 rounded-full"></div>
-                <span className="text-gray-800">🟩 Chemokine (Attract)</span>
+                <span className="text-foreground">🟩 Chemokine (Attract)</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 bg-red-600 rounded-full"></div>
-                <span className="text-gray-800">🟥 Toxicity (Repel)</span>
+                <span className="text-foreground">🟥 Toxicity (Repel)</span>
               </div>
             </div>
           </div>
         </div>
 
         {/* Additional info */}
-        <div className="mt-3 text-xs text-center text-gray-800 bg-blue-50 rounded p-2">
-          💡 <strong>Tip:</strong> Nanobots start at <span className="text-green-600 font-semibold">green vessels</span> (oxygen+drug sources), 
-          navigate to <span className="text-purple-600 font-semibold">hypoxic zones</span> (low oxygen), 
+        <div className="mt-3 text-xs text-center text-muted-foreground bg-muted/30 rounded p-2 border border-border/50">
+          💡 <strong>Tip:</strong> Nanobots start at <span className="text-green-500 font-semibold">green vessels</span> (oxygen+drug sources), 
+          navigate to <span className="text-purple-500 font-semibold">hypoxic zones</span> (low oxygen), 
           deliver drugs, then return to reload. Watch the pulsing vessels! 
-          <span className="text-lime-600 font-semibold">🟩 Chemokine signals</span> attract nanobots to successful delivery sites, 
-          while <span className="text-red-600 font-semibold">🟥 toxicity signals</span> repel them from dangerous areas.
+          <span className="text-lime-500 font-semibold">🟩 Chemokine signals</span> attract nanobots to successful delivery sites, 
+          while <span className="text-red-500 font-semibold">🟥 toxicity signals</span> repel them from dangerous areas.
         </div>
       </div>
     </div>
   );
 }
-

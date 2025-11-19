@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 @layer base {
-  :root {
+:root {
     --background: 0 0% 100%;
     --foreground: 240 10% 3.9%;
     --card: 0 0% 100%;
@@ -23,7 +23,7 @@
     --border: 240 5.9% 90%;
     --input: 240 5.9% 90%;
     --ring: 240 5.9% 10%;
-    --radius: 0.5rem;
+  --radius: 0.5rem;
     
     /* Custom simulation colors - modernized */
     --ant-rule-based: 221 83% 53%; /* Blue */
@@ -32,9 +32,9 @@
     --food-color: 142 76% 36%; /* Green */
     --grid-cell: 240 5% 96%;
     --grid-border: 240 6% 90%;
-  }
+}
 
-  .dark {
+.dark {
     --background: 240 10% 3.9%;
     --foreground: 0 0% 98%;
     --card: 240 10% 3.9%;
@@ -57,7 +57,7 @@
     
     --grid-cell: 240 4% 10%;
     --grid-border: 240 4% 16%;
-  }
+}
 }
 
 @layer base {
