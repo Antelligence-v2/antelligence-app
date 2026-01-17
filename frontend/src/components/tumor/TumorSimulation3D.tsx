@@ -11,7 +11,7 @@ import { ScaleBar3D } from './ScaleBar3D';
 
 interface NanobotState {
   id: number;
-  position: [number, number];
+  position: [number, number, number] | [number, number];
   state: string;
   drug_payload: number;
   is_llm: boolean;
@@ -65,13 +65,27 @@ export function TumorSimulation3D({
   const trailsRef = useRef<Map<number, [number, number, number][]>>(new Map());
   const previousPositionsRef = useRef<Map<number, [number, number]>>(new Map());
   
+  // Focus state for camera follow
+  const [focusedNanobotId, setFocusedNanobotId] = React.useState<number | null>(null);
+  
+  // Get position of focused nanobot for camera to follow
+  const focusedNanobot = nanobots.find(nb => nb.id === focusedNanobotId);
+  const focusedPosition: [number, number, number] | null = focusedNanobot 
+    ? [
+        focusedNanobot.position[0] - domainSize / 2,
+        focusedNanobot.position[1] - domainSize / 2,
+        (focusedNanobot.position[2] || 0) + 20 // Look slightly above
+      ]
+    : null;
+
   // Update trails and previous positions
   useEffect(() => {
     nanobots.forEach(nanobot => {
+      const z = nanobot.position[2] !== undefined ? nanobot.position[2] : 5;
       const pos3D: [number, number, number] = [
         nanobot.position[0] - domainSize / 2,
         nanobot.position[1] - domainSize / 2,
-        5
+        z
       ];
       
       // Update trail
@@ -83,12 +97,15 @@ export function TumorSimulation3D({
     });
   }, [nanobots, domainSize]);
   
-  // Convert 2D positions to 3D coordinates
+  // Convert positions to 3D coordinates
   const nanobots3D = useMemo(() => {
-    return nanobots.map(nb => ({
-      ...nb,
-      position: [nb.position[0] - domainSize / 2, nb.position[1] - domainSize / 2, 0] as [number, number, number]
-    }));
+    return nanobots.map(nb => {
+        const z = nb.position[2] !== undefined ? nb.position[2] : 0;
+        return {
+            ...nb,
+            position: [nb.position[0] - domainSize / 2, nb.position[1] - domainSize / 2, z] as [number, number, number]
+        };
+    });
   }, [nanobots, domainSize]);
   
   // Get previous positions for direction calculation
@@ -102,7 +119,8 @@ export function TumorSimulation3D({
   // Update previous positions
   useEffect(() => {
     nanobots.forEach(nanobot => {
-      previousPositionsRef.current.set(nanobot.id, nanobot.position);
+      // Store current position (2D or 3D)
+      previousPositionsRef.current.set(nanobot.id, nanobot.position as [number, number]);
     });
   }, [nanobots]);
 
@@ -121,8 +139,11 @@ export function TumorSimulation3D({
   const useInstancedRendering = cells3D.length > 100;
 
   return (
-    <div className="w-full h-full">
-      <Scene3D className="w-full h-[600px] border-2 border-gray-300 rounded-lg shadow-2xl">
+    <div className="w-full h-full relative">
+      <Scene3D 
+        className="w-full h-[600px] border-2 border-gray-300 rounded-lg shadow-2xl"
+        focusedPosition={focusedPosition}
+      >
         {/* Substrate field background */}
         {substrateData && substrateData[selectedSubstrate as keyof SubstrateData] && (
           <>
@@ -210,6 +231,8 @@ export function TumorSimulation3D({
             nanobot={nanobot}
             previousPosition={nanobot.previousPosition}
             detailedMode={detailedMode}
+            onClick={setFocusedNanobotId}
+            isFocused={focusedNanobotId === nanobot.id}
           />
         ))}
         
@@ -224,13 +247,24 @@ export function TumorSimulation3D({
       
       {/* Enhanced 3D Legend */}
       <div className="mt-4 p-4 bg-white rounded-lg border shadow-sm">
-        <h4 className="font-bold text-sm text-gray-600 mb-3">🎮 3D Controls & Legend</h4>
+        <div className="flex justify-between items-center mb-3">
+            <h4 className="font-bold text-sm text-gray-600">🎮 3D Controls & Legend</h4>
+            {focusedNanobotId !== null && (
+                <button 
+                  onClick={() => setFocusedNanobotId(null)}
+                  className="px-3 py-1 bg-red-100 text-red-700 text-xs font-semibold rounded hover:bg-red-200 transition-colors flex items-center gap-1"
+                >
+                  <span>✕</span> Stop Following Nanobot {focusedNanobotId}
+                </button>
+            )}
+        </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
           <div>
             <div className="font-semibold mb-1">Mouse Controls:</div>
             <div>• Left drag: Rotate</div>
             <div>• Right drag: Pan</div>
             <div>• Scroll: Zoom</div>
+            <div>• <span className="text-blue-600 font-medium">Click nanobot: Follow</span></div>
           </div>
           <div>
             <div className="font-semibold mb-1">🤖 Nanobot States:</div>

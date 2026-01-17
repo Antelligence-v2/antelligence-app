@@ -33,8 +33,8 @@ export function TumorSimulationSidebar({
     onSettingsChange({ ...settings, [key]: value });
   };
 
-  const [domainOpen, setDomainOpen] = useState(true);
-  const [nanobotOpen, setNanobotOpen] = useState(true);
+  const [domainOpen, setDomainOpen] = useState(false);
+  const [nanobotOpen, setNanobotOpen] = useState(false);
   const [queenOpen, setQueenOpen] = useState(false);
   const [simOpen, setSimOpen] = useState(false);
   const [bratsOpen, setBratsOpen] = useState(false);
@@ -172,8 +172,8 @@ export function TumorSimulationSidebar({
               <Label className="text-xs font-medium text-muted-foreground">Domain Size (µm)</Label>
               <Input
                 type="number"
-                value={settings.domain_size}
-                onChange={(e) => updateSetting("domain_size", parseFloat(e.target.value))}
+                value={settings.domain_size.toString()}
+                onChange={(e) => updateSetting("domain_size", parseFloat(e.target.value) || 0)}
                 className="h-8 text-xs"
               />
             </div>
@@ -181,8 +181,8 @@ export function TumorSimulationSidebar({
               <Label className="text-xs font-medium text-muted-foreground">Voxel Size (µm)</Label>
               <Input
                 type="number"
-                value={settings.voxel_size}
-                onChange={(e) => updateSetting("voxel_size", parseFloat(e.target.value))}
+                value={settings.voxel_size.toString()}
+                onChange={(e) => updateSetting("voxel_size", parseFloat(e.target.value) || 0)}
                 className="h-8 text-xs"
               />
             </div>
@@ -190,8 +190,8 @@ export function TumorSimulationSidebar({
               <Label className="text-xs font-medium text-muted-foreground">Tumor Radius (µm)</Label>
               <Input
                 type="number"
-                value={settings.tumor_radius}
-                onChange={(e) => updateSetting("tumor_radius", parseFloat(e.target.value))}
+                value={settings.tumor_radius.toString()}
+                onChange={(e) => updateSetting("tumor_radius", parseFloat(e.target.value) || 0)}
                 className="h-8 text-xs"
               />
             </div>
@@ -214,8 +214,8 @@ export function TumorSimulationSidebar({
               <Label className="text-xs font-medium text-muted-foreground">Nanobot Count</Label>
               <Input
                 type="number"
-                value={settings.n_nanobots}
-                onChange={(e) => updateSetting("n_nanobots", parseInt(e.target.value))}
+                value={settings.n_nanobots.toString()}
+                onChange={(e) => updateSetting("n_nanobots", parseInt(e.target.value) || 0)}
                 className="h-8 text-xs"
               />
             </div>
@@ -302,8 +302,8 @@ export function TumorSimulationSidebar({
               <Label className="text-xs font-medium text-muted-foreground">Max Steps</Label>
               <Input
                 type="number"
-                value={settings.max_steps}
-                onChange={(e) => updateSetting("max_steps", parseInt(e.target.value))}
+                value={settings.max_steps.toString()}
+                onChange={(e) => updateSetting("max_steps", parseInt(e.target.value) || 0)}
                 className="h-8 text-xs"
               />
             </div>
@@ -311,8 +311,8 @@ export function TumorSimulationSidebar({
               <Label className="text-xs font-medium text-muted-foreground">Cell Density</Label>
               <Input
                 type="number"
-                value={settings.cell_density}
-                onChange={(e) => updateSetting("cell_density", parseFloat(e.target.value))}
+                value={settings.cell_density.toString()}
+                onChange={(e) => updateSetting("cell_density", parseFloat(e.target.value) || 0)}
                 className="h-8 text-xs"
                 step={0.0001}
               />
@@ -321,8 +321,8 @@ export function TumorSimulationSidebar({
               <Label className="text-xs font-medium text-muted-foreground">Vessel Density</Label>
               <Input
                 type="number"
-                value={settings.vessel_density}
-                onChange={(e) => updateSetting("vessel_density", parseFloat(e.target.value))}
+                value={settings.vessel_density.toString()}
+                onChange={(e) => updateSetting("vessel_density", parseFloat(e.target.value) || 0)}
                 className="h-8 text-xs"
                 step={0.001}
               />

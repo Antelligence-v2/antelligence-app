@@ -86,14 +86,14 @@ class NanobotAgent:
             self.position = np.array([
                 start_vessel.position[0] + offset[0],
                 start_vessel.position[1] + offset[1],
-                0.0  # 2D for now
+                5.0  # Start slightly elevated in Z
             ])
         else:
             # Random position if no vessels
             self.position = np.array([
                 np.random.uniform(model.microenv.x_range[0], model.microenv.x_range[1]),
                 np.random.uniform(model.microenv.y_range[0], model.microenv.y_range[1]),
-                0.0
+                5.0
             ])
         
         # Nanobot properties (medically realistic values)
@@ -237,6 +237,11 @@ class NanobotAgent:
                 direction_to_center = direction_to_center / np.linalg.norm(direction_to_center)
                 self.position[:2] += direction_to_center * self.speed
                 self.previous_direction = direction_to_center
+        
+        # Add 3D swimming motion (Z-axis oscillation)
+        # Simulate "hovering" or "swimming" in 3D space above the tissue plane
+        z_fluctuation = np.sin(self.model.step_count * 0.1 + self.nanobot_id) * 0.5
+        self.position[2] = 5.0 + z_fluctuation + np.random.uniform(-0.2, 0.2)
         
         self._clamp_position()
     
@@ -777,7 +782,7 @@ What should you do? Respond with ONE word only."""
         """Convert nanobot to dictionary for serialization."""
         return {
             'id': self.nanobot_id,
-            'position': tuple(self.position[:2]),
+            'position': tuple(self.position),  # Return full 3D position
             'state': self.state.value,
             'drug_payload': self.drug_payload,
             'deliveries_made': self.deliveries_made,

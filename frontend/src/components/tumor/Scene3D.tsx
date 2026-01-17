@@ -1,15 +1,41 @@
-import React, { Suspense } from 'react';
-import { Canvas } from '@react-three/fiber';
+import React, { Suspense, useRef, useEffect } from 'react';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, Environment, Stats } from '@react-three/drei';
+import * as THREE from 'three';
 
 interface Scene3DProps {
   children: React.ReactNode;
   className?: string;
   showStats?: boolean;
   showGrid?: boolean;
+  focusedPosition?: [number, number, number] | null;
 }
 
-export function Scene3D({ children, className, showStats = false, showGrid = true }: Scene3DProps) {
+// Camera Controller Component
+function CameraController({ focusedPosition }: { focusedPosition?: [number, number, number] | null }) {
+  const { camera, controls } = useThree();
+  const vec = new THREE.Vector3();
+
+  useFrame(() => {
+    if (focusedPosition) {
+      // Smoothly move camera target to follow the focused object
+      const target = new THREE.Vector3(...focusedPosition);
+      
+      // If we have OrbitControls, update its target
+      // @ts-ignore - OrbitControls type definition might be missing target property access
+      if (controls && controls.target) {
+        // @ts-ignore
+        controls.target.lerp(target, 0.1);
+        // @ts-ignore
+        controls.update();
+      }
+    }
+  });
+  
+  return null;
+}
+
+export function Scene3D({ children, className, showStats = false, showGrid = true, focusedPosition }: Scene3DProps) {
   return (
     <div className={className}>
       <Canvas
@@ -21,7 +47,17 @@ export function Scene3D({ children, className, showStats = false, showGrid = tru
         }}
         style={{ background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%)' }}
         shadows
-        performance={{ min: 0.5 }}
+        // Optimize WebGL context handling
+        gl={{ 
+          antialias: true, 
+          preserveDrawingBuffer: true,
+          powerPreference: 'high-performance',
+          failIfMajorPerformanceCaveat: false 
+        }}
+        onCreated={({ gl }) => {
+          gl.toneMapping = THREE.ACESFilmicToneMapping;
+          gl.outputColorSpace = THREE.SRGBColorSpace;
+        }}
       >
         {/* Enhanced Lighting Setup - brighter for dark background */}
         <ambientLight intensity={0.5} color="#ffffff" />
@@ -65,6 +101,9 @@ export function Scene3D({ children, className, showStats = false, showGrid = tru
         {/* Environment for realistic reflections - night/apartment for darker scenes */}
         <Environment preset="night" />
         
+        {/* Camera Controller for "Click-to-Follow" */}
+        <CameraController focusedPosition={focusedPosition} />
+
         {/* Scene content with loading fallback */}
         <Suspense fallback={null}>
           {children}
@@ -77,10 +116,11 @@ export function Scene3D({ children, className, showStats = false, showGrid = tru
         
         {/* Enhanced Camera Controls - Allow top-down view */}
         <OrbitControls
+          makeDefault
           enablePan={true}
           enableZoom={true}
           enableRotate={true}
-          minDistance={150}
+          minDistance={50} // Allowed closer zoom
           maxDistance={2000}
           minPolarAngle={0} // Allow viewing from top (0 degrees)
           maxPolarAngle={Math.PI} // Allow viewing from bottom too

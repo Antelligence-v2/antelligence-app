@@ -50,7 +50,7 @@ interface SimulationConfig {
 
 const Index = () => {
   const navigate = useNavigate();
-  const [showIntro, setShowIntro] = useState(true);
+  const [showIntro, setShowIntro] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   const [config, setConfig] = useState<SimulationConfig>({

@@ -26,8 +26,8 @@ export const SimulationSidebar: React.FC<SimulationSidebarProps> = ({
   onRunSimulation,
   isLoading
 }) => {
-  const [isHabitatOpen, setIsHabitatOpen] = useState(true);
-  const [isAgentOpen, setIsAgentOpen] = useState(true);
+  const [isHabitatOpen, setIsHabitatOpen] = useState(false);
+  const [isAgentOpen, setIsAgentOpen] = useState(false);
   const [isQueenOpen, setIsQueenOpen] = useState(false);
   const [isPredatorOpen, setIsPredatorOpen] = useState(false);
   const [isBlockchainOpen, setIsBlockchainOpen] = useState(false);

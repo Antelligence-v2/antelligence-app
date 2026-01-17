@@ -191,7 +191,7 @@ class BraTSSimulationConfig(BaseModel):
 class NanobotState(BaseModel):
     """State of a single nanobot at a point in time."""
     id: int
-    position: Tuple[float, float]
+    position: Tuple[float, float, float] | Tuple[float, float]
     state: str  # 'searching', 'targeting', 'delivering', 'returning', 'reloading'
     drug_payload: float
     deliveries_made: int
