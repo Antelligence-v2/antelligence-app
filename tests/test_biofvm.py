@@ -181,6 +181,22 @@ class TestDiffusionDecay:
         assert env.get_substrate("trail") is trail
         assert env.time == dt
 
+    @pytest.mark.parametrize("dimensionality", [2, 3])
+    @pytest.mark.parametrize("at_boundary", [False, True])
+    def test_no_flux_preserves_nonuniform_mass(self, dimensionality, at_boundary):
+        env = Microenvironment(
+            x_range=(0, 100), y_range=(0, 100), z_range=(0, 100),
+            dx=20.0, dy=20.0, dz=20.0, dimensionality=dimensionality,
+        )
+        substrate = env.add_substrate("drug", 1e-6, 0.0)
+        index = 0 if at_boundary else 1
+        point = (index, index, index if dimensionality == 3 else 0)
+        substrate.concentration[point] = 100.0
+        for _ in range(10):
+            env.step()
+            assert float(substrate.concentration.sum()) == pytest.approx(100.0, rel=1e-6)
+        assert np.count_nonzero(substrate.concentration) > 1
+
     def test_decay_reduces_concentration(self):
         env = Microenvironment(
             x_range=(0, 100),

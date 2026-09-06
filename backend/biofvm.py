@@ -246,14 +246,18 @@ class Microenvironment:
                 C[:, :, 0] = boundary_val
                 C[:, :, -1] = boundary_val
         else:
-            # Neumann (no-flux): zero gradient at boundaries
-            C[0, :, :] = C[1, :, :]
-            C[-1, :, :] = C[-2, :, :]
-            C[:, 0, :] = C[:, 1, :]
-            C[:, -1, :] = C[:, -2, :]
-            if self.dimensionality == 3:
-                C[:, :, 0] = C[:, :, 1]
-                C[:, :, -1] = C[:, :, -2]
+            # No-flux means zero exchange across the exterior faces, not
+            # copying interior concentrations onto boundary voxels. Every
+            # internal face transfers equal and opposite mass to its neighbors.
+            laplacian.fill(0.0)
+            for axis, spacing in enumerate((self.dx, self.dy, self.dz)[:self.dimensionality]):
+                flux = np.diff(C, axis=axis) / spacing**2
+                lower = [slice(None)] * C.ndim
+                upper = [slice(None)] * C.ndim
+                lower[axis] = slice(None, -1)
+                upper[axis] = slice(1, None)
+                laplacian[tuple(lower)] += flux
+                laplacian[tuple(upper)] -= flux
         
         # OPTIMIZATION: Combined vectorized update and clipping
         dC_dt = D * laplacian - λ * C + S
