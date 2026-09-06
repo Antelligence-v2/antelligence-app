@@ -181,7 +181,7 @@ def create_attestation_bundle(
     kill_rate = int(metrics.get("kill_rate", 0) * 100)  # Scale to basis points
     nanobot_count = config.get("nanobot_count", config.get("n_nanobots", 0))
     tumor_radius = config.get("tumor_radius", 0)
-    steps = config.get("steps", config.get("n_steps", 0))
+    steps = config.get("steps", config.get("n_steps", config.get("max_steps", 0)))
 
     public_values_payload = build_public_values_payload(
         config_hash=config_hash,

@@ -1,6 +1,6 @@
 # schemas.py
 from pydantic import BaseModel, Field
-from typing import List, Tuple, Dict, Literal, Optional
+from typing import Any, List, Tuple, Dict, Literal, Optional
 import numpy as np
 
 class SimulationConfig(BaseModel):
@@ -152,6 +152,8 @@ class TumorSimulationConfig(BaseModel):
     use_queen: bool = False
     use_llm_queen: bool = False
     max_steps: int = Field(100, gt=0, le=500, description="Maximum simulation steps")
+    seed: Optional[int] = Field(None, description="Explicit random seed for reproducible runs")
+    offline: bool = Field(False, description="Reject LLM and blockchain calls for local-only execution")
     
     # Cell parameters
     cell_density: float = Field(0.001, gt=0, description="Tumor cells per µm²")
@@ -244,6 +246,14 @@ class TumorSimulationResult(BaseModel):
     tumor_statistics: Dict  # Summary stats about tumor kill rate, etc.
     final_substrate_data: Optional[SubstrateMapData] = None
     blockchain_logs: List[str] = []
+    run_id: str = ""
+    config_hash: str = ""
+    proof_staged: bool = False
+    proof_ok: bool = False
+    public_values: Dict[str, Any] = Field(default_factory=dict)
+    proof_bundle: Dict[str, Any] = Field(default_factory=dict)
+    mock_bundle: Dict[str, Any] = Field(default_factory=dict)
+    provenance: Dict[str, Any] = Field(default_factory=dict)
 
 
 class TumorComparisonConfig(TumorSimulationConfig):
