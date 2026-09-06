@@ -88,6 +88,41 @@ class TestCLISimulate:
             assert "bots" not in data["config"]
 
 
+class TestLocalCommandSafety:
+    def test_simulate_explicit_local_policy_and_seed(self, capsys):
+        from backend.cli import cmd_simulate
+
+        args = Namespace(steps=1, bots=1, grid_size=5, seed=7, output=None)
+        with patch("backend.cli.TumorNanobotModel", side_effect=_fake_model) as factory:
+            cmd_simulate(args)
+        assert factory.call_args.kwargs["agent_type"] == "Rule-Based"
+        assert factory.call_args.kwargs["use_llm_queen"] is False
+        assert factory.call_args.kwargs["seed"] == 7
+        json.loads(capsys.readouterr().out)
+
+    def test_benchmark_explicit_local_policy_and_json(self, capsys):
+        from backend.cli import cmd_benchmark
+
+        args = Namespace(runs=2, steps=1, bots=1, grid_size=5, output=None)
+        with patch("backend.cli.TumorNanobotModel", side_effect=_fake_model) as factory:
+            cmd_benchmark(args)
+        assert factory.call_count == 2
+        assert [c.kwargs["seed"] for c in factory.call_args_list] == [0, 1]
+        assert all(c.kwargs["agent_type"] == "Rule-Based" for c in factory.call_args_list)
+        data = json.loads(capsys.readouterr().out)
+        assert len(data["results"]) == 2
+
+    def test_real_command_stdout_is_json(self):
+        result = subprocess.run(
+            CLI + ["simulate", "--steps", "1", "--bots", "1", "--grid-size", "5", "--seed", "7"],
+            capture_output=True, text=True, timeout=30,
+        )
+        assert result.returncode == 0, result.stderr
+        data = json.loads(result.stdout)
+        assert data["metrics"]["step_count"] == 1
+        assert data["metrics"]["total_api_calls"] == 0
+
+
 class TestCLILeaderboard:
     def test_leaderboard_offline_graceful(self):
         """leaderboard command should not crash when blockchain is unavailable."""
