@@ -146,7 +146,7 @@ class TumorSimulationConfig(BaseModel):
     model_config = ConfigDict(extra="forbid", allow_inf_nan=False)
     domain_size: float = Field(600.0, gt=0, description="Simulation domain size in micrometers")
     voxel_size: float = Field(10.0, gt=0, description="Voxel spacing in micrometers")
-    n_nanobots: int = Field(10, gt=0, le=100, description="Number of nanobots")
+    n_nanobots: int = Field(10, ge=0, le=100, description="Number of nanobots")
     tumor_radius: float = Field(200.0, gt=0, description="Tumor radius in micrometers")
     agent_type: Literal["LLM-Powered", "Rule-Based", "Hybrid"] = "LLM-Powered"
     selected_model: str = "meta-llama/Llama-3.3-70B-Instruct"
@@ -155,6 +155,7 @@ class TumorSimulationConfig(BaseModel):
     max_steps: int = Field(100, gt=0, le=500, description="Maximum simulation steps")
     seed: Optional[int] = Field(None, ge=0, le=4294967295, description="Explicit random seed for reproducible runs")
     offline: bool = Field(False, description="Reject LLM and blockchain calls for local-only execution")
+    pheromones_enabled: bool = Field(True, description="Enable pheromone substrates and signaling")
     
     # Cell parameters
     cell_density: float = Field(0.001, gt=0, description="Tumor cells per µm²")
@@ -269,6 +270,7 @@ class TumorSimulationResult(BaseModel):
     final_metrics: Dict
     history: List[TumorStepState]
     tumor_statistics: Dict  # Summary stats about tumor kill rate, etc.
+    initial_geometry_hash: str = ""
     final_substrate_data: Optional[SubstrateMapData] = None
     blockchain_logs: List[str] = []
     run_id: str = ""

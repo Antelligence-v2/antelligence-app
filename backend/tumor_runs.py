@@ -26,6 +26,17 @@ def canonical_config_hash(config: Dict[str, Any]) -> str:
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
+def initial_geometry_hash(model: Any) -> str:
+    """Hash the real pre-step synthetic cells, vessels, and their coordinates."""
+    geometry = model.geometry
+    payload = {
+        "cells": [cell.to_dict() for cell in geometry.tumor_cells],
+        "vessels": [vessel.to_dict() for vessel in geometry.vessels],
+    }
+    canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"), default=_json_default)
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
 def build_tumor_provenance(
     *,
     run_id: str,

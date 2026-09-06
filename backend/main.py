@@ -1,8 +1,8 @@
 # main.py
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
 import os
 import uvicorn
@@ -51,7 +51,7 @@ for import_path in (str(project_root), str(current_dir)):
 from simulation import SimpleForagingModel
 from nanobot_simulation import TumorNanobotModel
 from tumor_environment import CellPhase
-from backend.tumor_runs import TumorRunStore, build_tumor_provenance
+from backend.tumor_runs import TumorRunStore, build_tumor_provenance, initial_geometry_hash
 from schemas import (
     SimulationConfig, SimulationResult, StepState, AntState,
     PheromoneMapData, ForagingEfficiencyData, FoodDepletionPoint,
@@ -62,6 +62,15 @@ from schemas import (
     NanobotState, TumorCellState, VesselState, SubstrateMapData,
     TumorComparisonConfig, TumorComparisonResult, TumorPerformanceData,
     TumorHuntConfig
+)
+from backend.experiments import (
+    ExperimentCaseNotFound,
+    ExperimentFailure,
+    ExperimentNotFound,
+    ExperimentRequest,
+    ExperimentStore,
+    execute_experiment,
+    replay_experiment_case,
 )
 
 # Load environment variables
@@ -81,6 +90,7 @@ _DEFAULT_DB_PATH = Path(
     os.environ.get("ANTELLIGENCE_RUN_DB", project_root / "data" / "api_runs.sqlite3")
 )
 TUMOR_RUN_STORE = TumorRunStore(_DEFAULT_DB_PATH)
+EXPERIMENT_STORE = ExperimentStore(_DEFAULT_DB_PATH)
 _TUMOR_RUNS = {}
 
 # Mount static files (frontend build)
@@ -583,7 +593,7 @@ def convert_substrate_maps(model: TumorNanobotModel) -> SubstrateMapData:
             mean_values[name] = float(np.mean(substrate.concentration))
         else:
             # Create empty grid if substrate doesn't exist
-            grid_size = model.microenv.dims[0]
+            grid_size = model.microenv.shape[0]
             substrate_data[name] = [[0.0] * grid_size for _ in range(grid_size)]
             max_values[name] = 0.0
             mean_values[name] = 0.0
@@ -649,11 +659,13 @@ def _validate_tumor_execution(config: TumorSimulationConfig):
                 },
             )
 
-def _new_tumor_model(config: TumorSimulationConfig, *, pheromones_enabled: bool = True):
+def _new_tumor_model(config: TumorSimulationConfig, *, pheromones_enabled: bool | None = None):
     # Geometry still consumes module-global RNGs; model.rng alone is insufficient.
     if config.seed is not None:
         np.random.seed(config.seed)
         random.seed(config.seed)
+    if pheromones_enabled is None:
+        pheromones_enabled = config.pheromones_enabled
     return TumorNanobotModel(
         domain_size=config.domain_size,
         voxel_size=config.voxel_size,
@@ -684,6 +696,7 @@ async def run_tumor_simulation(config: TumorSimulationConfig):
 
         print(f"[TUMOR SIM] Model initialized. Starting {config.max_steps} steps...")
         initial_stats = model.geometry.get_tumor_statistics()
+        initial_geometry = initial_geometry_hash(model)
         history = []
         detail_interval = max(1, config.max_steps // 20)
         vessels_state = [
@@ -749,6 +762,7 @@ async def run_tumor_simulation(config: TumorSimulationConfig):
             final_metrics=final_metrics,
             history=history,
             tumor_statistics=tumor_statistics,
+            initial_geometry_hash=initial_geometry,
             final_substrate_data=final_substrate_data,
             blockchain_logs=blockchain_logs,
             run_id=run_id,
@@ -795,7 +809,56 @@ def get_tumor_run(run_id: str):
             status_code=404,
             detail={"type": "run_not_found", "run_id": run_id, "message": f"Run '{run_id}' not found."},
         )
-    return TumorSimulationResult(**result)
+    return JSONResponse(content=result)
+
+
+@app.post("/experiments")
+async def create_experiment(request: ExperimentRequest):
+    """Run the bounded no-bot/fixed/pheromone batch sequentially."""
+    try:
+        return await execute_experiment(
+            request,
+            runner=run_tumor_simulation,
+            store=EXPERIMENT_STORE,
+        )
+    except ExperimentFailure as failure:
+        raise HTTPException(status_code=failure.status_code, detail=failure.detail) from failure
+
+
+@app.get("/experiments")
+def list_experiments(
+    limit: int = Query(50, ge=1, le=50),
+    offset: int = Query(0, ge=0),
+):
+    experiments, has_more = EXPERIMENT_STORE.list(limit=limit, offset=offset)
+    return {"experiments": experiments, "has_more": has_more}
+
+
+@app.get("/experiments/{experiment_id}")
+def get_experiment(experiment_id: str):
+    document = EXPERIMENT_STORE.get(experiment_id)
+    if document is None:
+        raise HTTPException(
+            status_code=404,
+            detail={"type": "experiment_not_found", "experiment_id": experiment_id},
+        )
+    return document
+
+
+@app.post("/experiments/{experiment_id}/replay/{case_id}")
+async def replay_experiment(experiment_id: str, case_id: str):
+    try:
+        return await replay_experiment_case(
+            experiment_id,
+            case_id,
+            runner=run_tumor_simulation,
+            store=EXPERIMENT_STORE,
+            tumor_store=TUMOR_RUN_STORE,
+        )
+    except (ExperimentNotFound, ExperimentCaseNotFound) as missing:
+        status = 404
+        detail_type = "experiment_not_found" if isinstance(missing, ExperimentNotFound) else "experiment_case_not_found"
+        raise HTTPException(status_code=status, detail={"type": detail_type, "id": str(missing)}) from missing
 
 
 @app.post("/simulation/tumor/performance", response_model=TumorPerformanceData)
