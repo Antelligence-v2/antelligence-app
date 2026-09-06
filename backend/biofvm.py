@@ -269,8 +269,9 @@ class Microenvironment:
         if dt is None:
             dt = self.dt
             
-        # Simulate all substrates
-        for substrate in self.substrates.values():
+        # Compatibility names may refer to the same physical field. Integrate
+        # each object once, not once per lookup name (which changes its clock).
+        for substrate in dict.fromkeys(self.substrates.values()):
             self.simulate_diffusion_decay(substrate, dt)
             
         self.time += dt

@@ -157,6 +157,30 @@ class TestMicroenvironment:
 class TestDiffusionDecay:
     """Tests for diffusion and decay simulation."""
 
+    @pytest.mark.parametrize("dimensionality", [2, 3])
+    def test_aliases_do_not_advance_the_same_field_twice(self, dimensionality):
+        env = Microenvironment(
+            x_range=(0, 100), y_range=(0, 100), z_range=(0, 100),
+            dx=20.0, dy=20.0, dz=20.0, dimensionality=dimensionality,
+        )
+        trail = env.add_substrate(
+            "trail_pheromone", diffusion_coefficient=1e-6,
+            decay_rate=0.1, initial_value=10.0,
+        )
+        # These are the compatibility aliases installed by TumorNanobotModel.
+        env.substrates["trail"] = trail
+        env.substrates["legacy_trail"] = trail
+        trail.source_sink.fill(2.0)
+        before = trail.concentration.copy()
+        dt = env.dt
+        expected = before + dt * (-trail.decay_rate * before + trail.source_sink)
+
+        env.step()
+
+        np.testing.assert_array_equal(trail.concentration, expected)
+        assert env.get_substrate("trail") is trail
+        assert env.time == dt
+
     def test_decay_reduces_concentration(self):
         env = Microenvironment(
             x_range=(0, 100),
