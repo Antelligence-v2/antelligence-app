@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useNavigate } from 'react-router-dom';
-import { Brain } from 'lucide-react';
+import { Brain, FlaskConical } from 'lucide-react';
 import antFrontpageImage from '/ant-frontpage.jpg';
 
 interface IntroPageProps {
@@ -26,6 +26,10 @@ export const IntroPage: React.FC<IntroPageProps> = ({ onEnter }) => {
 
   const handleTumorHunt = () => {
     navigate('/tumor-hunt');
+  };
+
+  const handleExperimentLab = () => {
+    navigate('/experiments');
   };
 
   // Handle keyboard enter
@@ -75,6 +79,15 @@ export const IntroPage: React.FC<IntroPageProps> = ({ onEnter }) => {
               className="w-80 h-14 text-lg font-semibold border-2 border-slate-300 hover:border-slate-400 bg-slate-100 text-slate-800 hover:bg-slate-200 hover:text-slate-800"
             >
               Tumor Nanobot Simulation
+            </Button>
+            <Button
+              onClick={handleExperimentLab}
+              size="lg"
+              variant="outline"
+              className="w-80 h-14 text-lg font-semibold border-2 border-purple-300 hover:border-purple-400 bg-purple-50 text-purple-900 hover:bg-purple-100 hover:text-purple-950"
+            >
+              <FlaskConical className="mr-2 h-5 w-5" />
+              Experiment Lab
             </Button>
             <Button 
               onClick={handleTumorHunt}

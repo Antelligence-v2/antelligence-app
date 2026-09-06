@@ -7,6 +7,7 @@ import Index from "./pages/Index";
 import SimulationComparison from "./pages/SimulationComparison";
 import TumorSimulation from "./pages/TumorSimulation";
 import TumorHunt from "./pages/TumorHunt";
+import ExperimentLab from "./pages/ExperimentLab";
 import NotFound from "./pages/NotFound";
 import { PreviewModeBanner } from "./components/PreviewModeBanner";
 
@@ -25,6 +26,8 @@ const App = () => (
             <Route path="/comparison" element={<SimulationComparison />} />
             <Route path="/tumor" element={<TumorSimulation />} />
             <Route path="/tumor-hunt" element={<TumorHunt />} />
+            <Route path="/experiments" element={<ExperimentLab />} />
+            <Route path="/experiments/:id" element={<ExperimentLab />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

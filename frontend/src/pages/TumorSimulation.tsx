@@ -11,7 +11,7 @@ import { TumorSimulationSidebar } from "@/components/TumorSimulationSidebar";
 import { RunProvenance } from "@/components/RunProvenance";
 // Removed TumorPerformanceCharts import - moved to visualization tab
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Brain, Activity, Zap, Home } from "lucide-react";
+import { Brain, Activity, Zap, Home, FlaskConical } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { BUILD_INFO, IS_PREVIEW_MODE, API_BASE_URL } from "@/lib/runtime";
 
@@ -221,8 +221,8 @@ const TumorSimulation = () => {
       <main className="flex-1 flex flex-col overflow-hidden">
         {/* Header with gradient background */}
         <div className="p-4 border-b bg-gradient-to-r from-white via-blue-50 to-indigo-50 dark:from-slate-800 dark:via-slate-700 dark:to-slate-600 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-4">
               <Button
                 onClick={() => navigate('/')}
                 variant="ghost"
@@ -231,6 +231,15 @@ const TumorSimulation = () => {
               >
                 <Home className="w-4 h-4 mr-2" />
                 Back to Home
+              </Button>
+              <Button
+                onClick={() => navigate('/experiments')}
+                variant="outline"
+                size="sm"
+                className="gap-2 border-purple-300 text-purple-700 hover:border-purple-400 hover:bg-purple-50 dark:border-purple-700 dark:text-purple-300 dark:hover:bg-purple-950/40"
+              >
+                <FlaskConical className="h-4 w-4" />
+                Experiment Lab
               </Button>
               <div className="h-6 w-px bg-slate-300 dark:bg-slate-600" />
               <div className="flex items-center gap-3">
