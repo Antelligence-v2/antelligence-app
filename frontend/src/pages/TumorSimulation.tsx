@@ -189,7 +189,7 @@ const TumorSimulation = () => {
     currentStep: currentStepData?.step ?? 0,
     totalSteps: simulationResults?.total_steps_run ?? 0,
     time: currentStepData?.time ?? 0,
-    cellsKilled: simulationResults?.tumor_statistics?.cells_killed ?? 0,
+    cellsKilled: currentStepData?.metrics?.cells_killed ?? 0,
     deliveries: currentStepData?.metrics?.total_deliveries ?? 0,
     drugDelivered: currentStepData?.metrics?.total_drug_delivered ?? 0,
     hypoxicCells: currentStepData?.metrics?.hypoxic_cells ?? 0,

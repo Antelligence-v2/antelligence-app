@@ -17,6 +17,12 @@ def test_empty_geometry_cannot_report_successful_treatment():
     assert metrics["kill_rate"] == 0.0
 
 
+def test_model_preserves_existing_positional_seed_argument():
+    from backend.nanobot_simulation import TumorNanobotModel
+    model = TumorNanobotModel(1, 100.0, 20.0, 30.0, "Rule-Based", False, False, "unused", None, 17, None)
+    assert model.seed == 17
+
+
 def test_minimal_api_and_replay_explicitly_choose_rule_based_workers():
     kwargs = SimulationConfig(queen_enabled=True).to_model_kwargs()
     assert kwargs.get("agent_type") == "Rule-Based"

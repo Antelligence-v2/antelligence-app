@@ -1238,9 +1238,9 @@ class TumorNanobotModel:
         use_llm_queen: bool = False,
         selected_model: str = "meta-llama/Llama-3.3-70B-Instruct",
         pheromone_params: Optional[Dict[str, float]] = None,
-        pheromones_enabled: bool = True,
         seed: Optional[int] = None,
         chain_intel_reader=None,
+        pheromones_enabled: bool = True,
         cell_density: float = 0.001,
         vessel_density: float = 0.01,
     ):

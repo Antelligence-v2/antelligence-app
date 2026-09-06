@@ -29,6 +29,8 @@ with sync_playwright() as p:
     page.get_by_text(result['run_id'], exact=True).wait_for(timeout=15000)
     page.reload()
     page.get_by_text(result['run_id'], exact=True).wait_for(timeout=15000)
+    killed_label = page.get_by_text('Killed:', exact=True).locator('..').inner_text()
+    assert killed_label == f"Killed: {result['history'][0]['metrics']['cells_killed']} cells", killed_label
     with page.expect_response(lambda r: r.url.endswith('/simulation/tumor/runs/' + result['run_id'])) as retrieved:
         page.get_by_role('button', name='Retrieve', exact=True).click()
     persisted = retrieved.value.json()
