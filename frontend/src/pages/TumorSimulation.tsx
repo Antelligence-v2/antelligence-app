@@ -8,6 +8,7 @@ import { SimulationLoading } from "@/components/SimulationLoading";
 import { TumorSimulationGrid } from "@/components/TumorSimulationGrid";
 import { TumorSimulationControls } from "@/components/TumorSimulationControls";
 import { TumorSimulationSidebar } from "@/components/TumorSimulationSidebar";
+import { RunProvenance } from "@/components/RunProvenance";
 // Removed TumorPerformanceCharts import - moved to visualization tab
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Brain, Activity, Zap, Home } from "lucide-react";
@@ -24,6 +25,8 @@ interface TumorSimulationConfig {
   use_queen: boolean;
   use_llm_queen: boolean;
   max_steps: number;
+  seed: number;
+  offline: boolean;
   cell_density: number;
   vessel_density: number;
 }
@@ -35,11 +38,13 @@ const TumorSimulation = () => {
     voxel_size: 20.0,
     n_nanobots: 10,
     tumor_radius: 200.0,
-    agent_type: "LLM-Powered",
+    agent_type: "Rule-Based",
     selected_model: "mistralai/Mistral-Large-Instruct-2411",
-    use_queen: true,
-    use_llm_queen: true,
+    use_queen: false,
+    use_llm_queen: false,
     max_steps: 200,
+    seed: 17,
+    offline: true,
     cell_density: 0.001,
     vessel_density: 0.01,
   });
@@ -438,6 +443,15 @@ const TumorSimulation = () => {
             )}
           </div>
         </div>
+
+        {simulationResults && (
+          <RunProvenance
+            runId={simulationResults.run_id}
+            provenance={simulationResults.provenance}
+            apiBaseUrl={API_BASE_URL}
+            isPreviewMode={IS_PREVIEW_MODE}
+          />
+        )}
       </main>
     </div>
   );
