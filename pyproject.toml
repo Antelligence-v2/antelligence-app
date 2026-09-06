@@ -37,5 +37,12 @@ python_classes = "Test*"
 python_functions = "test_*"
 addopts = "-v --tb=short"
 
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["backend*"]
+
 [tool.uv]
-package = false
+package = true
