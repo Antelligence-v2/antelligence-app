@@ -67,6 +67,9 @@ def test_experiment_runs_real_three_arm_same_seed_cases_and_persists(api):
     ]
     assert {case["arm"] for case in experiment["cases"]} == {"no_bots", "fixed", "pheromone"}
     assert all(case["proof_ok"] is not True for case in experiment["cases"] if "proof_ok" in case)
+    # Check the batch boundary before interactive GETs deliberately cache the
+    # individual runs selected for playback below.
+    assert not {case["run_id"] for case in experiment["cases"]}.intersection(module._TUMOR_RUNS)
     for seed in experiment["request"]["seeds"]:
         same_seed = [case for case in experiment["cases"] if case["seed"] == seed]
         assert len({case["initial_geometry_hash"] for case in same_seed}) == 1
@@ -87,6 +90,7 @@ def test_experiment_runs_real_three_arm_same_seed_cases_and_persists(api):
     loaded = client.get(f"/experiments/{experiment['experiment_id']}")
     assert loaded.status_code == 200
     assert loaded.json() == experiment
+
 
 
 def test_replay_is_real_and_persists_match(api):
@@ -249,3 +253,72 @@ print(client.get('/experiments').json()['experiments'][0]['case_count'])
     result = subprocess.run([sys.executable, "-c", code], cwd=REPO_ROOT, env=env, capture_output=True, text=True, timeout=60)
     assert result.returncode == 0, result.stderr
     assert "200\n200\n3" in result.stdout
+
+
+def test_report_limitations_are_a_renderable_string_list(api):
+    _, client, _ = api
+    report = client.post("/experiments", json=experiment_payload()).json()
+    assert isinstance(report["limitations"], list)
+    assert report["limitations"] and all(isinstance(item, str) for item in report["limitations"])
+
+
+@pytest.mark.parametrize("seed", [True, 17.0, "17", 17.5])
+def test_experiment_seed_tokens_are_not_coerced(api, monkeypatch, seed):
+    module, client, _ = api
+    calls = []
+    def unexpected_model(**kwargs):
+        calls.append(kwargs)
+        raise AssertionError("invalid seed reached model")
+    monkeypatch.setattr(module, "TumorNanobotModel", unexpected_model)
+    payload = experiment_payload()
+    payload["seeds"] = [seed]
+    response = client.post("/experiments", json=payload)
+    assert response.status_code == 422, response.text
+    assert calls == []
+
+
+def test_mismatched_initial_geometry_cannot_complete_an_experiment(api, monkeypatch):
+    module, client, _ = api
+    original_factory = module._new_tumor_model
+    def divergent_geometry(config, **kwargs):
+        model = original_factory(config, **kwargs)
+        if config.pheromones_enabled:
+            cell = model.geometry.tumor_cells[0]
+            cell.position = (cell.position[0] + 1.0, *cell.position[1:])
+        return model
+    monkeypatch.setattr(module, "_new_tumor_model", divergent_geometry)
+    response = client.post("/experiments", json=experiment_payload())
+    assert response.status_code == 500, response.text
+    report = client.get("/experiments/" + response.json()["detail"]["experiment_id"]).json()
+    assert report["status"] == "failed"
+    assert report["matched_initial_geometry"] is False
+
+
+def test_empty_population_is_not_a_successful_experiment(api):
+    _, client, _ = api
+    response = client.post("/experiments", json=experiment_payload(tumor_radius=1.0))
+    assert response.status_code == 500, response.text
+    report = client.get("/experiments/" + response.json()["detail"]["experiment_id"]).json()
+    assert report["status"] == "failed"
+    assert report["case_count"] == 0
+
+
+def test_incomplete_batch_does_not_claim_running_or_mismatched(api, monkeypatch):
+    module, client, _ = api
+    real_runner = module.run_tumor_simulation
+    calls = 0
+    async def interrupted(config):
+        nonlocal calls
+        calls += 1
+        if calls == 2:
+            raise KeyboardInterrupt("simulated process interruption")
+        return await real_runner(config)
+    import asyncio
+    request = module.ExperimentRequest(**experiment_payload())
+    with pytest.raises(KeyboardInterrupt):
+        asyncio.run(module.execute_experiment(request, runner=interrupted, store=module.EXPERIMENT_STORE))
+    entry = client.get("/experiments").json()["experiments"][0]
+    report = client.get("/experiments/" + entry["experiment_id"]).json()
+    assert report["status"] == "partial"
+    assert report["case_count"] == 1
+    assert report["matched_initial_geometry"] is None

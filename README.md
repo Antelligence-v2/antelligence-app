@@ -12,6 +12,22 @@ Antelligence is a DeSci swarm-intelligence product for tumor simulation, nanobot
 
 ## Current product surface
 
+### Experiment Lab
+
+Open `/experiments` (also linked from the home and tumor pages) to run matched,
+multi-seed tumor experiments: **no bots**, **fixed-rule bots**, and
+**pheromone-coordinated bots**. The lab saves all individual runs and a comparative
+report, offers playback links and JSON/CSV exports, and can recompute a saved case
+to check local replay equality.
+
+This advances the vision's measurable swarm coordination and reproducibility:
+the operator chooses a bounded experiment, rather than manually assembling and
+comparing individual animations. The report distinguishes natural cell loss from
+differences against controls and does not declare a winner on ties. Results remain
+synthetic 2D, short-horizon research—not clinical efficacy, modeled toxicity, or
+cryptographic verification. See [Experiment Lab](docs/EXPERIMENT_LAB.md) for usage,
+API routes, limits and the acceptance workflow.
+
 ### CLI
 
 The Python package exposes these entry points:

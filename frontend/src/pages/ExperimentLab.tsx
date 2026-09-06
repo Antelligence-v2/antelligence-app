@@ -194,7 +194,7 @@ function ReplayResult({ check }: { check: ReplayCheck }) {
         Replay: {statusLabel(check.status)}
       </div>
       <p className="mt-1 text-muted-foreground">{check.message || "Backend replay check completed."}</p>
-      <div className="mt-2 grid gap-1 font-mono text-[10px] text-muted-foreground md:grid-cols-2">
+      <div className="mt-2 grid gap-1 break-all font-mono text-[10px] text-muted-foreground md:grid-cols-2">
         <span>expected: {check.expected_trace_hash || "—"}</span>
         <span>actual: {check.actual_trace_hash || "—"}</span>
         <span>checked: {check.checked_at || "—"}</span>
@@ -260,7 +260,7 @@ function CaseRow({
             <TableRow>
               <TableHead>Initial cells</TableHead>
               <TableHead>Final cells</TableHead>
-              <TableHead>Net change</TableHead>
+              <TableHead>Living-cell reduction</TableHead>
               <TableHead>Deliveries</TableHead>
               <TableHead>Drug delivered</TableHead>
               <TableHead>Simulated time</TableHead>
@@ -282,7 +282,7 @@ function CaseRow({
       </div>
       <details className="mt-3">
         <summary className="cursor-pointer text-xs font-medium text-muted-foreground hover:text-foreground">Saved bindings</summary>
-        <div className="mt-2 grid gap-1 rounded bg-muted/50 p-3 font-mono text-[10px] text-muted-foreground md:grid-cols-3">
+        <div className="mt-2 grid gap-1 break-all rounded bg-muted/50 p-3 font-mono text-[10px] text-muted-foreground md:grid-cols-3">
           <span>config: {item.config_hash || "—"}</span>
           <span>geometry: {item.initial_geometry_hash || "—"}</span>
           <span>trace: {item.trace_hash || "—"}</span>
@@ -301,12 +301,12 @@ function SummaryTable({ summary }: { summary: ExperimentSummary[] }) {
           <TableRow>
             <TableHead>Arm</TableHead>
             <TableHead>Seeds</TableHead>
-            <TableHead>Net change mean</TableHead>
+            <TableHead>Living-cell reduction mean</TableHead>
             <TableHead>Sample SD</TableHead>
             <TableHead>Deliveries mean</TableHead>
             <TableHead>Drug mean</TableHead>
-            <TableHead>vs no bots</TableHead>
-            <TableHead>vs fixed</TableHead>
+            <TableHead>vs no bots (pp)</TableHead>
+            <TableHead>vs fixed (pp)</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -318,8 +318,8 @@ function SummaryTable({ summary }: { summary: ExperimentSummary[] }) {
               <TableCell>{formatPercent(item.net_cell_reduction_pct_std)}</TableCell>
               <TableCell>{formatExperimentNumber(item.deliveries_mean)}</TableCell>
               <TableCell>{formatExperimentNumber(item.drug_delivered_mean)}</TableCell>
-              <TableCell>{formatPercent(item.vs_no_bots_pp)}</TableCell>
-              <TableCell>{formatPercent(item.vs_fixed_pp)}</TableCell>
+              <TableCell>{formatExperimentNumber(item.vs_no_bots_pp)} pp</TableCell>
+              <TableCell>{formatExperimentNumber(item.vs_fixed_pp)} pp</TableCell>
             </TableRow>
           ))}
         </TableBody>
@@ -393,7 +393,7 @@ function ExperimentReport({
             <div className="rounded-lg border border-slate-800 bg-slate-900/80 p-4"><p className="text-xs uppercase tracking-wide text-slate-400">Seeds</p><p className="mt-1 text-xl font-semibold">{(experiment.request?.seeds ?? []).join(", ") || "—"}</p></div>
             <div className="rounded-lg border border-slate-800 bg-slate-900/80 p-4"><p className="text-xs uppercase tracking-wide text-slate-400">Steps per run</p><p className="mt-1 text-xl font-semibold">{formatExperimentNumber(experiment.request?.config?.max_steps, 0)}</p></div>
             <div className="rounded-lg border border-slate-800 bg-slate-900/80 p-4"><p className="text-xs uppercase tracking-wide text-slate-400">Requested bots</p><p className="mt-1 text-xl font-semibold">{formatExperimentNumber(experiment.request?.config?.n_nanobots, 0)}</p></div>
-            <div className="rounded-lg border border-slate-800 bg-slate-900/80 p-4"><p className="text-xs uppercase tracking-wide text-slate-400">Geometry</p><p className="mt-1 text-sm font-semibold">{experiment.matched_initial_geometry ? "Matched across arms" : "Mismatch reported"}</p></div>
+            <div className="rounded-lg border border-slate-800 bg-slate-900/80 p-4"><p className="text-xs uppercase tracking-wide text-slate-400">Geometry</p><p className="mt-1 text-sm font-semibold">{experiment.matched_initial_geometry === true ? "Matched across arms" : experiment.matched_initial_geometry === false ? "Mismatch reported" : "Not established"}</p></div>
           </div>
           <div className="rounded-lg border border-slate-800 bg-slate-900/50 p-4 text-sm text-slate-300">
             <div className="flex items-start gap-2"><Info className="mt-0.5 h-4 w-4 shrink-0 text-indigo-300" /><p>Actual simulated duration, deliveries, and drug-delivered values are shown per saved case below. Sample SD is only calculated where the backend has at least two cases in an arm. This local synthetic 2D model has short exposure, no toxicity model, a descriptive small sample, and replay checks are not cryptographic proof.</p></div>
@@ -406,7 +406,7 @@ function ExperimentReport({
           <Card>
             <CardHeader>
               <CardTitle>Comparative report</CardTitle>
-              <CardDescription>Mean net cell change by arm; bars are actual saved summary values.</CardDescription>
+              <CardDescription>Mean net living-cell reduction by arm. Positive means fewer surviving cells; negative means growth.</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="h-[300px] w-full">
@@ -415,9 +415,9 @@ function ExperimentReport({
                     <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
                     <XAxis dataKey="name" tick={{ fontSize: 12 }} />
                     <YAxis tick={{ fontSize: 12 }} unit="%" />
-                    <Tooltip formatter={(value: number | null) => [formatPercent(value), "Mean net change"]} />
+                    <Tooltip formatter={(value: number | null) => [formatPercent(value), "Mean living-cell reduction"]} />
                     <Legend />
-                    <Bar dataKey="mean" name="Mean net cell change" fill="#818cf8" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="mean" name="Mean living-cell reduction" fill="#818cf8" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -597,8 +597,9 @@ export default function ExperimentLab() {
       const response = await axios.post(`${API_BASE_URL}/experiments/${encodeURIComponent(experiment.experiment_id)}/replay/${encodeURIComponent(caseId)}`);
       const check = response.data as ReplayCheck;
       if (!check || typeof check.status !== "string") throw new Error("The backend returned an invalid replay check.");
-      setExperiment((current) => current ? { ...current, replay_checks: [...(current.replay_checks ?? []).filter((item) => item.case_id !== caseId), check] } : current);
-      toast.success(`Replay ${statusLabel(check.status)} for ${caseId}.`);
+      setExperiment((current) => current ? { ...current, replay_checks: [...(current.replay_checks ?? []), check] } : current);
+      if (check.status === "matched") toast.success(`Replay matched for ${caseId}.`);
+      else toast.error(`Replay ${statusLabel(check.status)} for ${caseId}.`);
     } catch (error: any) {
       toast.error(`Replay check failed: ${apiErrorMessage(error)}`);
     } finally {
@@ -644,8 +645,8 @@ export default function ExperimentLab() {
           <div className="mt-4"><ArmDefinitions /></div>
         </section>
 
-        <div className="grid items-start gap-6 lg:grid-cols-[minmax(290px,360px)_minmax(0,1fr)]">
-          <aside className="space-y-6">
+        <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(290px,360px)_minmax(0,1fr)]">
+          <aside className="min-w-0 space-y-6">
             <Card className="border-indigo-200 shadow-md dark:border-indigo-900">
               <CardHeader>
                 <CardTitle>Build an experiment</CardTitle>

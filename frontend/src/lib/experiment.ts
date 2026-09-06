@@ -175,7 +175,10 @@ const CSV_COLUMNS = [
 
 function csvCell(value: unknown): string {
   if (value === null || value === undefined) return "";
-  const text = typeof value === "string" ? value : JSON.stringify(value);
+  let text = typeof value === "string" ? value : JSON.stringify(value);
+  // Spreadsheet programs interpret these text prefixes as formulas. Numeric
+  // values (including negative measured reductions) must remain numbers.
+  if (typeof value === "string" && /^[=+@\-\t\r]/.test(text)) text = `'${text}`;
   return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 }
 

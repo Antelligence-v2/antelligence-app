@@ -111,6 +111,16 @@ test("CSV export contains actual case and summary values with safe quoting", () 
   assert.match(csv, /case,exp-1,"Seed, study",completed,fixed:17,fixed,17,run-17/);
   assert.match(csv, /summary,exp-1,"Seed, study",completed,,,,,,,,,,,,,,,fixed,1,20,,4,12\.5/);
   assert.match(csv, /Synthetic 2D only/);
+  for (const unsafeName of ["=1+1", "+1+1", "-cmd", "@SUM(A1:A2)"]) {
+    const safeCsv = experimentToCsv({ ...experiment, name: unsafeName });
+    assert.ok(safeCsv.includes(`case,exp-1,'${unsafeName},completed`), unsafeName);
+    assert.equal(JSON.parse(experimentToJson({ ...experiment, name: unsafeName })).name, unsafeName);
+  }
+  const negative = experimentToCsv({
+    ...experiment,
+    cases: [{ ...experiment.cases[0], net_cell_reduction_pct: -2 }],
+  });
+  assert.ok(negative.includes(",10,8,-2,4,12.5,"), "numeric growth must stay numeric, not text");
 });
 
 test("JSON export is the saved report, not a reduced chart projection", () => {

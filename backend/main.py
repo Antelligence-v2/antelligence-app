@@ -812,13 +812,21 @@ def get_tumor_run(run_id: str):
     return JSONResponse(content=result)
 
 
+async def _run_experiment_case(config: TumorSimulationConfig):
+    result = await run_tumor_simulation(config)
+    # The runner has already persisted this snapshot. Batch history must not
+    # accumulate in the interactive single-run cache; playback reads SQLite.
+    _TUMOR_RUNS.pop(result.run_id, None)
+    return result
+
+
 @app.post("/experiments")
 async def create_experiment(request: ExperimentRequest):
     """Run the bounded no-bot/fixed/pheromone batch sequentially."""
     try:
         return await execute_experiment(
             request,
-            runner=run_tumor_simulation,
+            runner=_run_experiment_case,
             store=EXPERIMENT_STORE,
         )
     except ExperimentFailure as failure:
@@ -851,7 +859,7 @@ async def replay_experiment(experiment_id: str, case_id: str):
         return await replay_experiment_case(
             experiment_id,
             case_id,
-            runner=run_tumor_simulation,
+            runner=_run_experiment_case,
             store=EXPERIMENT_STORE,
             tumor_store=TUMOR_RUN_STORE,
         )

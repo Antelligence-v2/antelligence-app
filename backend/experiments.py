@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Awaitable, Callable, Dict, Iterable, Optional
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, StrictInt, model_validator
 
 try:  # Reuse the schema module selected by the frontend API entry point.
     from schemas import TumorSimulationConfig
@@ -24,10 +24,13 @@ except ImportError:  # pragma: no cover - direct package imports.
 
 
 ARM_ORDER = ("no_bots", "fixed", "pheromone")
-LIMITATIONS = (
-    "Synthetic 2D only; short simulated exposure; toxicity is not modeled; "
-    "descriptive small sample; local deterministic replay is not cryptographic."
-)
+LIMITATIONS = [
+    "Synthetic 2D geometry, not patient data.",
+    "Short simulated exposure; inspect each case's simulated duration.",
+    "Toxicity is not modeled.",
+    "Descriptive small sample; no clinical efficacy or statistical superiority claim.",
+    "Local deterministic replay is not cryptographic verification.",
+]
 
 
 class ExperimentRequest(BaseModel):
@@ -36,7 +39,7 @@ class ExperimentRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     name: str = Field(min_length=1, max_length=80)
-    seeds: list[int] = Field(min_length=1, max_length=5)
+    seeds: list[StrictInt] = Field(min_length=1, max_length=5)
     config: TumorSimulationConfig
 
     @model_validator(mode="after")
@@ -220,11 +223,11 @@ def _new_document(request: ExperimentRequest) -> Dict[str, Any]:
         "experiment_id": str(uuid.uuid4()),
         "name": request.name,
         "created_at": _now(),
-        "status": "running",
+        "status": "partial",
         "request": _dump(request),
         "case_count": 0,
         "seed_count": len(request.seeds),
-        "matched_initial_geometry": False,
+        "matched_initial_geometry": None,
         "cases": [],
         "summary": [],
         "replay_checks": [],
@@ -265,7 +268,9 @@ def _case_from_result(
     metrics = data["final_metrics"]
     initial = int(stats["initial_living_cells"])
     final = int(stats["final_living_cells"])
-    reduction = None if initial <= 0 else 100.0 * (initial - final) / initial
+    if initial <= 0:
+        raise ValueError("Initial living-cell population is empty; reduction is unmeasured.")
+    reduction = 100.0 * (initial - final) / initial
     return {
         "case_id": f"{arm}:{seed}",
         "arm": arm,
@@ -334,8 +339,11 @@ def _refresh_document(document: Dict[str, Any]) -> None:
     grouped = {}
     for case in cases:
         grouped.setdefault(case["seed"], []).append(case.get("initial_geometry_hash", ""))
-    document["matched_initial_geometry"] = bool(grouped) and all(
-        len(values) == 3 and values[0] and len(set(values)) == 1 for values in grouped.values()
+    required_seeds = document["request"]["seeds"]
+    complete = len(cases) == len(required_seeds) * len(ARM_ORDER) and set(grouped) == set(required_seeds)
+    document["matched_initial_geometry"] = (
+        all(len(values) == len(ARM_ORDER) and bool(values[0]) and len(set(values)) == 1 for values in grouped.values())
+        if complete else None
     )
 
 
@@ -363,8 +371,10 @@ async def execute_experiment(
                 )
                 _refresh_document(document)
                 store.save(document)
-        document["status"] = "completed"
         _refresh_document(document)
+        if document["matched_initial_geometry"] is not True:
+            raise ValueError("Initial geometries do not match across arms.")
+        document["status"] = "completed"
         store.save(document)
         return document
     except Exception as exc:

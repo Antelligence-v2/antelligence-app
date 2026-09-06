@@ -75,7 +75,7 @@ export interface Experiment {
   request: ExperimentRequest;
   case_count: number;
   seed_count: number;
-  matched_initial_geometry: boolean;
+  matched_initial_geometry: boolean | null;
   cases: ExperimentCase[];
   summary: ExperimentSummary[];
   replay_checks: ReplayCheck[];
