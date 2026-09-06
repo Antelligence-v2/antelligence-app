@@ -29,9 +29,9 @@ def build_model(cfg: SimulationConfig, model_factory: ModelFactory = TumorNanobo
 def compute_metrics(model: TumorNanobotModel) -> Dict[str, Any]:
     metrics = dict(model.metrics)
     stats = model.geometry.get_tumor_statistics()
-    total = max(1, stats.get("total_cells", 1))
+    total = stats.get("total_cells", 0)
     living = stats.get("living_cells", total)
-    metrics["kill_rate"] = (total - living) / total
+    metrics["kill_rate"] = (total - living) / total if total > 0 else 0.0
     metrics["step_count"] = model.step_count
     metrics["total_cells"] = total
     metrics["living_cells"] = living

@@ -55,6 +55,9 @@ class SimulationConfig(BaseModel):
             "voxel_size": voxel_size,
             "tumor_radius": tumor_radius,
             "with_queen": self.queen_enabled,
+            # This small reproducible config has no paid/model policy fields.
+            "agent_type": "Rule-Based",
+            "use_llm_queen": False,
             "pheromone_params": self.pheromone_params.model_dump(),
             "seed": self.seed,
         }
