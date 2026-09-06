@@ -210,6 +210,15 @@ class Microenvironment:
         D = substrate.diffusion_coefficient
         λ = substrate.decay_rate
         S = substrate.source_sink
+        boundary_faces = []
+        if substrate.dirichlet_boundary_value is not None:
+            C = C.copy()
+            for axis in range(self.dimensionality):
+                for endpoint in (0, -1):
+                    face: list[slice | int] = [slice(None)] * C.ndim
+                    face[axis] = endpoint
+                    boundary_faces.append(tuple(face))
+                    C[tuple(face)] = substrate.dirichlet_boundary_value
         
         # OPTIMIZATION: Pre-compute common values for 2-3x speedup
         dx2_inv = 1.0 / (self.dx**2)
@@ -234,18 +243,7 @@ class Microenvironment:
                 dz2_inv * (C[1:-1, 1:-1, 2:] - 2*C[1:-1, 1:-1, 1:-1] + C[1:-1, 1:-1, :-2])
             )
         
-        # OPTIMIZATION: Vectorized boundary conditions
-        if substrate.dirichlet_boundary_value is not None:
-            # Dirichlet: fixed concentration at boundaries
-            boundary_val = substrate.dirichlet_boundary_value
-            C[0, :, :] = boundary_val
-            C[-1, :, :] = boundary_val
-            C[:, 0, :] = boundary_val
-            C[:, -1, :] = boundary_val
-            if self.dimensionality == 3:
-                C[:, :, 0] = boundary_val
-                C[:, :, -1] = boundary_val
-        else:
+        if substrate.dirichlet_boundary_value is None:
             # No-flux means zero exchange across the exterior faces, not
             # copying interior concentrations onto boundary voxels. Every
             # internal face transfers equal and opposite mass to its neighbors.
@@ -262,6 +260,9 @@ class Microenvironment:
         # OPTIMIZATION: Combined vectorized update and clipping
         dC_dt = D * laplacian - λ * C + S
         substrate.concentration = np.maximum(C + dt * dC_dt, 0.0)
+        # A fixed reservoir is not changed by decay or source terms.
+        for boundary_face in boundary_faces:
+            substrate.concentration[boundary_face] = substrate.dirichlet_boundary_value
     
     def step(self, dt: Optional[float] = None):
         """

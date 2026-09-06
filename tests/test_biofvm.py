@@ -197,6 +197,23 @@ class TestDiffusionDecay:
             assert float(substrate.concentration.sum()) == pytest.approx(100.0, rel=1e-6)
         assert np.count_nonzero(substrate.concentration) > 1
 
+    @pytest.mark.parametrize("dimensionality", [2, 3])
+    def test_fixed_boundary_remains_fixed_after_decay_and_sources(self, dimensionality):
+        env = Microenvironment(
+            x_range=(0, 100), y_range=(0, 100), z_range=(0, 100),
+            dx=20.0, dy=20.0, dz=20.0, dimensionality=dimensionality,
+        )
+        substrate = env.add_substrate("oxygen", 1e-6, 0.1, dirichlet_boundary_value=38.0)
+        substrate.source_sink.fill(2.0)
+        env.step()
+        for axis in range(dimensionality):
+            np.testing.assert_array_equal(np.take(substrate.concentration, 0, axis), 38.0)
+            np.testing.assert_array_equal(np.take(substrate.concentration, -1, axis), 38.0)
+        # Boundary oxygen must influence adjacent interior voxels in this step,
+        # not wait for a later step to repair stale boundary values.
+        point = (1, 1, 1 if dimensionality == 3 else 0)
+        assert substrate.concentration[point] > 2.0 * env.dt
+
     def test_decay_reduces_concentration(self):
         env = Microenvironment(
             x_range=(0, 100),
