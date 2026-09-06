@@ -221,6 +221,50 @@ def test_unsupported_or_unbounded_configs_fail_before_simulation(api, overrides,
     assert response.status_code == 422
 
 
+def test_initial_hypoxia_is_captured_before_model_steps(api, monkeypatch):
+    module, client = api
+    real_model = module.TumorNanobotModel
+
+    def controlled_model(**kwargs):
+        model = real_model(**kwargs)
+        for cell in model.geometry.tumor_cells:
+            cell.phase = type(cell.phase).VIABLE
+        cell = model.geometry.tumor_cells[0]
+        cell.phase = type(cell.phase).HYPOXIC
+        real_step = model.step
+        def step():
+            real_step()
+            for current in model.geometry.tumor_cells:
+                current.phase = type(current.phase).VIABLE
+        model.step = step
+        return model
+
+    monkeypatch.setattr(module, 'TumorNanobotModel', controlled_model)
+    response = client.post('/simulation/tumor/run', json=_offline_config())
+    assert response.status_code == 200, response.text
+    assert response.json()['tumor_statistics']['initial_hypoxic'] == 1
+    assert response.json()['tumor_statistics']['final_hypoxic'] == 0
+
+
+def test_minimal_api_row_is_not_a_tumor_snapshot(api):
+    module, client = api
+    module.TUMOR_RUN_STORE.run_store.save_run('minimal-only', 'completed', {}, {})
+    response = client.get('/simulation/tumor/runs/minimal-only')
+    assert response.status_code == 404
+    assert module.TUMOR_RUN_STORE.run_store.get_run('minimal-only') is not None
+
+
+def test_failed_persistence_does_not_publish_a_cached_run(api, monkeypatch):
+    module, client = api
+    before = set(module._TUMOR_RUNS)
+    def fail_save(**kwargs):
+        raise OSError('test-only storage failure')
+    monkeypatch.setattr(module.TUMOR_RUN_STORE, 'save', fail_save)
+    response = client.post('/simulation/tumor/run', json=_offline_config())
+    assert response.status_code == 500
+    assert set(module._TUMOR_RUNS) == before
+
+
 def test_health_endpoint_remains_available(api):
     _, client = api
     response = client.get("/health")

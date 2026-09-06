@@ -52,4 +52,3 @@ with sync_playwright() as p:
     (OUT / 'browser-receipt.json').write_text(json.dumps(receipt, indent=2))
     print(json.dumps(receipt, indent=2))
     browser.close()
-

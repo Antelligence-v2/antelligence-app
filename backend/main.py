@@ -721,7 +721,7 @@ async def run_tumor_simulation(config: TumorSimulationConfig):
             "final_living_cells": final_living,
             "cells_killed": cells_killed,
             "kill_rate": cells_killed / initial_living if initial_living > 0 else 0,
-            "initial_hypoxic": len([c for c in model.geometry.tumor_cells if c.phase.value == "hypoxic"]),
+            "initial_hypoxic": initial_stats["phase_distribution"].get("hypoxic", 0),
             "final_hypoxic": final_stats["phase_distribution"].get("hypoxic", 0),
             "apoptotic_cells": final_stats["phase_distribution"].get("apoptotic", 0),
             "necrotic_cells": final_stats["phase_distribution"].get("necrotic", 0),
@@ -754,7 +754,6 @@ async def run_tumor_simulation(config: TumorSimulationConfig):
             provenance=provenance,
         )
         result_data = _model_dump(result)
-        _TUMOR_RUNS[run_id] = result_data
         TUMOR_RUN_STORE.save(
             run_id=run_id,
             status="completed",
@@ -763,6 +762,7 @@ async def run_tumor_simulation(config: TumorSimulationConfig):
             provenance=provenance,
             result=result_data,
         )
+        _TUMOR_RUNS[run_id] = result_data
         return result
     except HTTPException:
         raise
@@ -781,9 +781,8 @@ def get_tumor_run(run_id: str):
         persisted = TUMOR_RUN_STORE.get(run_id)
         if persisted is not None:
             result = persisted.get("result")
-            if result is None:
-                result = persisted
-            _TUMOR_RUNS[run_id] = result
+            if result is not None:
+                _TUMOR_RUNS[run_id] = result
     if result is None:
         raise HTTPException(
             status_code=404,
