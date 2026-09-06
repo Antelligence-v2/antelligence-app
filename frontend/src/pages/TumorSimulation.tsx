@@ -70,42 +70,59 @@ const TumorSimulation = () => {
     setSimulationResults(null);
     toast.info("Starting tumor nanobot simulation...");
 
+    const progressInterval = setInterval(() => {
+      setLoadingProgress(prev => Math.min(prev + 1, 90));
+    }, 200);
     try {
-      const progressInterval = setInterval(() => {
-        setLoadingProgress(prev => Math.min(prev + 1, 90));
-      }, 200);
-
       const response = await axios.post(`${API_BASE_URL}/simulation/tumor/run`, config);
-      
-      clearInterval(progressInterval);
       setLoadingProgress(100);
-
       setSimulationResults(response.data);
       setCurrentStep(0);
-      
-      // Save simulation data to session storage for visualization tab
-      sessionStorage.setItem('tumorSimulationResults', JSON.stringify(response.data));
-      sessionStorage.setItem('tumorSimulationConfig', JSON.stringify(config));
-      sessionStorage.setItem('tumorSimulationStep', '0');
-      
-      setTimeout(() => {
-        setIsLoading(false);
-        setLoadingProgress(0);
-        toast.success("Simulation complete! Results loaded for playback.");
-      }, 800);
-      
+      // Full histories exceed browser storage quotas; persist only a URL pointer.
+      const url = new URL(window.location.href);
+      url.searchParams.set("run", response.data.run_id);
+      window.history.replaceState(window.history.state, "", url);
+      toast.success("Simulation complete! Results loaded for playback.");
     } catch (error: any) {
       console.error("Tumor simulation API error:", error);
+      const detail = error.response?.data?.detail;
+      toast.error(`Failed to run simulation: ${detail?.message ?? (typeof detail === "string" ? detail : error.message)}`);
+    } finally {
+      clearInterval(progressInterval);
       setIsLoading(false);
       setLoadingProgress(0);
-      toast.error(`Failed to run simulation: ${error.response?.data?.detail || error.message}`);
     }
   }, [config]);
+
+  useEffect(() => {
+    const runId = new URLSearchParams(window.location.search).get("run");
+    if (!runId || IS_PREVIEW_MODE) return;
+    const controller = new AbortController();
+    setIsLoading(true);
+    axios.get(`${API_BASE_URL}/simulation/tumor/runs/${encodeURIComponent(runId)}`, { signal: controller.signal })
+      .then(({ data }) => {
+        setSimulationResults(data);
+        setConfig(data.config);
+        setCurrentStep(0);
+      })
+      .catch((error) => {
+        if (!controller.signal.aborted) {
+          toast.error(`Could not load saved run: ${error.response?.data?.detail?.message ?? error.message}`);
+        }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setIsLoading(false);
+      });
+    return () => controller.abort();
+  }, []);
 
   const handleReset = () => {
     setIsPlaying(false);
     setSimulationResults(null);
     setCurrentStep(0);
+    const url = new URL(window.location.href);
+    url.searchParams.delete("run");
+    window.history.replaceState(window.history.state, "", url);
     toast("Simulation has been reset.");
   };
 
@@ -166,10 +183,7 @@ const TumorSimulation = () => {
 
    const currentSubstrateData = getCurrentSubstrateData();
    
-   // Debug logging
-   console.log('Simulation Results:', simulationResults);
-   console.log('Current Step Data:', currentStepData);
-   console.log('Current Substrate Data:', currentSubstrateData);
+
 
   const metrics = {
     currentStep: currentStepData?.step ?? 0,
@@ -225,7 +239,7 @@ const TumorSimulation = () => {
                     Tumor Nanobot Simulation
                   </h1>
                   <p className="text-sm text-slate-600 dark:text-slate-400">
-                    Glioblastoma Treatment Analysis
+                    Synthetic 2D research model — not clinical treatment guidance
                   </p>
                   {IS_PREVIEW_MODE && (
                     <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">
@@ -398,7 +412,7 @@ const TumorSimulation = () => {
                            </p>
                            <p className="text-sm text-pink-700 dark:text-pink-300">
                              Nanobots navigate toward hypoxic tumor regions using chemotaxis and pheromone trails, 
-                             delivering targeted drug payloads to maximize treatment effectiveness.
+                             delivering targeted drug payloads in a simplified research model, not a prediction of clinical effectiveness.
                            </p>
                          </div>
                        </div>
