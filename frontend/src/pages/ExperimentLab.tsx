@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import axios from "axios";
 import {
   Activity,
@@ -509,6 +509,7 @@ export default function ExperimentLab() {
   const [requestErrors, setRequestErrors] = useState<string[]>([]);
   const [libraryError, setLibraryError] = useState<string | null>(null);
   const [reportError, setReportError] = useState<string | null>(null);
+  const reportGeneration = useRef(0);
 
   const updateSelectedUrl = useCallback((id: string) => {
     const url = new URL(window.location.href);
@@ -518,18 +519,20 @@ export default function ExperimentLab() {
 
   const loadExperiment = useCallback(async (id: string, signal?: AbortSignal) => {
     if (IS_PREVIEW_MODE) return;
+    const generation = ++reportGeneration.current;
     setIsLoadingReport(true);
     setReportError(null);
     try {
       const response = await axios.get(`${API_BASE_URL}/experiments/${encodeURIComponent(id)}`, { signal });
-      if (!isExperiment(response.data)) throw new Error("The backend returned an invalid saved experiment report.");
+      if (signal?.aborted || generation !== reportGeneration.current) return;
+      if (!isExperiment(response.data) || response.data.experiment_id !== id) throw new Error("The backend returned an invalid saved experiment report.");
       setExperiment(response.data);
       setSelectedId(response.data.experiment_id);
       updateSelectedUrl(response.data.experiment_id);
     } catch (error: any) {
-      if (!signal?.aborted) setReportError(apiErrorMessage(error));
+      if (!signal?.aborted && generation === reportGeneration.current) setReportError(apiErrorMessage(error));
     } finally {
-      if (!signal?.aborted) setIsLoadingReport(false);
+      if (!signal?.aborted && generation === reportGeneration.current) setIsLoadingReport(false);
     }
   }, [updateSelectedUrl]);
 
@@ -564,11 +567,14 @@ export default function ExperimentLab() {
     setReportError(null);
     if (errors.length > 0 || IS_PREVIEW_MODE) return;
 
+    const generation = ++reportGeneration.current;
+    setIsLoadingReport(false);
     setIsSubmitting(true);
     setExperiment(null);
     setSelectedId(null);
     try {
       const response = await axios.post(`${API_BASE_URL}/experiments`, request, { timeout: 300000 });
+      if (generation !== reportGeneration.current) { await loadLibrary(); return; }
       if (!isExperiment(response.data)) throw new Error("The backend returned an invalid experiment report.");
       setExperiment(response.data);
       setSelectedId(response.data.experiment_id);
@@ -577,6 +583,7 @@ export default function ExperimentLab() {
       toast.success(response.data.status === "completed" ? "Experiment saved." : `Experiment saved as ${statusLabel(response.data.status)}.`);
     } catch (error: any) {
       const detail = error?.response?.data?.detail;
+      if (generation !== reportGeneration.current) return;
       const retainedId = detail?.experiment_id || error?.response?.data?.experiment_id;
       if (retainedId) {
         setRequestErrors([`${apiErrorMessage(error)} The backend retained experiment ${retainedId}; loading its saved report.`]);
@@ -591,17 +598,22 @@ export default function ExperimentLab() {
   };
 
   const replayCase = async (caseId: string) => {
-    if (IS_PREVIEW_MODE || !experiment) return;
+    if (IS_PREVIEW_MODE || !experiment || replayingCaseId !== null) return;
+    const experimentId = experiment.experiment_id;
+    const generation = reportGeneration.current;
     setReplayingCaseId(caseId);
     try {
-      const response = await axios.post(`${API_BASE_URL}/experiments/${encodeURIComponent(experiment.experiment_id)}/replay/${encodeURIComponent(caseId)}`);
+      const response = await axios.post(`${API_BASE_URL}/experiments/${encodeURIComponent(experimentId)}/replay/${encodeURIComponent(caseId)}`);
       const check = response.data as ReplayCheck;
-      if (!check || typeof check.status !== "string") throw new Error("The backend returned an invalid replay check.");
-      setExperiment((current) => current ? { ...current, replay_checks: [...(current.replay_checks ?? []), check] } : current);
+      if (generation !== reportGeneration.current) return;
+      if (!check || !["matched", "mismatch", "error"].includes(check.status) || check.experiment_id !== experimentId || check.case_id !== caseId) throw new Error("The backend returned an invalid replay check.");
+      setExperiment((current) => current?.experiment_id === experimentId && current.cases.some((item) => item.case_id === caseId)
+        ? { ...current, replay_checks: [...(current.replay_checks ?? []), check] }
+        : current);
       if (check.status === "matched") toast.success(`Replay matched for ${caseId}.`);
       else toast.error(`Replay ${statusLabel(check.status)} for ${caseId}.`);
     } catch (error: any) {
-      toast.error(`Replay check failed: ${apiErrorMessage(error)}`);
+      if (generation === reportGeneration.current) toast.error(`Replay check failed: ${apiErrorMessage(error)}`);
     } finally {
       setReplayingCaseId(null);
     }
@@ -695,7 +707,7 @@ export default function ExperimentLab() {
           <div className="min-w-0 space-y-6">
             {reportError && <Alert variant="destructive"><TriangleAlert className="h-4 w-4" /><AlertTitle>Could not load saved report</AlertTitle><AlertDescription>{reportError}</AlertDescription></Alert>}
             {isLoadingReport && <Card><CardContent className="flex min-h-64 flex-col items-center justify-center gap-3 text-center"><LoaderCircle className="h-8 w-8 animate-spin text-indigo-500" /><p className="font-medium">Loading saved report…</p><p className="text-sm text-muted-foreground">Reading the selected experiment from the backend.</p></CardContent></Card>}
-            {!isLoadingReport && experiment && <ExperimentReport experiment={experiment} replayingCaseId={replayingCaseId} onReplay={replayCase} replayDisabled={IS_PREVIEW_MODE} />}
+            {!isLoadingReport && experiment && <ExperimentReport experiment={experiment} replayingCaseId={replayingCaseId} onReplay={replayCase} replayDisabled={IS_PREVIEW_MODE || replayingCaseId !== null} />}
             {!isLoadingReport && !experiment && !reportError && !isSubmitting && <Card className="border-dashed"><CardContent className="flex min-h-96 flex-col items-center justify-center px-6 text-center"><FlaskConical className="h-12 w-12 text-indigo-400" /><h2 className="mt-4 text-xl font-semibold">Your saved report will appear here</h2><p className="mt-2 max-w-md text-sm leading-relaxed text-muted-foreground">Configure a hypothesis, declare the seeds, then run the experiment. The report will include actual backend cases, paired charts, variability, playback links, and replay checks.</p></CardContent></Card>}
           </div>
         </div>
