@@ -627,9 +627,7 @@ def _offline_calls(config: TumorSimulationConfig) -> list[str]:
     return calls
 
 
-@app.post("/simulation/tumor/run", response_model=TumorSimulationResult)
-async def run_tumor_simulation(config: TumorSimulationConfig):
-    """Run a tumor simulation and persist its staged proof provenance."""
+def _validate_tumor_execution(config: TumorSimulationConfig):
     if config.use_brats_geometry or config.brats_patient_id is not None:
         raise HTTPException(
             status_code=422,
@@ -651,29 +649,38 @@ async def run_tumor_simulation(config: TumorSimulationConfig):
                 },
             )
 
+def _new_tumor_model(config: TumorSimulationConfig, *, pheromones_enabled: bool = True):
+    # Geometry still consumes module-global RNGs; model.rng alone is insufficient.
+    if config.seed is not None:
+        np.random.seed(config.seed)
+        random.seed(config.seed)
+    return TumorNanobotModel(
+        domain_size=config.domain_size,
+        voxel_size=config.voxel_size,
+        n_nanobots=config.n_nanobots,
+        tumor_radius=config.tumor_radius,
+        agent_type=config.agent_type,
+        with_queen=config.use_queen,
+        use_llm_queen=config.use_llm_queen,
+        selected_model=config.selected_model,
+        seed=config.seed,
+        cell_density=config.cell_density,
+        vessel_density=config.vessel_density,
+        pheromones_enabled=pheromones_enabled,
+    )
+
+
+@app.post("/simulation/tumor/run", response_model=TumorSimulationResult)
+async def run_tumor_simulation(config: TumorSimulationConfig):
+    """Run a tumor simulation and persist its staged proof provenance."""
+    _validate_tumor_execution(config)
+
     run_id = str(uuid.uuid4())
     try:
         actual_config = _model_dump(config)
         print(f"[TUMOR SIM] Starting tumor simulation with config: {actual_config}")
 
-        # Honor the caller's explicit seed for every RNG used by the model.
-        if config.seed is not None:
-            np.random.seed(config.seed)
-            random.seed(config.seed)
-
-        model = TumorNanobotModel(
-            domain_size=config.domain_size,
-            voxel_size=config.voxel_size,
-            n_nanobots=config.n_nanobots,
-            tumor_radius=config.tumor_radius,
-            agent_type=config.agent_type,
-            with_queen=config.use_queen,
-            use_llm_queen=config.use_llm_queen,
-            selected_model=config.selected_model,
-            seed=config.seed,
-            cell_density=config.cell_density,
-            vessel_density=config.vessel_density,
-        )
+        model = _new_tumor_model(config)
 
         print(f"[TUMOR SIM] Model initialized. Starting {config.max_steps} steps...")
         initial_stats = model.geometry.get_tumor_statistics()
@@ -796,23 +803,12 @@ async def get_tumor_performance(config: TumorSimulationConfig):
     """
     Run tumor simulation and return focused performance metrics.
     """
+    _validate_tumor_execution(config)
     try:
         print(f"[TUMOR PERF] Running performance analysis...")
         
-        np.random.seed(42)
-        random.seed(42)
-        
-        model = TumorNanobotModel(
-            domain_size=config.domain_size,
-            voxel_size=config.voxel_size,
-            n_nanobots=config.n_nanobots,
-            tumor_radius=config.tumor_radius,
-            agent_type=config.agent_type,
-            with_queen=config.use_queen,
-            use_llm_queen=config.use_llm_queen,
-            selected_model=config.selected_model
-        )
-        
+        model = _new_tumor_model(config)
+
         initial_hypoxic = len(model.geometry.get_cells_in_phase(CellPhase.HYPOXIC))
         initial_living = len(model.geometry.get_living_cells())
         
@@ -851,33 +847,22 @@ async def compare_tumor_strategies(config: TumorComparisonConfig):
     """
     Compare pheromone-guided vs. non-pheromone nanobot strategies.
     """
+    _validate_tumor_execution(config)
+    if config.agent_type != "Rule-Based" or config.use_queen or config.use_llm_queen:
+        raise HTTPException(status_code=422, detail={
+            "type": "unsupported_comparison_policy",
+            "message": "Pheromone ablation requires Rule-Based workers without a Queen.",
+        })
+    if config.seed is None:
+        config = config.model_copy(update={"seed": 0})
     try:
         print(f"[TUMOR COMPARE] Starting strategy comparison...")
         
         # Helper function to run one simulation
         def run_one(use_pheromones: bool, steps: int):
-            np.random.seed(42)
-            random.seed(42)
-            
-            model = TumorNanobotModel(
-                domain_size=config.domain_size,
-                voxel_size=config.voxel_size,
-                n_nanobots=config.n_nanobots,
-                tumor_radius=config.tumor_radius,
-                agent_type="Rule-Based",  # Use rule-based for fair comparison
-                with_queen=False,
-                use_llm_queen=False,
-                selected_model=config.selected_model
-            )
-            
+            model = _new_tumor_model(config, pheromones_enabled=use_pheromones)
+
             initial_living = len(model.geometry.get_living_cells())
-            
-            # If not using pheromones, disable chemotaxis to pheromones
-            if not use_pheromones:
-                for nanobot in model.nanobots:
-                    nanobot.chemotaxis_weights['trail'] = 0.0
-                    nanobot.chemotaxis_weights['alarm'] = 0.0
-                    nanobot.chemotaxis_weights['recruitment'] = 0.0
             
             for _ in range(steps):
                 model.step()
@@ -1014,6 +999,7 @@ async def compare_nanobot_vs_ced(config: TumorSimulationConfig):
     Run nanobot simulation and CED baseline on the same tumor geometry.
     Returns side-by-side comparison metrics.
     """
+    _validate_tumor_execution(config)
     try:
         from ced_baseline import CEDSimulation, CEDParams
         from tumor_environment import create_simple_tumor_environment

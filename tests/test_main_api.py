@@ -265,6 +265,62 @@ def test_failed_persistence_does_not_publish_a_cached_run(api, monkeypatch):
     assert set(module._TUMOR_RUNS) == before
 
 
+def test_comparison_executes_requested_seed_and_real_off_condition(api, monkeypatch):
+    module, client = api
+    real_model = module.TumorNanobotModel
+    built = []
+    def record_model(**kwargs):
+        model = real_model(**kwargs)
+        built.append((kwargs, model, [cell.to_dict() for cell in model.geometry.tumor_cells]))
+        return model
+    monkeypatch.setattr(module, 'TumorNanobotModel', record_model)
+    response = client.post('/simulation/tumor/compare', json=_offline_config(seed=23, comparison_steps=2, cell_density=0.002, vessel_density=0.03))
+    assert response.status_code == 200, response.text
+    assert [kwargs.get('seed') for kwargs, _, _ in built] == [23, 23]
+    assert [model.pheromones_enabled for _, model, _ in built] == [True, False]
+    assert built[0][2] == built[1][2]
+    assert all(kwargs.get('cell_density') == 0.002 and kwargs.get('vessel_density') == 0.03 for kwargs, _, _ in built)
+    assert 'trail_pheromone' not in built[1][1].microenv.substrates
+
+
+@pytest.mark.parametrize('endpoint', ['performance', 'compare', 'compare-ced'])
+@pytest.mark.parametrize('overrides,expected', [({'offline': True, 'agent_type': 'LLM-Powered'}, 409), ({'use_brats_geometry': True}, 422)])
+def test_all_tumor_research_routes_share_execution_guards(api, monkeypatch, endpoint, overrides, expected):
+    module, client = api
+    def forbidden_model(**kwargs):
+        raise AssertionError('rejected request must not construct model')
+    monkeypatch.setattr(module, 'TumorNanobotModel', forbidden_model)
+    response = client.post('/simulation/tumor/' + endpoint, json=_offline_config(**overrides))
+    assert response.status_code == expected, response.text
+
+
+def test_performance_honors_requested_seed_and_density(api, monkeypatch):
+    module, client = api
+    real_model = module.TumorNanobotModel
+    calls = []
+    def record_model(**kwargs):
+        calls.append(kwargs)
+        return real_model(**kwargs)
+    monkeypatch.setattr(module, 'TumorNanobotModel', record_model)
+    response = client.post('/simulation/tumor/performance', json=_offline_config(seed=23, cell_density=0.002))
+    assert response.status_code == 200, response.text
+    assert calls[0].get('seed') == 23
+    assert calls[0].get('cell_density') == 0.002
+
+
+def test_comparison_resolves_a_shared_seed_and_rejects_ignored_policy(api):
+    _, client = api
+    no_seed = client.post('/simulation/tumor/compare', json=_offline_config(seed=None, comparison_steps=1))
+    assert no_seed.status_code == 200
+    assert no_seed.json()['config']['seed'] == 0
+
+
+def test_comparison_rejects_ignored_queen_policy(api):
+    _, client = api
+    ignored_queen = client.post('/simulation/tumor/compare', json=_offline_config(use_queen=True, comparison_steps=1))
+    assert ignored_queen.status_code == 422
+
+
 def test_health_endpoint_remains_available(api):
     _, client = api
     response = client.get("/health")
