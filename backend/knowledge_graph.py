@@ -15,7 +15,10 @@ import time
 from enum import Enum
 from typing import Dict, List, Optional, Tuple
 
-from chain.ipfs import compute_artifact_hash, pin_simulation
+if __package__:
+    from .chain.ipfs import compute_artifact_hash, pin_simulation
+else:
+    from chain.ipfs import compute_artifact_hash, pin_simulation
 
 import networkx as nx
 

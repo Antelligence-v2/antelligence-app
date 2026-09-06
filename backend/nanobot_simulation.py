@@ -21,16 +21,24 @@ import os
 from dotenv import load_dotenv
 import threading
 
-# Mock litellm_client for testing environments where it's not installed
+# Mock litellm_client for testing environments where it's not installed.
 try:
-    from litellm_client import create_client as create_llm_client
+    if __package__:
+        from .litellm_client import create_client as create_llm_client
+    else:
+        from litellm_client import create_client as create_llm_client
 except ImportError:
     def create_llm_client(*args, **kwargs):
         return None
 
-from biofvm import Microenvironment
-from tumor_environment import TumorGeometry, TumorCell, VesselPoint, CellPhase, CellType
-from knowledge_graph import TumorKnowledgeGraph
+if __package__:
+    from .biofvm import Microenvironment
+    from .tumor_environment import TumorGeometry, TumorCell, VesselPoint, CellPhase, CellType
+    from .knowledge_graph import TumorKnowledgeGraph
+else:
+    from biofvm import Microenvironment
+    from tumor_environment import TumorGeometry, TumorCell, VesselPoint, CellPhase, CellType
+    from knowledge_graph import TumorKnowledgeGraph
 
 load_dotenv()
 IO_API_KEY = os.getenv("IO_SECRET_KEY")
@@ -124,6 +132,12 @@ class NanobotAgent:
             'alarm_pheromone': -0.5,          # Avoid alarm pheromones (repulsion)
             'recruitment_pheromone': 0.6,     # Respond to recruitment signals
         }
+        if not model.pheromones_enabled:
+            self.chemotaxis_weights.update({
+                'trail_pheromone': 0.0,
+                'alarm_pheromone': 0.0,
+                'recruitment_pheromone': 0.0,
+            })
         
         # Target tracking
         self.target_cell: Optional[TumorCell] = None
@@ -213,9 +227,7 @@ class NanobotAgent:
                 self.model.log_error(f"Nanobot {self.nanobot_id} LLM call failed: {str(e)}")
                 # Deposit alarm pheromone on error
                 voxel = self.model.microenv.position_to_voxel(tuple(self.position))
-                alarm = self.model.microenv.get_substrate('alarm_pheromone')
-                if alarm:
-                    alarm.add_source(voxel, 5.0)
+                self.model.deposit_pheromone('alarm_pheromone', voxel, 5.0)
         
         # Default behavior: chemotaxis-based movement with inertia and stochasticity
         direction = self._compute_chemotaxis_direction()
@@ -263,6 +275,12 @@ class NanobotAgent:
         total_direction = np.zeros(2)
         
         for substrate_name, weight in self.chemotaxis_weights.items():
+            if not self.model.pheromones_enabled and substrate_name in {
+                'trail_pheromone',
+                'alarm_pheromone',
+                'recruitment_pheromone',
+            }:
+                continue
             substrate = self.model.microenv.get_substrate(substrate_name)
             if substrate:
                 gradient = self.model.microenv.get_gradient_at(substrate_name, tuple(self.position))
@@ -272,6 +290,9 @@ class NanobotAgent:
     
     def _compute_pheromone_direction(self) -> np.ndarray:
         """Compute direction based only on pheromone trails."""
+        if not self.model.pheromones_enabled:
+            return np.zeros(2)
+
         direction = np.zeros(2)
         
         trail = self.model.microenv.get_substrate('trail_pheromone')
@@ -393,10 +414,8 @@ class NanobotAgent:
             self.position[:2] += direction * self.speed
             self._clamp_position()
             # Deposit trail pheromone while moving toward target (breadcrumb)
-            trail = self.model.microenv.get_substrate('trail_pheromone')
-            if trail:
-                voxel = self.model.microenv.position_to_voxel(tuple(self.position))
-                trail.add_source(voxel, 1.0)  # Light trail during movement
+            voxel = self.model.microenv.position_to_voxel(tuple(self.position))
+            self.model.deposit_pheromone('trail_pheromone', voxel, 1.0)
     
     def _report_intel_to_blockchain(self, pin_type: int, x: float, y: float, priority: int):
         """
@@ -502,21 +521,15 @@ class NanobotAgent:
                 self._report_intel_to_blockchain(pin_type, self.position[0], self.position[1], priority)
             
             # Deposit trail pheromone (mark successful delivery path)
-            trail = self.model.microenv.get_substrate('trail_pheromone')
-            if trail:
-                trail.add_source(voxel, 3.0)
+            self.model.deposit_pheromone('trail_pheromone', voxel, 3.0)
 
             # If cell killed, deposit recruitment pheromone (more targets likely nearby)
             if cell_killed:
-                recruit = self.model.microenv.get_substrate('recruitment_pheromone')
-                if recruit:
-                    recruit.add_source(voxel, 5.0)
+                self.model.deposit_pheromone('recruitment_pheromone', voxel, 5.0)
 
             # If target is resistant (high accumulated drug but alive), deposit alarm
             if not cell_killed and self.target_cell.resistance_level > 0.5:
-                alarm = self.model.microenv.get_substrate('alarm_pheromone')
-                if alarm:
-                    alarm.add_source(voxel, 5.0)
+                self.model.deposit_pheromone('alarm_pheromone', voxel, 5.0)
         
         # If payload depleted, return to vessel
         if self.drug_payload < 2.0:  # Return when < 2 μg remaining
@@ -833,7 +846,10 @@ class QueenNanobot:
             return
         if self.experience_consumer is None:
             try:
-                from chain.experience_consumer import ChainExperienceConsumer
+                if __package__:
+                    from .chain.experience_consumer import ChainExperienceConsumer
+                else:
+                    from chain.experience_consumer import ChainExperienceConsumer
                 self.experience_consumer = ChainExperienceConsumer()
             except Exception as exc:
                 self.model.log_error(f"Chain strategy consumer unavailable: {exc}")
@@ -977,9 +993,20 @@ class QueenNanobot:
             if hasattr(bot, 'chemotaxis_weights'):
                 bot.chemotaxis_weights['oxygen'] = self.worker_params['oxygen_weight']
                 if 'trail_pheromone' in bot.chemotaxis_weights:
-                    bot.chemotaxis_weights['trail_pheromone'] = self.worker_params['trail_weight']
+                    bot.chemotaxis_weights['trail_pheromone'] = (
+                        self.worker_params['trail_weight']
+                        if self.model.pheromones_enabled else 0.0
+                    )
                 if 'alarm_pheromone' in bot.chemotaxis_weights:
-                    bot.chemotaxis_weights['alarm_pheromone'] = self.worker_params['alarm_weight']
+                    bot.chemotaxis_weights['alarm_pheromone'] = (
+                        self.worker_params['alarm_weight']
+                        if self.model.pheromones_enabled else 0.0
+                    )
+                if 'recruitment_pheromone' in bot.chemotaxis_weights:
+                    bot.chemotaxis_weights['recruitment_pheromone'] = (
+                        self.worker_params.get('recruitment_weight', 0.6)
+                        if self.model.pheromones_enabled else 0.0
+                    )
             bot.speed = 30.0 * self.worker_params['speed_multiplier']
 
     def get_episode_summary(self) -> Dict:
@@ -1211,6 +1238,7 @@ class TumorNanobotModel:
         use_llm_queen: bool = False,
         selected_model: str = "meta-llama/Llama-3.3-70B-Instruct",
         pheromone_params: Optional[Dict[str, float]] = None,
+        pheromones_enabled: bool = True,
         seed: Optional[int] = None,
         chain_intel_reader=None,
     ):
@@ -1221,6 +1249,7 @@ class TumorNanobotModel:
         self.selected_model = selected_model
         self.with_queen = with_queen
         self.use_llm_queen = use_llm_queen
+        self.pheromones_enabled = bool(pheromones_enabled)
         self.pheromone_params = {
             'trail_diffusion': 1e-6,
             'alarm_diffusion': 5e-6,
@@ -1265,35 +1294,39 @@ class TumorNanobotModel:
         )
         
         # Add substrates
-        from biofvm import create_oxygen_substrate, create_drug_substrate, create_pheromone_substrate
+        if __package__:
+            from .biofvm import create_oxygen_substrate, create_drug_substrate, create_pheromone_substrate
+        else:
+            from biofvm import create_oxygen_substrate, create_drug_substrate, create_pheromone_substrate
         
         create_oxygen_substrate(self.microenv, boundary_value=38.0)
         create_drug_substrate(self.microenv, diffusion_coeff=1e-7)
-        self.microenv.add_substrate(
-            'trail_pheromone',
-            diffusion_coefficient=self.pheromone_params['trail_diffusion'],
-            decay_rate=self.pheromone_params['trail_decay'],
-            initial_value=0.0,
-            dirichlet_boundary_value=None,
-        )
-        self.microenv.add_substrate(
-            'alarm_pheromone',
-            diffusion_coefficient=self.pheromone_params['alarm_diffusion'],
-            decay_rate=self.pheromone_params['alarm_decay'],
-            initial_value=0.0,
-            dirichlet_boundary_value=None,
-        )
-        self.microenv.add_substrate(
-            'recruitment_pheromone',
-            diffusion_coefficient=self.pheromone_params['recruitment_diffusion'],
-            decay_rate=self.pheromone_params['recruitment_decay'],
-            initial_value=0.0,
-            dirichlet_boundary_value=None,
-        )
-        # Backward-compatible aliases for older readers/tests that still look up the short names.
-        self.microenv.substrates['trail'] = self.microenv.substrates['trail_pheromone']
-        self.microenv.substrates['alarm'] = self.microenv.substrates['alarm_pheromone']
-        self.microenv.substrates['recruitment'] = self.microenv.substrates['recruitment_pheromone']
+        if self.pheromones_enabled:
+            self.microenv.add_substrate(
+                'trail_pheromone',
+                diffusion_coefficient=self.pheromone_params['trail_diffusion'],
+                decay_rate=self.pheromone_params['trail_decay'],
+                initial_value=0.0,
+                dirichlet_boundary_value=None,
+            )
+            self.microenv.add_substrate(
+                'alarm_pheromone',
+                diffusion_coefficient=self.pheromone_params['alarm_diffusion'],
+                decay_rate=self.pheromone_params['alarm_decay'],
+                initial_value=0.0,
+                dirichlet_boundary_value=None,
+            )
+            self.microenv.add_substrate(
+                'recruitment_pheromone',
+                diffusion_coefficient=self.pheromone_params['recruitment_diffusion'],
+                decay_rate=self.pheromone_params['recruitment_decay'],
+                initial_value=0.0,
+                dirichlet_boundary_value=None,
+            )
+            # Backward-compatible aliases must point at the canonical fields.
+            self.microenv.substrates['trail'] = self.microenv.substrates['trail_pheromone']
+            self.microenv.substrates['alarm'] = self.microenv.substrates['alarm_pheromone']
+            self.microenv.substrates['recruitment'] = self.microenv.substrates['recruitment_pheromone']
         
         # Add new chemokine and toxicity signal substrates
         create_pheromone_substrate(self.microenv, 'chemokine_signal', decay_rate=0.08)  # Attractant - slower decay
@@ -1309,11 +1342,17 @@ class TumorNanobotModel:
         self.microenv.add_substrate('drug_b', diffusion_coefficient=1e-7, decay_rate=0.05)  # Secondary drug
         
         # Generate tumor geometry
-        from tumor_environment import create_simple_tumor_environment
+        if __package__:
+            from .tumor_environment import create_simple_tumor_environment
+        else:
+            from tumor_environment import create_simple_tumor_environment
 
         if getattr(self, 'use_brats_geometry', False) or (hasattr(self, 'config') and getattr(self.config, 'use_brats_geometry', False)):
             try:
-                from brats_loader import load_brats_patient, brats_volume_to_tumor_geometry
+                if __package__:
+                    from .brats_loader import load_brats_patient, brats_volume_to_tumor_geometry
+                else:
+                    from brats_loader import load_brats_patient, brats_volume_to_tumor_geometry
                 vol = load_brats_patient(patient_id=getattr(self.config, 'brats_patient_id', None) if hasattr(self, 'config') else None)
                 if vol:
                     self.geometry = brats_volume_to_tumor_geometry(vol, domain_size=domain_size)
@@ -1336,7 +1375,10 @@ class TumorNanobotModel:
         if _env_truthy("CHAIN_READ_ENABLED"):
             try:
                 if chain_intel_reader is None:
-                    from chain.intel_reader import ChainIntelReader
+                    if __package__:
+                        from .chain.intel_reader import ChainIntelReader
+                    else:
+                        from chain.intel_reader import ChainIntelReader
                     chain_intel_reader = ChainIntelReader()
                 imported = self.knowledge_graph.sync_from_chain(chain_intel_reader)
                 self.chain_sync_summary = {"imported_intel_pins": imported}
@@ -1631,6 +1673,20 @@ class TumorNanobotModel:
         # Map deliveries to food collection for frontend compatibility
         self.metrics['food_collected_by_llm'] = self.metrics['deliveries_by_llm']
         self.metrics['food_collected_by_rule'] = self.metrics['deliveries_by_rule']
+
+    def deposit_pheromone(self, p_type: str, position: Tuple[int, ...], amount: float):
+        """Deposit a communication signal when pheromone signaling is enabled."""
+        if not self.pheromones_enabled:
+            return
+
+        canonical_names = {
+            'trail': 'trail_pheromone',
+            'alarm': 'alarm_pheromone',
+            'recruitment': 'recruitment_pheromone',
+        }
+        substrate = self.microenv.get_substrate(canonical_names.get(p_type, p_type))
+        if substrate is not None:
+            substrate.add_source(position, amount)
     
     def log_error(self, message: str):
         """Log an error message."""
