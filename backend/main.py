@@ -671,6 +671,8 @@ async def run_tumor_simulation(config: TumorSimulationConfig):
             use_llm_queen=config.use_llm_queen,
             selected_model=config.selected_model,
             seed=config.seed,
+            cell_density=config.cell_density,
+            vessel_density=config.vessel_density,
         )
 
         print(f"[TUMOR SIM] Model initialized. Starting {config.max_steps} steps...")

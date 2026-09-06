@@ -1241,6 +1241,8 @@ class TumorNanobotModel:
         pheromones_enabled: bool = True,
         seed: Optional[int] = None,
         chain_intel_reader=None,
+        cell_density: float = 0.001,
+        vessel_density: float = 0.01,
     ):
 
         self.domain_size = domain_size
@@ -1365,8 +1367,9 @@ class TumorNanobotModel:
             self.geometry = create_simple_tumor_environment(
                 domain_size=domain_size,
                 tumor_radius=tumor_radius,
-                cell_density=0.001,
-                dimensionality=2
+                cell_density=cell_density,
+                dimensionality=2,
+                vessel_density=vessel_density
             )
         
         # Initialize Knowledge Graph

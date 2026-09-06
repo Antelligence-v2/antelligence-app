@@ -199,6 +199,28 @@ def test_seed_is_honored_for_repeated_rule_based_runs(api):
     assert first["history"] == second["history"]
 
 
+def test_density_settings_change_generated_geometry(api):
+    _, client = api
+    sparse = client.post('/simulation/tumor/run', json=_offline_config(cell_density=0.001, vessel_density=0.01)).json()
+    dense = client.post('/simulation/tumor/run', json=_offline_config(cell_density=0.004, vessel_density=0.04)).json()
+    assert dense['tumor_statistics']['initial_living_cells'] > sparse['tumor_statistics']['initial_living_cells']
+    assert len(dense['history'][0]['vessels']) > len(sparse['history'][0]['vessels'])
+
+
+@pytest.mark.parametrize('overrides', [
+    {'enable_immune_system': False}, {'enable_bbb': False},
+    {'misspelled_parameter': True}, {'seed': -1},
+    {'domain_size': 1e12}, {'cell_density': 1e12},
+])
+def test_unsupported_or_unbounded_configs_fail_before_simulation(api, overrides, monkeypatch):
+    module, client = api
+    def forbidden_model(**kwargs):
+        raise AssertionError('invalid inputs reached the allocation boundary')
+    monkeypatch.setattr(module, 'TumorNanobotModel', forbidden_model)
+    response = client.post('/simulation/tumor/run', json=_offline_config(**overrides))
+    assert response.status_code == 422
+
+
 def test_health_endpoint_remains_available(api):
     _, client = api
     response = client.get("/health")

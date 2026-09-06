@@ -228,7 +228,7 @@ export function TumorSimulationSidebar({
               />
             </div>
             <div>
-              <Label htmlFor="vessel_density">Vessel Density (vessels/100µm²)</Label>
+              <Label htmlFor="vessel_density">Vessel Density (vessels/µm perimeter)</Label>
               <Input
                 id="vessel_density"
                 type="number"

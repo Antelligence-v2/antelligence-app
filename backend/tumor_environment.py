@@ -894,7 +894,8 @@ def create_simple_tumor_environment(
     domain_size: float = 600.0,  # µm
     tumor_radius: float = 200.0,
     cell_density: float = 0.001,
-    dimensionality: int = 2
+    dimensionality: int = 2,
+    vessel_density: float = 0.01,
 ) -> TumorGeometry:
     """
     Create a simple tumor geometry for testing.
@@ -914,7 +915,7 @@ def create_simple_tumor_environment(
         center=center,
         tumor_radius=tumor_radius,
         necrotic_core_radius=tumor_radius * 0.25,  # 25% necrotic core
-        vessel_density=0.01
+        vessel_density=vessel_density
     )
     
     geometry.generate_circular_tumor(
