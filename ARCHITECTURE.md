@@ -16,19 +16,22 @@ antelligence-app/
 │   │   ├── proof_spec.py  # Proof bundle schema
 │   │   ├── submit.py   # On-chain submission
 │   │   └── verify.py   # Verification logic
-│   ├── api_server.py    # FastAPI server (port 8001)
+│   ├── main.py          # Frontend-facing API, /simulation/tumor/run
+│   ├── api_server.py    # Separate minimal API, /simulate
+│   ├── tumor_runs.py    # Tumor response persistence and staged provenance
 │   ├── cli.py           # CLI entry points
 │   ├── config.py        # App-level configuration
-│   ├── nanobot.py       # Nanobot agent logic
+│   ├── nanobot_simulation.py # Nanobot/Queen simulation
+│   ├── biofvm.py        # Diffusion/decay fields
 │   ├── run_store.py     # Simulation run persistence (SQLite)
 │   ├── simulation_replay.py  # Deterministic replay
-│   └── tumor_simulation.py   # Core simulation engine
+│   └── tumor_environment.py # Synthetic tumor geometry and cell dynamics
 ├── blockchain/          # Solidity + Hardhat
 │   ├── contracts/
 │   │   └── TumorIntel.sol  # On-chain public values (5 fields)
 │   ├── hardhat.config.js
 │   └── test/
-├── tests/               # pytest suite (228+ tests)
+├── tests/               # pytest suite; use fresh test output for counts
 │   ├── test_api_server.py
 │   ├── test_cli.py
 │   ├── test_config.py
@@ -51,7 +54,7 @@ antelligence-app/
 
 | Layer | Technology | Notes |
 |-------|-----------|-------|
-| Simulation | Python (numpy) | Deterministic, seedable |
+| Simulation | Python (numpy) | Synthetic 2D tumor; sequential seeded experiments |
 | API | FastAPI | Port 8001, local-only |
 | Frontend | React + Vite | Dev server, not production |
 | Blockchain | Solidity + Hardhat | Base Sepolia testnet |
@@ -95,8 +98,16 @@ uv run --extra test pytest -q
 # Run simulation
 uv run antelligence simulate --steps 100 --bots 10
 
-# Run API
+# Frontend API (offline, loopback only)
+PYTHON_DOTENV_DISABLED=1 ANTELLIGENCE_OFFLINE=1 \
+ANTELLIGENCE_ENABLE_BLOCKCHAIN_TX=0 CHAIN_READ_ENABLED=0 CHAIN_WRITE_ENABLED=0 \
+uv run uvicorn backend.main:app --host 127.0.0.1 --port 8001
+
+# Separate minimal API, not a frontend backend
 uv run antelligence-api
+
+# Local UI (separate terminal)
+npm --prefix frontend run dev -- --host 127.0.0.1
 
 # Compile contracts
 cd blockchain && npx hardhat compile
@@ -105,7 +116,7 @@ cd blockchain && npx hardhat compile
 ## Ports
 
 - `8001`: FastAPI server (local only)
-- `5173`: Vite dev server (frontend)
+- `8081`: Vite dev server (actual package.json default); `5173` is an alternate local Vite port
 
 ## Conventions
 

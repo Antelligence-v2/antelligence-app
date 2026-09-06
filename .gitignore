@@ -27,8 +27,13 @@ wheels/
 .installed.cfg
 *.egg
 
-# Node.js
-node_modules/
+# Node.js (match directories and local dependency symlinks)
+node_modules
+
+# Preserved local agent context and recovery archives; not application source
+/.codex-work/
+/.serena/
+/backups/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
