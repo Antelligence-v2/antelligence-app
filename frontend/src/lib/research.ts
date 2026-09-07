@@ -119,7 +119,9 @@ function formulaSafe(value: unknown): string {
   if (typeof value === "number") return Number.isFinite(value) ? String(value) : "";
   if (typeof value === "boolean") return value ? "true" : "false";
   let text = String(value);
-  if (/^[=+\-@]/.test(text)) text = `'${text}`;
+  let index = 0;
+  while (index < text.length && (text.charCodeAt(index) <= 32 || /\s/.test(text[index]))) index++;
+  if (/^[=+\-@]/.test(text.slice(index))) text = `'${text}`;
   return text;
 }
 
@@ -142,17 +144,15 @@ export function researchToCsv(report: ResearchReport): string {
     "parent_ids", "response_id", "request_hash", "finish_reason", "prompt_messages", "content", "error", "limitations",
   ];
   const rows: unknown[][] = [headers];
-  for (const row of report.summary || []) {
-    rows.push(["summary", report.run_id, report.name, report.status, row.domain, "", row.variant, row.protocol, row.model_keys.join(" | "), row.task_count, row.completed_count, row.correct_count, row.error_count, row.abstained_count, row.invalid_count, row.coverage, row.task_success_rate, row.answered_accuracy, row.wilson_lower_95, row.gate, row.target_accuracy, row.min_cases, row.call_count, row.prompt_tokens, row.completion_tokens, row.elapsed_s, "", "", "", "", "", row.usage_complete, "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", ""]);
-  }
-  for (const cell of report.cells || []) {
-    rows.push(["cell", report.run_id, report.name, report.status, cell.domain, cell.dataset, cell.variant, cell.protocol, cell.model_keys.join(" | "), "", "", "", "", "", "", "", "", "", "", "", "", "", cell.call_count, cell.prompt_tokens, cell.completion_tokens, cell.elapsed_s, cell.cell_id, cell.task_id, cell.answer, cell.correct, cell.instruction_compliant, cell.usage_complete, "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", cell.error || "", ""]);
-  }
-  for (const event of report.events || []) {
-    rows.push(["event", report.run_id, report.name, report.status, "", "", "", event.protocol, "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", event.prompt_tokens, event.completion_tokens, event.elapsed_s, "", event.task_id, "", "", "", event.usage_complete, event.message_id, event.model_key, event.requested_model, event.served_model, event.role, event.kind, event.round, event.recipient, (event.parent_ids || []).join(" | "), event.response_id, event.request_hash, event.finish_reason, JSON.stringify(event.prompt_messages || []), event.content, event.error || "", ""]);
-  }
-  for (const error of report.errors || []) rows.push(["error", report.run_id, report.name, report.status, "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", error, ""]);
-  for (const limitation of report.limitations || []) rows.push(["limitation", report.run_id, report.name, report.status, "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", limitation]);
+  const add = (row: Record<string, unknown>) => {
+    const full = { run_id: report.run_id, name: report.name, status: report.status, ...row };
+    rows.push(headers.map((key) => (full as Record<string, unknown>)[key]));
+  };
+  for (const row of report.summary || []) add({ ...row, row_type: "summary", model_keys: row.model_keys.join(" | ") });
+  for (const cell of report.cells || []) add({ ...cell, row_type: "cell", status: report.status, model_keys: cell.model_keys.join(" | ") });
+  for (const event of report.events || []) add({ ...event, row_type: "event", parent_ids: (event.parent_ids || []).join(" | "), prompt_messages: JSON.stringify(event.prompt_messages || []) });
+  for (const error of report.errors || []) add({ row_type: "error", error });
+  for (const limitation of report.limitations || []) add({ row_type: "limitation", limitations: limitation });
   return rows.map((row) => row.map(csvCell).join(",")).join("\n") + "\n";
 }
 

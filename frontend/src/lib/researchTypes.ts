@@ -90,7 +90,7 @@ export interface ResearchEvent {
   expires_round?: number | null;
   prompt_messages: ResearchMessage[];
   content: string;
-  parsed_payload?: unknown;
+  payload?: unknown;
   parse_error?: string | null;
   response_id?: string | null;
   request_hash?: string | null;

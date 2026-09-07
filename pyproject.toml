@@ -44,5 +44,8 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools.packages.find]
 include = ["backend*"]
 
+[tool.setuptools.package-data]
+backend = ["research_fixtures/*.json"]
+
 [tool.uv]
 package = true

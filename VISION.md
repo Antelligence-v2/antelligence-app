@@ -4,9 +4,11 @@
 
 ## What We're Building
 
-Antelligence is a **DeSci swarm-intelligence platform** — a system where small autonomous agents (nanobots) coordinate through local signals to solve complex biomedical problems. 
+Antelligence is a **reusable DeSci swarm-intelligence research platform**: autonomous agents coordinate through typed, local, expiring signals to solve tasks under explicit constraints and measurable accuracy requirements.
 
-First target: **glioblastoma tumor simulation**. Long arc: any disease where swarm coordination beats centralized control.
+First application: **glioblastoma tumor simulation**. The operator's expanded direction (2026-09-06) also calls for offline medical-literature and financial-report research tasks, comparisons of distinct LLMs, peer-review policies, communication protocols and optimization. Tumor simulation remains an application of the platform, not its entire identity. Clinical use and live finance remain out of scope until separately validated and authorized.
+
+The [Swarm Research Workbench](docs/SWARM_RESEARCH.md) is the first multi-domain experimental increment: it measures actual model/protocol behavior against reference answers. Agreement is not truth, an accuracy threshold is not a proven guarantee, and a tiny pilot is not research/production readiness.
 
 ## The Stack
 

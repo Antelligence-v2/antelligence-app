@@ -162,7 +162,7 @@ function SummaryReport({ report }: { report: ResearchReport }) {
 }
 
 function Metric({ label, value }: { label: string; value: string }) {
-  return <div className="rounded-lg border bg-muted/30 p-4"><p className="text-xs uppercase tracking-wide text-muted-foreground">{label}</p><p className="mt-1 text-xl font-semibold">{value}</p></div>;
+  return <div className="rounded-lg border bg-muted/30 p-4"><p className="text-xs uppercase tracking-wide text-muted-foreground">{label}</p><p className="mt-1 break-all text-xl font-semibold">{value}</p></div>;
 }
 
 function TraceExplorer({ report }: { report: ResearchReport }) {
@@ -171,7 +171,7 @@ function TraceExplorer({ report }: { report: ResearchReport }) {
     if (fromReport.length > 0) return fromReport;
     return (report.cells || []).flatMap((cell) => cell.messages || []);
   }, [report.cells, report.events]);
-  return <Card><CardHeader><CardTitle>Prompt / output trace explorer</CardTitle><CardDescription>Every displayed event is attributed to a task, protocol, model identity, role, and response. Short public rationale only; no private chain of thought is requested.</CardDescription></CardHeader><CardContent className="space-y-2">{events.length === 0 ? <p className="text-sm text-muted-foreground">No model events have been stored yet.</p> : events.map((event) => <details key={event.message_id} className="rounded-lg border bg-background"><summary className="cursor-pointer list-none p-3"><div className="flex flex-wrap items-center gap-2"><Badge variant="outline">{event.kind}</Badge><span className="font-medium">{event.role}</span><span className="font-mono text-xs text-muted-foreground">{event.model_key} · task {event.task_id} · round {event.round}</span><span className="ml-auto text-xs text-muted-foreground">{event.usage_complete ? `${event.prompt_tokens ?? "?"}+${event.completion_tokens ?? "?"} tokens` : "usage incomplete"}</span></div></summary><div className="space-y-3 border-t p-3 text-xs"><div className="grid gap-1 break-all font-mono text-muted-foreground sm:grid-cols-2"><span>message: {event.message_id}</span><span>requested: {event.requested_model || "—"}</span><span>served: {event.served_model || "—"}</span><span>recipient: {event.recipient || "none"}</span><span>response: {event.response_id || "—"}</span><span>request hash: {event.request_hash || "—"}</span></div><div><p className="mb-1 font-semibold">Exact prompt messages</p><pre className="max-h-64 overflow-auto whitespace-pre-wrap rounded-md bg-slate-950 p-3 text-[11px] text-slate-100">{JSON.stringify(event.prompt_messages || [], null, 2)}</pre></div><div><p className="mb-1 font-semibold">Raw model output</p><pre className="max-h-64 overflow-auto whitespace-pre-wrap rounded-md bg-slate-950 p-3 text-[11px] text-slate-100">{event.content || event.error || "(empty response)"}</pre></div>{event.parsed_payload !== undefined && <div><p className="mb-1 font-semibold">Parsed payload</p><pre className="max-h-48 overflow-auto whitespace-pre-wrap rounded-md bg-muted p-3 text-[11px]">{JSON.stringify(event.parsed_payload, null, 2)}</pre></div>}</div></details>)}</CardContent></Card>;
+  return <Card><CardHeader><CardTitle>Prompt / output trace explorer</CardTitle><CardDescription>Every displayed event is attributed to a task, protocol, model identity, role, and response. Short public rationale only; no private chain of thought is requested.</CardDescription></CardHeader><CardContent className="space-y-2">{events.length === 0 ? <p className="text-sm text-muted-foreground">No model events have been stored yet.</p> : events.map((event) => <details key={event.message_id} className="rounded-lg border bg-background"><summary className="cursor-pointer list-none p-3"><div className="flex flex-wrap items-center gap-2"><Badge variant="outline">{event.kind}</Badge><span className="font-medium">{event.role}</span><span className="font-mono text-xs text-muted-foreground">{event.model_key} · task {event.task_id} · round {event.round}</span><span className="ml-auto text-xs text-muted-foreground">{event.usage_complete ? `${event.prompt_tokens ?? "?"}+${event.completion_tokens ?? "?"} tokens` : "usage incomplete"}</span></div></summary><div className="space-y-3 border-t p-3 text-xs"><div className="grid gap-1 break-all font-mono text-muted-foreground sm:grid-cols-2"><span>message: {event.message_id}</span><span>requested: {event.requested_model || "—"}</span><span>served: {event.served_model || "—"}</span><span>recipient: {event.recipient || "none"}</span><span>response: {event.response_id || "—"}</span><span>request hash: {event.request_hash || "—"}</span></div><div><p className="mb-1 font-semibold">Exact prompt messages</p><pre className="max-h-64 overflow-auto whitespace-pre-wrap rounded-md bg-slate-950 p-3 text-[11px] text-slate-100">{JSON.stringify(event.prompt_messages || [], null, 2)}</pre></div><div><p className="mb-1 font-semibold">Raw model output</p><pre className="max-h-64 overflow-auto whitespace-pre-wrap rounded-md bg-slate-950 p-3 text-[11px] text-slate-100">{event.content || event.error || "(empty response)"}</pre></div>{(event.parse_error || event.error) && <p className="break-words text-destructive">{event.parse_error || event.error}</p>}{event.payload !== undefined && <div><p className="mb-1 font-semibold">Parsed payload</p><pre className="max-h-48 overflow-auto whitespace-pre-wrap rounded-md bg-muted p-3 text-[11px]">{JSON.stringify(event.payload, null, 2)}</pre></div>}</div></details>)}</CardContent></Card>;
 }
 
 function Library({ entries, selectedId, loading, error, onRefresh, onSelect }: { entries: ResearchLibraryEntry[]; selectedId: string | null; loading: boolean; error: string | null; onRefresh: () => void; onSelect: (id: string) => void }) {
@@ -247,7 +247,7 @@ export default function ResearchWorkbench() {
       try {
         const next = await getResearchRun(runId, controller.signal);
         if (controller.signal.aborted || generation !== reportGeneration.current || next.run_id !== runId) return;
-        setReport(next);
+        setReport((current) => current?.run_id === next.run_id && current.updated_at > next.updated_at ? current : next);
         setReportLoading(false);
         if (isTerminalResearchStatus(next.status)) {
           setCancelRequested(false);
@@ -271,15 +271,18 @@ export default function ResearchWorkbench() {
     const controller = new AbortController();
     pollAbort.current = controller;
     setSelectedRunId(runId);
+    setReport(null);
+    setCancelLoading(false);
     setReportLoading(true);
     setRequestErrors([]);
     setCancelRequested(false);
     try {
       const next = await getResearchRun(runId, controller.signal);
       if (controller.signal.aborted || generation !== reportGeneration.current || next.run_id !== runId || !isResearchReport(next)) return;
-      setReport(next);
+      setReport((current) => current?.run_id === next.run_id && current.updated_at > next.updated_at ? current : next);
       setReportLoading(false);
       const url = new URL(window.location.href);
+      url.pathname = "/research";
       url.searchParams.set("run", runId);
       window.history.replaceState(window.history.state, "", url);
       if (!isTerminalResearchStatus(next.status)) void pollRun(runId, generation, controller);
@@ -337,7 +340,7 @@ export default function ResearchWorkbench() {
     try {
       const next = await cancelResearchRun(runId);
       if (generation !== reportGeneration.current || next.run_id !== runId || !isResearchReport(next)) return;
-      setReport(next);
+      setReport((current) => current?.run_id === next.run_id && current.updated_at > next.updated_at ? current : next);
       if (isTerminalResearchStatus(next.status)) {
         setCancelRequested(false);
         void loadLibrary();

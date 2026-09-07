@@ -93,6 +93,12 @@ TUMOR_RUN_STORE = TumorRunStore(_DEFAULT_DB_PATH)
 EXPERIMENT_STORE = ExperimentStore(_DEFAULT_DB_PATH)
 _TUMOR_RUNS = {}
 
+# Research is a separate, local-only job surface. It neither enables the old
+# simulation LLM switches nor changes chain/proof trust.
+from backend.research_api import ResearchService, make_router
+RESEARCH_SERVICE = ResearchService(Path(os.environ.get("ANTELLIGENCE_RESEARCH_DB", _DEFAULT_DB_PATH)))
+app.include_router(make_router(RESEARCH_SERVICE))
+
 # Mount static files (frontend build)
 try:
     app.mount("/static", StaticFiles(directory=str(project_root / "static")), name="static")

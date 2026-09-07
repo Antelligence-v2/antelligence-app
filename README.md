@@ -12,6 +12,20 @@ Antelligence is a DeSci swarm-intelligence product for tumor simulation, nanobot
 
 ## Current product surface
 
+### Swarm Research Workbench
+
+Open `/research` to compare local LLMs using single answers, independent voting,
+peer critique and a typed expiring signal board. Choose public medical-literature
+or financial-report tasks, set explicit budgets and a target accuracy, inspect
+attributed prompts/outputs, and export saved domain-separated reports. Failed
+responses, abstentions and small-sample uncertainty stay visible; agreement is
+not the correctness score. Nothing runs on page load.
+
+This is the first reusable multi-domain research increment, not clinical/live
+finance readiness or evidence that swarms beat individual models. See
+[Swarm Research Workbench](docs/SWARM_RESEARCH.md) for sources, limitations,
+local model identities, execution gates and verification.
+
 ### Experiment Lab
 
 Open `/experiments` (also linked from the home and tumor pages) to run matched,

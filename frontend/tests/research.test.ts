@@ -80,6 +80,15 @@ test("CSV formula safety does not turn numeric negatives into text", () => {
   assert.match(csv, /Public benchmark may be model-seen/);
 });
 
+test("CSV rows align with headers, including errors and limitations", () => {
+  const csv = researchToCsv({ ...report, errors: ["transport failure"] });
+  const lines = csv.trim().split("\n");
+  const headers = lines[0].split(",");
+  for (const line of lines.slice(1)) assert.equal(line.split(",").length, headers.length);
+  const limitation = lines.find((line) => line.startsWith("limitation,"))!.split(",");
+  assert.equal(limitation[headers.indexOf("limitations")], report.limitations[0]);
+});
+
 test("JSON export is the complete saved report", () => {
   assert.deepEqual(JSON.parse(researchToJson(report)), report);
 });

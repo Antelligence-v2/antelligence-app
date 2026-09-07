@@ -206,6 +206,17 @@ def test_validation_rejects_nonfinite_gold_and_bad_settings():
         estimate_calls(1, 1, ["unknown"])
 
 
+def test_roster_key_is_not_served_identity_but_substitution_is_rejected():
+    def infer(model,messages,**kwargs):
+        return response('actual-model-version', '{"answer":"A","evidence_ids":["e1"],"brief":"public"}',seed=kwargs['seed'])
+    cell=run_task(task(),['handle'],'single',SETTINGS,infer,lambda e:None,lambda:False)[0]
+    assert cell['status']=='completed' and cell['correct'] is True
+    def wrong(model,messages,**kwargs):
+        result=infer(model,messages,**kwargs);result['served_model']='substitution';return result
+    cell=run_task(task(),['handle'],'single',SETTINGS,wrong,lambda e:None,lambda:False)[0]
+    assert cell['status']=='error' and cell['correct'] is None
+
+
 def test_failed_call_without_usage_is_marked_incomplete_and_emits_error():
     events: list[dict[str, Any]] = []
 

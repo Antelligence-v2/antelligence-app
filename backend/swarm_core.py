@@ -303,11 +303,13 @@ class _Execution:
         requested = raw.get("requested_model")
         if not isinstance(requested, str) or not requested:
             raise ValueError("infer requested_model must be a non-empty string")
-        if requested != model_key:
-            raise ValueError("infer requested_model does not match model_key")
         served = raw.get("served_model")
         if not isinstance(served, str) or not served:
             raise ValueError("infer served_model must be a non-empty string")
+        # Roster keys are transport-independent handles, not served model IDs.
+        # The adapter pins key -> requested identity; the core checks no substitution.
+        if requested != served:
+            raise ValueError("infer served_model does not match requested_model")
         finish_reason = raw.get("finish_reason")
         if not isinstance(finish_reason, str) or not finish_reason:
             raise ValueError("infer finish_reason must be a non-empty string")
