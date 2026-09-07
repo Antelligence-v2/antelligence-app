@@ -13,6 +13,7 @@ import {
   Play,
   RefreshCw,
   RotateCcw,
+  Search,
   ShieldAlert,
   TriangleAlert,
 } from "lucide-react";
@@ -639,6 +640,9 @@ export default function ExperimentLab() {
           </div>
           <Button variant="outline" size="sm" onClick={() => navigate("/tumor")} className="gap-2 self-start sm:self-auto">
             <Activity className="h-4 w-4" /> Open single-run playback
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => navigate("/research")} className="gap-2 self-start sm:self-auto">
+            <Search className="h-4 w-4" /> Swarm research
           </Button>
         </div>
       </header>
