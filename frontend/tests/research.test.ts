@@ -12,6 +12,10 @@ import {
 import type { ResearchCatalog, ResearchReport } from "../src/lib/researchTypes.ts";
 
 const catalog: ResearchCatalog = {
+  output_policies: [
+    { id: "prompt_only", label: "Prompt-only baseline", description: "Original behavior" },
+    { id: "constrained_short_v1", label: "Constrained short JSON", description: "Explicit repair" },
+  ],
   models: [
     { key: "model-a", label: "Model A", model_id: "local/a", endpoint: "http://127.0.0.1:8090", availability: "ready", local: true },
     { key: "model-b", label: "Model B", model_id: "local/b", endpoint: "http://127.0.0.1:8092", availability: "ready", local: true },
@@ -61,6 +65,9 @@ test("the default four-protocol two-domain budget is 80 calls", () => {
 test("request builder preserves explicit bounded settings", () => {
   const request = buildResearchRequest({ ...DEFAULT_RESEARCH_FORM, name: "  check  ", model_keys: ["model-a"], protocols: ["single"], datasets: ["finqa"] });
   assert.equal(request.name, "check");
+  assert.equal(request.output_policy, "constrained_short_v1");
+  const baseline = buildResearchRequest({ ...DEFAULT_RESEARCH_FORM, output_policy: "prompt_only" });
+  assert.equal(baseline.output_policy, "prompt_only");
   assert.equal(request.max_calls, 100);
   assert.equal(request.tasks_per_dataset, 2);
   assert.deepEqual(validateResearchRequest(request, catalog), []);
@@ -87,6 +94,26 @@ test("CSV rows align with headers, including errors and limitations", () => {
   for (const line of lines.slice(1)) assert.equal(line.split(",").length, headers.length);
   const limitation = lines.find((line) => line.startsWith("limitation,"))!.split(",");
   assert.equal(limitation[headers.indexOf("limitations")], report.limitations[0]);
+});
+
+test("unsupported output policy is rejected rather than silently downgraded", () => {
+  const request = report.request;
+  assert.match(validateResearchRequest(request, { ...catalog, output_policies: undefined }).join("\n"), /Output policy.*not supported/);
+  assert.deepEqual(validateResearchRequest({ ...request, output_policy: "prompt_only" }, { ...catalog, output_policies: undefined }), []);
+});
+
+test("CSV attributes the selected policy and preserves legacy reports", () => {
+  const csv = researchToCsv(report).trim().split("\n");
+  const headers = csv[0].split(",");
+  assert.ok(headers.includes("output_policy"));
+  assert.ok(headers.includes("response_format"));
+  for (const line of csv.slice(1)) assert.equal(line.split(",")[headers.indexOf("output_policy")], "constrained_short_v1");
+  const legacy = { ...report, request: { ...report.request } };
+  delete legacy.request.output_policy;
+  const legacyBefore = JSON.stringify(legacy);
+  const oldCsv = researchToCsv(legacy).trim().split("\n");
+  for (const line of oldCsv.slice(1)) assert.equal(line.split(",")[headers.indexOf("output_policy")], "prompt_only");
+  assert.equal(JSON.stringify(legacy), legacyBefore);
 });
 
 test("JSON export is the complete saved report", () => {

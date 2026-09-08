@@ -34,6 +34,7 @@ export interface ResearchProtocol {
 }
 
 export interface ResearchCatalog {
+  output_policies?: { id: ResearchOutputPolicy; label: string; description: string }[];
   models: ResearchModel[];
   datasets: ResearchDataset[];
   protocols: ResearchProtocol[];
@@ -45,7 +46,10 @@ export interface ResearchCatalog {
   limitations: string[];
 }
 
+export type ResearchOutputPolicy = "prompt_only" | "constrained_short_v1";
+
 export interface ResearchRunRequest {
+  output_policy?: ResearchOutputPolicy;
   name: string;
   model_keys: string[];
   protocols: string[];

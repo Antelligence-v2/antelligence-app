@@ -3,10 +3,12 @@ import type {
   ResearchGate,
   ResearchReport,
   ResearchRunRequest,
+  ResearchOutputPolicy,
 } from "./researchTypes";
 
 export const DEFAULT_RESEARCH_FORM = {
   name: "Local swarm research check",
+  output_policy: "constrained_short_v1" as ResearchOutputPolicy,
   model_keys: [] as string[],
   protocols: [] as string[],
   datasets: [] as string[],
@@ -45,6 +47,7 @@ export function estimateResearchCalls(
 export function buildResearchRequest(form: ResearchForm): ResearchRunRequest {
   return {
     name: form.name.trim(),
+    output_policy: form.output_policy,
     model_keys: [...form.model_keys],
     protocols: [...form.protocols],
     datasets: [...form.datasets],
@@ -61,6 +64,9 @@ export function buildResearchRequest(form: ResearchForm): ResearchRunRequest {
 
 export function validateResearchRequest(request: ResearchRunRequest, catalog?: ResearchCatalog | null): string[] {
   const errors: string[] = [];
+  const policy = request.output_policy ?? "prompt_only";
+  if (!["prompt_only", "constrained_short_v1"].includes(policy)) errors.push(`Unknown output policy: ${policy}.`);
+  else if (policy !== "prompt_only" && catalog && !catalog.output_policies?.some((entry) => entry.id === policy)) errors.push(`Output policy ${policy} is not supported by this backend.`);
   if (!request.name.trim()) errors.push("Name is required.");
   if (request.model_keys.length < 1 || request.model_keys.length > 2) errors.push("Select 1–2 models.");
   if (request.protocols.length < 1 || request.protocols.length > 4) errors.push("Select 1–4 protocols.");
@@ -141,16 +147,16 @@ export function researchToCsv(report: ResearchReport): string {
     "task_success_rate", "answered_accuracy", "wilson_lower_95", "gate", "target_accuracy", "min_cases", "call_count",
     "prompt_tokens", "completion_tokens", "elapsed_s", "cell_id", "task_id", "answer", "correct", "instruction_compliant",
     "usage_complete", "message_id", "model_key", "requested_model", "served_model", "role", "kind", "round", "recipient",
-    "parent_ids", "response_id", "request_hash", "finish_reason", "prompt_messages", "content", "error", "limitations",
+    "parent_ids", "response_id", "request_hash", "finish_reason", "prompt_messages", "content", "error", "limitations", "output_policy", "response_format",
   ];
   const rows: unknown[][] = [headers];
   const add = (row: Record<string, unknown>) => {
-    const full = { run_id: report.run_id, name: report.name, status: report.status, ...row };
+    const full = { run_id: report.run_id, name: report.name, status: report.status, output_policy: report.request.output_policy ?? "prompt_only", ...row };
     rows.push(headers.map((key) => (full as Record<string, unknown>)[key]));
   };
   for (const row of report.summary || []) add({ ...row, row_type: "summary", model_keys: row.model_keys.join(" | ") });
   for (const cell of report.cells || []) add({ ...cell, row_type: "cell", status: report.status, model_keys: cell.model_keys.join(" | ") });
-  for (const event of report.events || []) add({ ...event, row_type: "event", parent_ids: (event.parent_ids || []).join(" | "), prompt_messages: JSON.stringify(event.prompt_messages || []) });
+  for (const event of report.events || []) add({ ...event, row_type: "event", parent_ids: (event.parent_ids || []).join(" | "), prompt_messages: JSON.stringify(event.prompt_messages || []), response_format: JSON.stringify(event.response_format ?? null) });
   for (const error of report.errors || []) add({ row_type: "error", error });
   for (const limitation of report.limitations || []) add({ row_type: "limitation", limitations: limitation });
   return rows.map((row) => row.map(csvCell).join(",")).join("\n") + "\n";

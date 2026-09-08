@@ -26,6 +26,14 @@ Public benchmark exposure to model training is unknown. Locally held-out does no
 
 Rebuild with `PYTHONPATH=. python scripts/build_research_fixtures.py RAW_DIRECTORY`. Download only the four pinned URLs declared in the script, retain their hashes, and review any proposed fixture/hash update; the app never downloads data automatically. The full raw datasets live outside the source checkout.
 
+## Explicit message-output policy
+
+The builder defaults new runs to `constrained_short_v1`, while `prompt_only` remains selectable. API clients omitting `output_policy` retain the original prompt-only behavior. Saved reports without this field are displayed as legacy prompt-only; their stored bytes are not rewritten.
+
+Constrained mode uses a task/role-specific llama.cpp JSON schema: exact fields, allowed public answer choices (or a bounded decimal string), supplied evidence IDs, exact critique target IDs, at most three evidence IDs and a public brief of at most160characters. Deterministic validation still rejects duplicate IDs, truncations and invalid replies. Schemas and the actual concise instructions are recorded with the request, including failures. Endpoints that reject schemas fail visibly, with no fallback or hidden retry. The original 256-token default remains unchanged.
+
+The selected policy appears on saved reports, in JSON/CSV exports, and in each event's inspectable requested schema. This is an explicit intervention to reduce malformed communication and unfinished replies, **not an accuracy guarantee**. Compare format completion separately from correctness, preserve all requested-task denominators, and use the same models/tasks/generation limits. A historical before/after rerun is not a randomized causal study or evidence of swarm superiority.
+
 ## Accuracy requirements are evidence gates
 
 Each domain/variant reports task successes over **all requested tasks**, answered accuracy, coverage, abstentions, invalid responses, transport failures, one-sided 95% Wilson lower bound and minimum 30 cases. Failed/missing evidence stays unknown; small samples remain insufficient. An all-abstain/all-error run cannot show answered accuracy as zero or 100%. The Wilson bound is approximate selected-sample evidence, not a future reliability guarantee; it is not simultaneous multiple-comparison correction.
