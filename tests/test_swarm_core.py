@@ -8,7 +8,14 @@ from typing import Any
 
 import pytest
 
-from backend.swarm_core import PROTOCOLS, estimate_calls, public_task, run_task, summarize
+from backend.swarm_core import (
+    PROTOCOLS,
+    build_response_format,
+    estimate_calls,
+    public_task,
+    run_task,
+    summarize,
+)
 
 
 SETTINGS = {"temperature": 0.2, "seed": 17, "max_tokens": 128}
@@ -75,6 +82,216 @@ def test_single_uses_explicit_settings_and_never_sends_gold():
     assert "expected_answer" not in prompt
     assert "tolerance" not in prompt
     assert emitted == cells[0]["messages"]
+
+
+def test_constrained_short_binds_a_role_local_schema_to_the_sent_prompt_and_event():
+    calls: list[tuple[str, list[dict[str, str]], dict[str, Any]]] = []
+
+    def infer(model: str, messages: list[dict[str, str]], **kwargs: Any) -> dict[str, Any]:
+        calls.append((model, messages, kwargs))
+        return response(model, '{"answer":"A","evidence_ids":["e1"],"brief":"supported"}', seed=kwargs["seed"])
+
+    constrained = run_task(
+        task(),
+        ["m1"],
+        "single",
+        SETTINGS,
+        infer,
+        lambda event: None,
+        lambda: False,
+        output_policy="constrained_short_v1",
+    )[0]
+
+    response_format = calls[0][2]["response_format"]
+    schema = response_format["json_schema"]["schema"]
+    assert response_format["type"] == "json_schema"
+    assert response_format["json_schema"]["name"] == "swarm_reply"
+    assert response_format["json_schema"]["strict"] is True
+    assert schema["additionalProperties"] is False
+    assert schema["required"] == ["answer", "evidence_ids", "brief"]
+    assert schema["properties"]["answer"]["enum"] == ["A", "B", None]
+    assert schema["properties"]["evidence_ids"]["items"]["enum"] == ["e1"]
+    assert schema["properties"]["evidence_ids"]["maxItems"] == 3
+    assert "uniqueItems" not in schema["properties"]["evidence_ids"]
+    assert schema["properties"]["brief"]["maxLength"] == 160
+    assert "160" in calls[0][1][0]["content"]
+    assert "3" in calls[0][1][0]["content"]
+    event = constrained["messages"][0]
+    assert event["output_policy"] == "constrained_short_v1"
+    assert event["response_format"] == response_format
+    assert event["prompt_messages"] == calls[0][1]
+    assert event["request_hash"]
+
+    prompt_only = run_task(task(), ["m1"], "single", SETTINGS, infer, lambda event: None, lambda: False)[0]
+    assert "response_format" not in calls[1][2]
+    assert prompt_only["messages"][0]["output_policy"] == "prompt_only"
+    assert prompt_only["messages"][0]["response_format"] is None
+    assert prompt_only["messages"][0]["request_hash"] != event["request_hash"]
+
+
+def test_constrained_short_schema_types_decimal_answers_and_peer_critiques_exactly():
+    decimal_schema = build_response_format(
+        task(expected="100.00", answer_type="decimal", domain="finance"),
+        kind="claim",
+        output_policy="constrained_short_v1",
+    )["json_schema"]["schema"]
+    decimal_answer = decimal_schema["properties"]["answer"]
+    assert decimal_answer["type"] == ["string", "null"]
+    assert decimal_answer["maxLength"] == 26
+    assert decimal_answer["pattern"] == r"^[+-]?[0-9]{1,16}(\.[0-9]{1,8})?$"
+    assert "expected_answer" not in json.dumps(decimal_schema)
+    assert "tolerance" not in json.dumps(decimal_schema)
+
+    critique_schema = build_response_format(
+        task(),
+        kind="critique",
+        target_message_id="task-1:message-1",
+        output_policy="constrained_short_v1",
+    )["json_schema"]["schema"]
+    assert "answer" not in critique_schema["properties"]
+    assert critique_schema["properties"]["target_message_id"]["enum"] == ["task-1:message-1"]
+    assert critique_schema["properties"]["assessment"]["enum"] == ["supported", "unsupported", "unclear"]
+    assert critique_schema["additionalProperties"] is False
+
+
+@pytest.mark.parametrize("answer", ["12345678901234567", "1.123456789", ".123"])
+def test_constrained_short_rejects_decimal_outside_bounded_grammar(answer: str):
+    decimal_task = task(expected="100.00", answer_type="decimal", domain="finance")
+
+    def ignores_numeric_schema(model: str, messages: list[dict[str, str]], **kwargs: Any) -> dict[str, Any]:
+        return response(
+            model,
+            json.dumps({"answer": answer, "evidence_ids": ["e1"], "brief": "bounded"}),
+            seed=kwargs["seed"],
+        )
+
+    cell = run_task(
+        decimal_task,
+        ["m1"],
+        "single",
+        SETTINGS,
+        ignores_numeric_schema,
+        lambda event: None,
+        lambda: False,
+        output_policy="constrained_short_v1",
+    )[0]
+    assert cell["status"] == "invalid"
+    assert cell["answer"] is None
+    assert "decimal answer" in cell["error"]
+
+
+def test_constrained_short_rejects_provider_output_that_ignores_bounds():
+    constrained_task = {
+        **task(),
+        "evidence": [{"id": f"e{i}", "text": "evidence"} for i in range(1, 5)],
+    }
+
+    def ignores_schema(model: str, messages: list[dict[str, str]], **kwargs: Any) -> dict[str, Any]:
+        return response(
+            model,
+            json.dumps(
+                {
+                    "answer": "A",
+                    "evidence_ids": ["e1", "e2", "e3", "e4"],
+                    "brief": "x" * 161,
+                }
+            ),
+            seed=kwargs["seed"],
+        )
+
+    cell = run_task(
+        constrained_task,
+        ["m1"],
+        "single",
+        SETTINGS,
+        ignores_schema,
+        lambda event: None,
+        lambda: False,
+        output_policy="constrained_short_v1",
+    )[0]
+    assert cell["status"] == "invalid"
+    assert cell["correct"] is None
+    assert cell["messages"][0]["payload"] is None
+    assert "brief" in cell["error"] or "evidence_ids" in cell["error"]
+
+
+def test_constrained_short_keeps_truncation_and_unsupported_schema_failures_as_errors():
+    response_format_errors: list[dict[str, Any]] = []
+
+    class ProviderFailure(RuntimeError):
+        def __init__(self, result: dict[str, Any]):
+            super().__init__("truncated")
+            self.result = result
+
+    def truncated(model: str, messages: list[dict[str, str]], **kwargs: Any) -> dict[str, Any]:
+        assert kwargs["response_format"]["type"] == "json_schema"
+        result = response(model, "{", seed=kwargs["seed"])
+        result.update(content="{", completion_tokens=128, finish_reason="length")
+        raise ProviderFailure(result)
+
+    truncated_cell = run_task(
+        task(),
+        ["m1"],
+        "single",
+        SETTINGS,
+        truncated,
+        lambda event: None,
+        lambda: False,
+        output_policy="constrained_short_v1",
+    )[0]
+    assert truncated_cell["status"] == "error"
+    assert truncated_cell["messages"][0]["content"] == "{"
+    assert truncated_cell["messages"][0]["completion_tokens"] == 128
+
+    def unsupported(model: str, messages: list[dict[str, str]], **kwargs: Any) -> dict[str, Any]:
+        response_format_errors.append(kwargs["response_format"])
+        raise RuntimeError("endpoint refused response_format")
+
+    unsupported_cell = run_task(
+        task(),
+        ["m1"],
+        "single",
+        SETTINGS,
+        unsupported,
+        lambda event: None,
+        lambda: False,
+        output_policy="constrained_short_v1",
+    )[0]
+    assert unsupported_cell["status"] == "error"
+    assert unsupported_cell["messages"][0]["response_format"] == response_format_errors[0]
+    assert len(response_format_errors) == 1
+
+
+def test_constrained_invalid_signal_is_not_consumed_as_a_board_message():
+    prompts: list[list[dict[str, str]]] = []
+    calls = 0
+
+    def infer(model: str, messages: list[dict[str, str]], **kwargs: Any) -> dict[str, Any]:
+        nonlocal calls
+        calls += 1
+        prompts.append(messages)
+        brief = "x" * 161 if calls == 1 else "valid"
+        return response(
+            model,
+            json.dumps({"answer": "A", "evidence_ids": ["e1"], "brief": brief}),
+            seed=kwargs["seed"],
+        )
+
+    cell = run_task(
+        task(),
+        ["m1", "m2"],
+        "signal_board",
+        SETTINGS,
+        infer,
+        lambda event: None,
+        lambda: False,
+        output_policy="constrained_short_v1",
+    )[0]
+    invalid_id = cell["messages"][0]["message_id"]
+    assert cell["status"] == "invalid"
+    assert cell["answer"] is None
+    assert cell["messages"][0]["payload"] is None
+    assert all(invalid_id not in json.dumps(messages[1:]) for messages in prompts[1:])
 
 
 def test_independent_vote_requires_strict_majority_of_all_ballots():

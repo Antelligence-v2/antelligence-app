@@ -15,7 +15,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from backend.research_data import BUNDLE_SHA256, LIMITATIONS, digest, load_bundle, select_tasks
 from backend.research_models import LocalModels, MODELS
-from backend.swarm_core import PROTOCOLS, estimate_calls, run_task, summarize
+from backend.swarm_core import PROTOCOLS, estimate_calls, output_policy_catalog, run_task, summarize
 
 
 class ResearchRequest(BaseModel):
@@ -32,6 +32,7 @@ class ResearchRequest(BaseModel):
     target_accuracy: float = Field(gt=0,le=1)
     max_calls: int = Field(ge=1,le=600)
     max_wall_seconds: int = Field(ge=10,le=3600)
+    output_policy: Literal['prompt_only','constrained_short_v1'] = 'prompt_only'
 
     @model_validator(mode='after')
     def unique_lists(self):
@@ -118,6 +119,7 @@ class ResearchService:
     def catalog(self):
         self.recover()
         return dict(models=self.models_factory().catalog(),datasets=load_bundle()['datasets'],
+                    output_policies=output_policy_catalog(),
                     protocols=[dict(id=p,label=p.replace('_',' ').title(),description={
                         'single':'One blind answer per model (cheaper baseline).',
                         'independent_vote':'Three blind samples per model, strict-majority vote.',
@@ -144,7 +146,7 @@ class ResearchService:
                     variants=[('single:'+m,[m]) for m in data['model_keys']] if protocol=='single' else [(protocol,data['model_keys'])]
                     for variant,keys in variants:
                         cells.append(dict(cell_id=f'{task["task_id"]}:{variant}',task_id=task['task_id'],dataset=task['dataset'],domain=task['domain'],
-                           variant=variant,protocol=protocol,model_keys=keys,status='error',answer=None,expected_answer=task['expected_answer'],
+                           variant=variant,protocol=protocol,model_keys=keys,output_policy=data['output_policy'],status='error',answer=None,expected_answer=task['expected_answer'],
                            correct=None,instruction_compliant=False,call_count=0,prompt_tokens=0,completion_tokens=0,elapsed_s=0.,messages=[],
                            usage_complete=False,error='Not evaluated (pending or interrupted).'))
             run_id=str(uuid4()); stamp=now()
@@ -193,7 +195,8 @@ class ResearchService:
                 for protocol in data['protocols']:
                     if stopped(): break
                     results=run_task(task,data['model_keys'],protocol,
-                              {k:data[k] for k in ('temperature','seed','max_tokens')},infer,emit,stopped)
+                              {k:data[k] for k in ('temperature','seed','max_tokens')},infer,emit,stopped,
+                              output_policy=data['output_policy'])
                     for cell in results:
                         for i,old in enumerate(body['cells']):
                             if old['cell_id']==cell['cell_id']:
@@ -241,7 +244,9 @@ def make_router(service):
     @router.get('/runs')
     def library(limit: Annotated[int,Query(ge=1,le=50)]=50):
         service.recover();rows=service.store.list(limit)
-        return {'items':[{k:r[k] for k in ('run_id','name','created_at','status','completed_cells','total_cells')} for r in rows[:limit]],'has_more':len(rows)>limit}
+        return {'items':[{**{k:r[k] for k in ('run_id','name','created_at','status','completed_cells','total_cells')},
+                          'output_policy':r.get('request',{}).get('output_policy','prompt_only')}
+                         for r in rows[:limit]],'has_more':len(rows)>limit}
     @router.get('/runs/{run_id}')
     def report(run_id: UUID):
         service.recover();return service.store.get(run_id)

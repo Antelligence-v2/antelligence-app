@@ -19,7 +19,25 @@ from typing import Any
 
 
 PROTOCOLS = ("single", "independent_vote", "peer_review", "signal_board")
+OUTPUT_POLICY_IDS = ("prompt_only", "constrained_short_v1")
+OUTPUT_POLICIES = (
+    {
+        "id": "prompt_only",
+        "label": "Prompt only",
+        "description": "Legacy prompt-only generation without a response schema.",
+    },
+    {
+        "id": "constrained_short_v1",
+        "label": "Constrained short v1",
+        "description": "Schema-bound JSON communication with short public briefs.",
+    },
+)
 _MAX_SEED = 2_147_483_647
+_MAX_SHORT_EVIDENCE_IDS = 3
+_MAX_SHORT_BRIEF_CHARS = 160
+_CONSTRAINED_DECIMAL_PATTERN = r"^[+-]?[0-9]{1,16}(\.[0-9]{1,8})?$"
+_CONSTRAINED_DECIMAL_RE = re.compile(_CONSTRAINED_DECIMAL_PATTERN)
+_MAX_DECIMAL_ANSWER_CHARS = 26
 _TASK_FIELDS = (
     "task_id",
     "source_id",
@@ -58,6 +76,7 @@ class _Execution:
         emit: Callable[[dict[str, Any]], Any],
         should_stop: Callable[[], bool],
         expected_calls: int,
+        output_policy: str,
     ) -> None:
         self.task = task
         self.task_id = str(task["task_id"])
@@ -69,6 +88,7 @@ class _Execution:
         self.emit = emit
         self.should_stop = should_stop
         self.expected_calls = expected_calls
+        self.output_policy = output_policy
         self.events: list[dict[str, Any]] = []
         self.errors: list[str] = []
         self.actual_calls = 0
@@ -94,7 +114,12 @@ class _Execution:
 
     @staticmethod
     def _request_hash(
-        model_key: str, messages: list[dict[str, str]], settings: Mapping[str, Any]
+        model_key: str,
+        messages: list[dict[str, str]],
+        settings: Mapping[str, Any],
+        *,
+        output_policy: str = "prompt_only",
+        response_format: Mapping[str, Any] | None = None,
     ) -> str:
         request = {
             "model_key": model_key,
@@ -103,6 +128,9 @@ class _Execution:
             "temperature": settings["temperature"],
             "seed": settings["seed"],
         }
+        if output_policy != "prompt_only":
+            request["output_policy"] = output_policy
+            request["response_format"] = copy.deepcopy(response_format)
         encoded = json.dumps(request, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
         return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
 
@@ -131,18 +159,31 @@ class _Execution:
 
         message_id = self._next_message_id()
         parent_ids_list = list(parent_ids)
-        request_hash = self._request_hash(model_key, messages, self.settings_for(actor, round_number))
+        response_format = build_response_format(
+            self.task,
+            kind=kind,
+            target_message_id=parent_ids_list[0] if kind == "critique" else None,
+            output_policy=self.output_policy,
+        )
+        request_hash = self._request_hash(
+            model_key,
+            messages,
+            self.settings_for(actor, round_number),
+            output_policy=self.output_policy,
+            response_format=response_format,
+        )
         start = time.monotonic()
         self.actual_calls += 1
         raw: Mapping[str, Any] | None = None
         try:
-            response = self.infer(
-                model_key,
-                copy.deepcopy(messages),
-                max_tokens=self.settings["max_tokens"],
-                temperature=self.settings["temperature"],
-                seed=self._seed_for(actor, round_number),
-            )
+            infer_settings: dict[str, Any] = {
+                "max_tokens": self.settings["max_tokens"],
+                "temperature": self.settings["temperature"],
+                "seed": self._seed_for(actor, round_number),
+            }
+            if response_format is not None:
+                infer_settings["response_format"] = copy.deepcopy(response_format)
+            response = self.infer(model_key, copy.deepcopy(messages), **infer_settings)
             if not isinstance(response, Mapping):
                 raise ValueError("infer returned a non-object response")
             raw = response
@@ -171,6 +212,8 @@ class _Execution:
                     expires_round=expires_round,
                     messages=messages,
                     request_hash=request_hash,
+                    output_policy=self.output_policy,
+                    response_format=response_format,
                     content=metadata["content"],
                     payload=None,
                     parse_error=None,
@@ -212,6 +255,8 @@ class _Execution:
                     expires_round=expires_round,
                     messages=messages,
                     request_hash=request_hash,
+                    output_policy=self.output_policy,
+                    response_format=response_format,
                     content=raw.get("content") if isinstance(raw.get("content"), str) else None,
                     payload=None,
                     parse_error=None,
@@ -238,7 +283,10 @@ class _Execution:
         parse_error: str | None = None
         try:
             payload = parser(content)
+            if self.output_policy == "constrained_short_v1":
+                _validate_constrained_payload(payload, self.task, kind)
         except (ValueError, TypeError, _PayloadError) as exc:
+            payload = None
             parse_error = str(exc) or exc.__class__.__name__
             self.had_invalid = True
         event = self._event(
@@ -252,6 +300,8 @@ class _Execution:
             expires_round=expires_round,
             messages=messages,
             request_hash=request_hash,
+            output_policy=self.output_policy,
+            response_format=response_format,
             content=content,
             payload=payload,
             parse_error=parse_error,
@@ -353,6 +403,8 @@ class _Execution:
             "parent_ids": list(fields["parent_ids"]),
             "expires_round": fields["expires_round"],
             "prompt_messages": copy.deepcopy(fields["messages"]),
+            "output_policy": fields["output_policy"],
+            "response_format": copy.deepcopy(fields["response_format"]),
             "content": fields["content"],
             "payload": copy.deepcopy(fields["payload"]),
             "parse_error": fields["parse_error"],
@@ -446,12 +498,14 @@ def run_task(
     infer: Callable[..., Mapping[str, Any]],
     emit: Callable[[dict[str, Any]], Any],
     should_stop: Callable[[], bool],
+    output_policy: str = "prompt_only",
 ) -> list[dict[str, Any]]:
     """Run one task under one protocol using only caller-supplied callbacks."""
     _validate_task(task)
     models = _validate_model_keys(model_keys)
     if protocol not in PROTOCOLS:
         raise ValueError(f"unknown protocol: {protocol!r}")
+    _validate_output_policy(output_policy)
     normalized_settings = _validate_settings(settings)
     if not callable(infer) or not callable(emit) or not callable(should_stop):
         raise ValueError("infer, emit, and should_stop must be callable")
@@ -465,6 +519,7 @@ def run_task(
                 infer,
                 emit,
                 should_stop,
+                output_policy,
             )
             for model_key in models
         ]
@@ -480,6 +535,7 @@ def run_task(
         emit=emit,
         should_stop=should_stop,
         expected_calls=expected_calls,
+        output_policy=output_policy,
     )
     if protocol == "independent_vote":
         answer, _ = _run_independent_vote(execution)
@@ -578,6 +634,7 @@ def _run_single(
     infer: Callable[..., Mapping[str, Any]],
     emit: Callable[[dict[str, Any]], Any],
     should_stop: Callable[[], bool],
+    output_policy: str,
 ) -> dict[str, Any]:
     execution = _Execution(
         task=task,
@@ -589,10 +646,11 @@ def _run_single(
         emit=emit,
         should_stop=should_stop,
         expected_calls=1,
+        output_policy=output_policy,
     )
     outcome = execution.call(
         model_key=model_key,
-        messages=_answer_messages(task),
+        messages=_answer_messages(task, output_policy),
         role="solver",
         kind="claim",
         round_number=0,
@@ -612,7 +670,7 @@ def _run_independent_vote(execution: _Execution) -> tuple[str | None, list[dict[
                 break
             outcome = execution.call(
                 model_key=model_key,
-                messages=_answer_messages(execution.task),
+                messages=_answer_messages(execution.task, execution.output_policy),
                 role="solver",
                 kind="claim",
                 round_number=0,
@@ -643,7 +701,7 @@ def _run_peer_review(execution: _Execution) -> tuple[str | None, list[dict[str, 
         initials.append(
             execution.call(
                 model_key=model_key,
-                messages=_answer_messages(execution.task),
+                messages=_answer_messages(execution.task, execution.output_policy),
                 role="solver",
                 kind="claim",
                 round_number=0,
@@ -666,7 +724,9 @@ def _run_peer_review(execution: _Execution) -> tuple[str | None, list[dict[str, 
             continue
         target_event = target["event"]
         target_payload = target["payload"]
-        critique_messages = _critique_messages(execution.task, target_event, target_payload)
+        critique_messages = _critique_messages(
+            execution.task, target_event, target_payload, execution.output_policy
+        )
         critiques[index] = execution.call(
             model_key=model_key,
             messages=critique_messages,
@@ -709,6 +769,7 @@ def _run_peer_review(execution: _Execution) -> tuple[str | None, list[dict[str, 
                 "content": critique_event["content"],
             },
             peer_proposals,
+            execution.output_policy,
         )
         revisions[index] = execution.call(
             model_key=model_key,
@@ -746,7 +807,7 @@ def _run_signal_board(execution: _Execution) -> tuple[str | None, list[dict[str,
             break
         outcome = execution.call(
             model_key=model_key,
-            messages=_answer_messages(execution.task),
+            messages=_answer_messages(execution.task, execution.output_policy),
             role="solver",
             kind="claim",
             round_number=0,
@@ -780,7 +841,9 @@ def _run_signal_board(execution: _Execution) -> tuple[str | None, list[dict[str,
                 execution.mark_missing("required board signal was unavailable for revision")
                 continue
             relevant = [signal for signal in snapshot if signal["model_key"] != model_key][: len(models)]
-            messages = _board_messages(execution.task, round_number, relevant)
+            messages = _board_messages(
+                execution.task, round_number, relevant, execution.output_policy
+            )
             parent_ids = [previous["message_id"]] + [signal["message_id"] for signal in relevant]
             outcome = execution.call(
                 model_key=model_key,
@@ -845,6 +908,7 @@ def _finish_cell(execution: _Execution, answer: str | None) -> dict[str, Any]:
         "variant": execution.variant,
         "protocol": execution.protocol,
         "model_keys": list(execution.model_keys),
+        "output_policy": execution.output_policy,
         "status": status,
         "answer": answer,
         "expected_answer": execution.task["expected_answer"],
@@ -864,15 +928,20 @@ def _finish_cell(execution: _Execution, answer: str | None) -> dict[str, Any]:
     }
 
 
-def _answer_messages(task: Mapping[str, Any]) -> list[dict[str, str]]:
+def _answer_messages(
+    task: Mapping[str, Any], output_policy: str = "prompt_only"
+) -> list[dict[str, str]]:
     return [
-        {"role": "system", "content": _ANSWER_SYSTEM},
+        {"role": "system", "content": _answer_system(task, output_policy)},
         {"role": "user", "content": _json_text({"task": public_task(task), "instruction": "Solve independently."})},
     ]
 
 
 def _critique_messages(
-    task: Mapping[str, Any], target_event: Mapping[str, Any], target_payload: Mapping[str, Any]
+    task: Mapping[str, Any],
+    target_event: Mapping[str, Any],
+    target_payload: Mapping[str, Any],
+    output_policy: str = "prompt_only",
 ) -> list[dict[str, str]]:
     target = {
         "message_id": target_event["message_id"],
@@ -881,7 +950,10 @@ def _critique_messages(
         "content": target_event["content"],
     }
     return [
-        {"role": "system", "content": _CRITIQUE_SYSTEM},
+        {
+            "role": "system",
+            "content": _critique_system(task, target_event["message_id"], output_policy),
+        },
         {
             "role": "user",
             "content": _json_text(
@@ -900,9 +972,10 @@ def _revision_messages(
     own_initial: Mapping[str, Any],
     own_critique: Mapping[str, Any],
     peer_proposals: list[dict[str, Any]],
+    output_policy: str = "prompt_only",
 ) -> list[dict[str, str]]:
     return [
-        {"role": "system", "content": _ANSWER_SYSTEM},
+        {"role": "system", "content": _answer_system(task, output_policy)},
         {
             "role": "user",
             "content": _json_text(
@@ -919,10 +992,13 @@ def _revision_messages(
 
 
 def _board_messages(
-    task: Mapping[str, Any], round_number: int, signals: list[dict[str, Any]]
+    task: Mapping[str, Any],
+    round_number: int,
+    signals: list[dict[str, Any]],
+    output_policy: str = "prompt_only",
 ) -> list[dict[str, str]]:
     return [
-        {"role": "system", "content": _ANSWER_SYSTEM},
+        {"role": "system", "content": _answer_system(task, output_policy)},
         {
             "role": "user",
             "content": _json_text(
@@ -971,6 +1047,110 @@ def _signal_view(model_key: str, outcome: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
+def _validate_output_policy(output_policy: str) -> None:
+    if output_policy not in OUTPUT_POLICY_IDS:
+        raise ValueError(f"unknown output policy: {output_policy!r}")
+
+
+def output_policy_catalog() -> list[dict[str, str]]:
+    """Return public policy metadata without exposing mutable module state."""
+    return copy.deepcopy(list(OUTPUT_POLICIES))
+
+
+def build_response_format(
+    task: Mapping[str, Any],
+    *,
+    kind: str,
+    target_message_id: str | None = None,
+    output_policy: str = "prompt_only",
+) -> dict[str, Any] | None:
+    """Build the exact local schema used for one task/role response."""
+    _validate_output_policy(output_policy)
+    if output_policy == "prompt_only":
+        return None
+    _validate_task(task)
+
+    if kind == "critique":
+        if not isinstance(target_message_id, str) or not target_message_id:
+            raise ValueError("critique schema requires a target message ID")
+        properties: dict[str, Any] = {
+            "target_message_id": {"type": "string", "enum": [target_message_id]},
+            "assessment": {
+                "type": "string",
+                "enum": ["supported", "unsupported", "unclear"],
+            },
+        }
+        required = ["target_message_id", "assessment", "evidence_ids", "brief"]
+    elif kind in {"claim", "revision", "answer"}:
+        if task["answer_type"] == "choice":
+            answer_schema: dict[str, Any] = {
+                "type": ["string", "null"],
+                "enum": [*task["choices"], None],
+            }
+        else:
+            answer_schema = {
+                "type": ["string", "null"],
+                "pattern": _CONSTRAINED_DECIMAL_PATTERN,
+                "maxLength": _MAX_DECIMAL_ANSWER_CHARS,
+            }
+        properties = {"answer": answer_schema}
+        required = ["answer", "evidence_ids", "brief"]
+    else:
+        raise ValueError(f"unknown response role: {kind!r}")
+
+    evidence_ids = [evidence["id"] for evidence in task["evidence"]]
+    properties["evidence_ids"] = {
+        "type": "array",
+        "items": {"type": "string", "enum": evidence_ids},
+        "maxItems": _MAX_SHORT_EVIDENCE_IDS,
+    }
+    properties["brief"] = {"type": "string", "maxLength": _MAX_SHORT_BRIEF_CHARS}
+    schema = {
+        "type": "object",
+        "properties": properties,
+        "required": required,
+        "additionalProperties": False,
+    }
+    return {
+        "type": "json_schema",
+        "json_schema": {"name": "swarm_reply", "strict": True, "schema": schema},
+    }
+
+
+def _answer_system(task: Mapping[str, Any], output_policy: str) -> str:
+    _validate_output_policy(output_policy)
+    if output_policy == "prompt_only":
+        return _ANSWER_SYSTEM
+    if task["answer_type"] == "choice":
+        answer_rule = (
+            "answer must be exactly one of "
+            + json.dumps(task["choices"], ensure_ascii=False, separators=(",", ":"))
+            + " or null"
+        )
+    else:
+        answer_rule = (
+            f"answer must match the bounded decimal pattern {_CONSTRAINED_DECIMAL_PATTERN!r} or null"
+        )
+    return (
+        _CONSTRAINED_ANSWER_SYSTEM
+        + f" {answer_rule}; evidence_ids may contain at most 3 unique supplied IDs; "
+        "brief must be at most 160 characters."
+    )
+
+
+def _critique_system(
+    task: Mapping[str, Any], target_message_id: str, output_policy: str
+) -> str:
+    _validate_output_policy(output_policy)
+    if output_policy == "prompt_only":
+        return _CRITIQUE_SYSTEM
+    return (
+        _CONSTRAINED_CRITIQUE_SYSTEM
+        + f" target_message_id must be exactly {target_message_id!r}; "
+        "evidence_ids may contain at most 3 unique supplied IDs; brief must be at most 160 characters."
+    )
+
+
 def _parse_answer(content: str, task: Mapping[str, Any]) -> dict[str, Any]:
     payload = _strict_object(content, _ANSWER_FIELDS)
     answer = payload["answer"]
@@ -1009,6 +1189,26 @@ def _parse_critique(content: str, task: Mapping[str, Any], target_id: str) -> di
         "evidence_ids": list(payload["evidence_ids"]),
         "brief": payload["brief"],
     }
+
+
+def _validate_constrained_payload(
+    payload: Mapping[str, Any], task: Mapping[str, Any], kind: str
+) -> None:
+    if not isinstance(payload, Mapping):
+        raise _PayloadError("constrained response must be an object")
+    evidence_ids = payload.get("evidence_ids")
+    if isinstance(evidence_ids, list) and len(evidence_ids) > _MAX_SHORT_EVIDENCE_IDS:
+        raise _PayloadError("evidence_ids exceeds 3 IDs")
+    brief = payload.get("brief")
+    if isinstance(brief, str) and len(brief) > _MAX_SHORT_BRIEF_CHARS:
+        raise _PayloadError("brief exceeds 160 characters")
+    if kind != "critique" and task["answer_type"] == "decimal":
+        answer = payload.get("answer")
+        if answer is not None and (
+            not isinstance(answer, str)
+            or _CONSTRAINED_DECIMAL_RE.fullmatch(answer) is None
+        ):
+            raise _PayloadError("decimal answer does not match the constrained numeric pattern")
 
 
 def _strict_object(content: str, expected_fields: set[str]) -> dict[str, Any]:
@@ -1246,6 +1446,11 @@ _ANSWER_SYSTEM = (
     "only supplied evidence. brief is a short public rationale of at most 500 characters. "
     "Do not use code fences, extra prose, or private chain-of-thought."
 )
+_CONSTRAINED_ANSWER_SYSTEM = (
+    "Answer the task using the supplied evidence. Return exactly one bare JSON object "
+    "with exactly these fields: answer, evidence_ids, brief. Do not use code fences, "
+    "extra prose, or private chain-of-thought."
+)
 _CRITIQUE_SYSTEM = (
     "Assess the named peer claim using the supplied task and evidence. Return exactly "
     "one bare JSON object with exactly these fields: target_message_id, assessment, "
@@ -1253,6 +1458,22 @@ _CRITIQUE_SYSTEM = (
     "evidence_ids must name only supplied evidence; brief is at most 500 characters. "
     "Do not use code fences, extra prose, or private chain-of-thought."
 )
+_CONSTRAINED_CRITIQUE_SYSTEM = (
+    "Assess the named peer claim using the supplied task and evidence. Return exactly "
+    "one bare JSON object with exactly these fields: target_message_id, assessment, "
+    "evidence_ids, brief. assessment must be supported, unsupported, or unclear. "
+    "Do not use code fences, extra prose, or private chain-of-thought."
+)
 
 
-__all__ = ["PROTOCOLS", "estimate_calls", "public_task", "run_task", "summarize"]
+__all__ = [
+    "OUTPUT_POLICIES",
+    "OUTPUT_POLICY_IDS",
+    "PROTOCOLS",
+    "build_response_format",
+    "estimate_calls",
+    "output_policy_catalog",
+    "public_task",
+    "run_task",
+    "summarize",
+]

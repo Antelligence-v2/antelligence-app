@@ -87,12 +87,14 @@ class LocalModels:
             selected.append(rows[key])
         return selected
 
-    def infer(self, model_key, messages, *, max_tokens, temperature, seed):
+    def infer(self, model_key, messages, *, max_tokens, temperature, seed, response_format=None):
         if model_key not in MODELS:
             raise ValueError('Unknown research model')
         model = MODELS[model_key]
         payload = dict(OPTIONS, model=model['model_id'], messages=messages, max_tokens=max_tokens,
                        temperature=temperature, seed=seed)
+        if response_format is not None:
+            payload['response_format'] = response_format
         start = time.monotonic()
         response = self._json(model['endpoint'] + '/v1/chat/completions', payload, timeout=self.timeout)
         choice = response.get('choices', [{}])[0]

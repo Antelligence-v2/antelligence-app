@@ -6,6 +6,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 import pytest
 from backend.research_api import ResearchService, ResearchRequest, make_router
+from backend.research_data import digest
 
 
 class FakeModels:
@@ -19,8 +20,19 @@ class FakeModels:
         return {'content': json.dumps({'answer':'yes','evidence_ids':[],'brief':'Unit fixture only'}), 'response_id':'unit', 'requested_model':'unit-model','served_model':'unit-model', 'prompt_tokens':10,'completion_tokens':5,'elapsed_s':.01,'finish_reason':'stop'}
 
 
+class RecordingModels(FakeModels):
+    def __init__(self):
+        self.settings = []
+
+    def infer(self, key, messages, **settings):
+        self.settings.append(settings)
+        return super().infer(key, messages, **settings)
+
+
 def request(**kwargs):
-    return dict(name='unit run',model_keys=['qwen'],protocols=['single'],datasets=['pubmedqa'],split='development',tasks_per_dataset=2,temperature=.2,seed=17,max_tokens=64,target_accuracy=.8,max_calls=20,max_wall_seconds=30,**kwargs)
+    data = dict(name='unit run',model_keys=['qwen'],protocols=['single'],datasets=['pubmedqa'],split='development',tasks_per_dataset=2,temperature=.2,seed=17,max_tokens=64,target_accuracy=.8,max_calls=20,max_wall_seconds=30)
+    data.update(kwargs)
+    return data
 
 
 def client_for(tmp_path, models=None):
@@ -53,7 +65,60 @@ def test_actual_persistence_and_restart_readback(tmp_path):
     assert again.get('/research/runs').json()['items'][0]['run_id'] == body['run_id']
 
 
-@pytest.mark.parametrize('key,value',[('tasks_per_dataset',True),('seed','17'),('max_tokens',64.5),('temperature',float('inf')),('protocols',['made_up']),('model_keys',['http://elsewhere']),('model_keys',['qwen','qwen'])])
+def test_output_policy_defaults_to_prompt_only_and_catalog_exposes_both_policies(tmp_path):
+    client, _ = client_for(tmp_path)
+    assert ResearchRequest.model_validate(request()).output_policy == 'prompt_only'
+    catalog = client.get('/research/catalog').json()
+    assert [policy['id'] for policy in catalog['output_policies']] == ['prompt_only', 'constrained_short_v1']
+    assert all(policy['label'] and policy['description'] for policy in catalog['output_policies'])
+
+
+def test_constrained_policy_is_forwarded_and_persisted_per_event(tmp_path):
+    models = RecordingModels()
+    client, _ = client_for(tmp_path, models)
+    response = client.post('/research/runs', json=request(output_policy='constrained_short_v1', tasks_per_dataset=1))
+    assert response.status_code == 202, response.text
+    body = wait_result(client, response.json()['run_id'])
+    assert body['request']['output_policy'] == 'constrained_short_v1'
+    assert body['cells'][0]['output_policy'] == 'constrained_short_v1'
+    assert client.get('/research/runs').json()['items'][0]['output_policy'] == 'constrained_short_v1'
+    event = body['events'][0]
+    assert event['output_policy'] == 'constrained_short_v1'
+    assert event['response_format']['type'] == 'json_schema'
+    assert models.settings[0]['response_format'] == event['response_format']
+
+
+def test_legacy_report_policy_display_does_not_rewrite_stored_bytes(tmp_path):
+    client, service = client_for(tmp_path)
+    response = client.post('/research/runs', json=request())
+    body = wait_result(client, response.json()['run_id'])
+    run_id = body['run_id']
+    with service.store.connect() as con:
+        row = con.execute('SELECT body FROM research_runs WHERE run_id=?', (run_id,)).fetchone()
+        legacy = json.loads(row[0])
+        legacy['request'].pop('output_policy', None)
+        legacy['request_hash'] = digest(legacy['request'])
+        for event in legacy['events']:
+            event.pop('output_policy', None)
+            event.pop('response_format', None)
+        for cell in legacy['cells']:
+            cell.pop('output_policy', None)
+        con.execute('UPDATE research_runs SET body=? WHERE run_id=?', (json.dumps(legacy), run_id))
+        before = con.execute('SELECT body FROM research_runs WHERE run_id=?', (run_id,)).fetchone()[0]
+    displayed = client.get('/research/runs/' + run_id).json()
+    assert displayed == legacy
+    assert service.store.get(run_id) == legacy
+    assert digest(displayed['request']) == displayed['request_hash']
+    with service.store.connect() as con:
+        after = con.execute('SELECT body FROM research_runs WHERE run_id=?', (run_id,)).fetchone()[0]
+    assert before == after
+    assert client.get('/research/runs').json()['items'][0]['output_policy'] == 'prompt_only'
+    assert 'output_policy' not in displayed['request']
+    assert 'output_policy' not in displayed['events'][0]
+    assert 'response_format' not in displayed['events'][0]
+
+
+@pytest.mark.parametrize('key,value',[('tasks_per_dataset',True),('seed','17'),('max_tokens',64.5),('temperature',float('inf')),('protocols',['made_up']),('model_keys',['http://elsewhere']),('model_keys',['qwen','qwen']),('output_policy','unsupported')])
 def test_strict_request_rejection(key,value):
     payload = request();payload[key]=value
     with pytest.raises(ValueError): ResearchRequest.model_validate(payload)
