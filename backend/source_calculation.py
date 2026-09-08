@@ -7,7 +7,6 @@ labels, tolerances, providers, or network state.
 from __future__ import annotations
 
 import re
-import unicodedata
 from collections.abc import Mapping
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP, localcontext
 from typing import Any
@@ -200,17 +199,15 @@ def _bind_quote(quote: str, text: str) -> tuple[Decimal, int]:
     if not quote or len(quote) > MAX_QUOTE_CHARS or _NUMERIC_TOKEN_RE.fullmatch(quote) is None:
         raise SourceCalculationError("quote must be one whole numeric token")
     for match in _SOURCE_TOKEN_RE.finditer(text):
-        # Unconsumed signs (including Unicode dash/math forms), currencies,
-        # opening delimiters and invisible formats are not safe boundaries.
-        # Do not normalize source bytes into a different, apparently valid quote.
+        # Admit explicit boundaries, never a denylist of known sign glyphs.
+        # Adjacent words/numbers must be whitespace-separated (the regex rejects
+        # immediate alphanumerics). Only ASCII context and these prose/table
+        # separators are supported; ambiguous/Unicode context fails closed.
         prefix = text[:match.start()].rstrip()
         suffix = text[match.end():].lstrip()
-        before = prefix[-1:] or " "
-        after = suffix[:1] or " "
-        unsafe_before = unicodedata.category(before) in {"Pd", "Sm", "Sc", "Ps", "Cf"}
-        unsafe_after = unicodedata.category(after) in {"Pd", "Sm", "Cf"}
-        # Table pipes and assignment equals are separators, not numeric signs.
-        if (unsafe_before and before not in "|=") or (unsafe_after and after not in "|="):
+        neighbours = (prefix[-1:] or " ", suffix[:1] or " ")
+        if not all(char.isascii() and (char.isalnum() or char in " .,:;!?|=\"'")
+                   for char in neighbours):
             continue
         if match.group() == quote:
             return _parse_quote(quote), match.start()

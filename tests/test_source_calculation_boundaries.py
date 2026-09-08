@@ -68,7 +68,7 @@ def test_gold_labels_cannot_change_host_computation():
     assert first["answer"] == "-30.00"
 
 
-@pytest.mark.parametrize("sign", ["－", "﹣", "±", "∓", "–", "—", "﹢", "＋", "−"])
+@pytest.mark.parametrize("sign", ["－", "﹣", "±", "∓", "–", "—", "﹢", "＋", "−", "˗", "˖", "➖", "➕"])
 @pytest.mark.parametrize("template", ["value {sign}50 dollars", "value {sign} 50 dollars", "value 50{sign} dollars"])
 def test_unsupported_unicode_numeric_signs_cannot_be_stripped(sign, template):
     with pytest.raises(ValueError, match="whole numeric token"):
