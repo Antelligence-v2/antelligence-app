@@ -7,6 +7,7 @@ labels, tolerances, providers, or network state.
 from __future__ import annotations
 
 import re
+import unicodedata
 from collections.abc import Mapping
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP, localcontext
 from typing import Any
@@ -199,10 +200,17 @@ def _bind_quote(quote: str, text: str) -> tuple[Decimal, int]:
     if not quote or len(quote) > MAX_QUOTE_CHARS or _NUMERIC_TOKEN_RE.fullmatch(quote) is None:
         raise SourceCalculationError("quote must be one whole numeric token")
     for match in _SOURCE_TOKEN_RE.finditer(text):
-        # A spaced sign/parenthesis that the grammar could not consume is not
-        # permission to reinterpret its magnitude as a positive number.
+        # Unconsumed signs (including Unicode dash/math forms), currencies,
+        # opening delimiters and invisible formats are not safe boundaries.
+        # Do not normalize source bytes into a different, apparently valid quote.
         prefix = text[:match.start()].rstrip()
-        if prefix.endswith(("-", "+", "−", "(")):
+        suffix = text[match.end():].lstrip()
+        before = prefix[-1:] or " "
+        after = suffix[:1] or " "
+        unsafe_before = unicodedata.category(before) in {"Pd", "Sm", "Sc", "Ps", "Cf"}
+        unsafe_after = unicodedata.category(after) in {"Pd", "Sm", "Cf"}
+        # Table pipes and assignment equals are separators, not numeric signs.
+        if (unsafe_before and before not in "|=") or (unsafe_after and after not in "|="):
             continue
         if match.group() == quote:
             return _parse_quote(quote), match.start()
