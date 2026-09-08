@@ -116,6 +116,25 @@ test("CSV attributes the selected policy and preserves legacy reports", () => {
   assert.equal(JSON.stringify(legacy), legacyBefore);
 });
 
+test("source-backed arithmetic is opt-in and requires backend admission", () => {
+  const request = buildResearchRequest({ ...DEFAULT_RESEARCH_FORM, output_policy: "source_calculation_v1", model_keys: ["model-a"], protocols: ["single"], datasets: ["finqa"] });
+  const capableCatalog = { ...catalog, output_policies: [...catalog.output_policies!, { id: "source_calculation_v1" as const, label: "Source-backed arithmetic", description: "Experimental" }] };
+  assert.equal(DEFAULT_RESEARCH_FORM.output_policy, "constrained_short_v1");
+  assert.equal(request.output_policy, "source_calculation_v1");
+  assert.deepEqual(validateResearchRequest(request, capableCatalog), []);
+  assert.match(validateResearchRequest(request, catalog).join("\n"), /not supported/);
+});
+
+test("calculation exports retain the complete computed payload alongside the raw plan", () => {
+  const payload = { answer: "-20.00", evidence_ids: ["table_1"], brief: "Change", calculation: { operation: "percent_change", operands: [{ evidence_id: "table_1", quote: "80", value: "80" }, { evidence_id: "table_1", quote: "100", value: "100" }], result: "-20.00", limitations: ["Source relevance is not verified."] } };
+  const event = { message_id: "msg-1", task_id: "task-1", protocol: "single", model_key: "model-a", role: "solver", kind: "claim", round: 0, prompt_messages: [], content: '{"operation":"percent_change"}', payload, usage_complete: true };
+  const measured = { ...report, events: [event] };
+  const csv = researchToCsv(measured);
+  assert.ok(csv.split("\n")[0].split(",").includes("payload"));
+  assert.ok(csv.includes(JSON.stringify(payload).split('"').join('""')));
+  assert.deepEqual(JSON.parse(researchToJson(measured)).events[0].payload, payload);
+});
+
 test("JSON export is the complete saved report", () => {
   assert.deepEqual(JSON.parse(researchToJson(report)), report);
 });

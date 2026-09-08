@@ -46,7 +46,7 @@ export interface ResearchCatalog {
   limitations: string[];
 }
 
-export type ResearchOutputPolicy = "prompt_only" | "constrained_short_v1";
+export type ResearchOutputPolicy = "prompt_only" | "constrained_short_v1" | "source_calculation_v1";
 
 export interface ResearchRunRequest {
   output_policy?: ResearchOutputPolicy;

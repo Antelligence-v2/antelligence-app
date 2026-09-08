@@ -34,6 +34,16 @@ Constrained mode uses a task/role-specific llama.cpp JSON schema: exact fields, 
 
 The selected policy appears on saved reports, in JSON/CSV exports, and in each event's inspectable requested schema. This is an explicit intervention to reduce malformed communication and unfinished replies, **not an accuracy guarantee**. Compare format completion separately from correctness, preserve all requested-task denominators, and use the same models/tasks/generation limits. A historical before/after rerun is not a randomized causal study or evidence of swarm superiority.
 
+## Source-backed arithmetic (experimental, opt-in)
+
+`source_calculation_v1` is a separate intervention, not a new default. On decimal claims/revisions, the model outputs one `operation`, ordered `operands` containing exact public `evidence_id`/numeric `quote` pairs, and a short `brief`. Host Decimal arithmetic—not the model's proposed number—produces the answer. Choice tasks and critiques retain constrained-short behavior; strict-majority voting and failure denominators do not change.
+
+Operations: `identity` (one operand), `add`, `subtract`, `multiply`, `divide`, `percent_of`, `percent_change` (two), or `abstain` (zero). For ordered operands a,b: subtraction is a−b, division is a/b, percent-of is 100a/b, and percent-change is 100(a−b)/b with a=new and b=old. Results round half-up to two decimals. Percent source tokens represent percentage points. Only one operation is supported: multi-step calculations or unsupported unit conversions should abstain. No arbitrary expressions, model-generated code, extra model calls, retries, external tools or evaluator labels are admitted.
+
+Source binding rejects fabricated/partial numeric quotes, stripped signs, wrong arity, division by zero and out-of-bound arithmetic. An accepted quote proves only that the numeric token occurs in the cited source. **It does not prove the right row, year, unit or operation was selected.** Correct arithmetic can still give an incorrect answer. Medical interpretation and genuine disagreement handling are not repaired by this feature.
+
+Saved events retain the raw plan and a separate computed payload with normalized source operands, operation, result and limitations. The trace explorer shows a source-backed calculation panel; JSON and CSV retain the complete payload. Earlier stored reports and their hashes are not rewritten. Experiments must freeze code/IDs/settings before held-out use, compare against `constrained_short_v1` under the same budgets, and retain invalid/abstained cases. A small paired pilot is not a high-accuracy guarantee or evidence of swarm superiority.
+
 ## Accuracy requirements are evidence gates
 
 Each domain/variant reports task successes over **all requested tasks**, answered accuracy, coverage, abstentions, invalid responses, transport failures, one-sided 95% Wilson lower bound and minimum 30 cases. Failed/missing evidence stays unknown; small samples remain insufficient. An all-abstain/all-error run cannot show answered accuracy as zero or 100%. The Wilson bound is approximate selected-sample evidence, not a future reliability guarantee; it is not simultaneous multiple-comparison correction.
