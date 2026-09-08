@@ -31,12 +31,18 @@ MAX_DECIMAL_PLACES = 12
 MAX_ABS_VALUE = Decimal("1000000000000000000000000")
 MAX_BRIEF_CHARS = 160
 
-_GROUPED_NUMBER = r"(?:\d{1,3}(?:,\d{3})+|\d+)"
+_GROUPED_NUMBER = r"(?:[0-9]{1,3}(?:,[0-9]{3})+|[0-9]+)"
+_MAGNITUDE = rf"(?:{_GROUPED_NUMBER}(?:\.[0-9]+)?|\.[0-9]+)"
+_CURRENCY_MAGNITUDE = rf"(?:\$[ \t]*)?{_MAGNITUDE}(?:[ \t]*%)?"
 _NUMERIC_TOKEN_PATTERN = (
-    rf"(?:\({_GROUPED_NUMBER}(?:\.\d+)?%?\)|[+-]?{_GROUPED_NUMBER}(?:\.\d+)?%?)"
+    rf"(?:\([ \t]*{_CURRENCY_MAGNITUDE}[ \t]*\)|(?:[+-][ \t]*)?{_CURRENCY_MAGNITUDE})"
 )
 _NUMERIC_TOKEN_RE = re.compile(rf"^{_NUMERIC_TOKEN_PATTERN}$")
-_TOKEN_BOUNDARY_CHARS = frozenset("0123456789.,%()+-$")
+# Scan maximal complete source tokens, rather than asking whether a model's
+# chosen substring happens to have plausible immediate neighbours.
+_SOURCE_TOKEN_RE = re.compile(
+    rf"(?<![\w.,+\-−$(]){_NUMERIC_TOKEN_PATTERN}(?![\w%]|[.,][0-9])"
+)
 
 
 class SourceCalculationError(ValueError):
@@ -157,7 +163,13 @@ def source_calculation_system() -> str:
         "operands when one bounded operation cannot answer the question. Arithmetic "
         "is computed by the host; do not return an answer field, code, expression, "
         "units, percent scaling, or extra prose. Quotes preserve their full sign, "
-        "commas, accounting parentheses, and percent notation."
+        "commas, accounting parentheses, and percent notation. "
+        "The ordered operands are a then b: identity=a; add=a+b; subtract=a-b; "
+        "multiply=a*b; divide=a/b; percent_of=100*a/b; "
+        "percent_change=100*(a-b)/b, a=new, b=old. identity takes one operand; "
+        "all other calculations take two; abstain takes none. A quote such as "
+        "5% represents 5 percentage points, not 0.05. Results round half-up to "
+        "two decimals. Unsupported multi-operation or unit-scaling tasks must abstain."
     )
 
 
@@ -186,59 +198,32 @@ def _evidence_index(task: Mapping[str, Any]) -> dict[str, str]:
 def _bind_quote(quote: str, text: str) -> tuple[Decimal, int]:
     if not quote or len(quote) > MAX_QUOTE_CHARS or _NUMERIC_TOKEN_RE.fullmatch(quote) is None:
         raise SourceCalculationError("quote must be one whole numeric token")
-    start = 0
-    while True:
-        offset = text.find(quote, start)
-        if offset < 0:
-            break
-        end = offset + len(quote)
-        before = text[offset - 1] if offset else ""
-        after = text[end] if end < len(text) else ""
-        if _whole_token_boundary(text, offset, end, before, after):
-            return _parse_quote(quote), offset
-        start = offset + 1
+    for match in _SOURCE_TOKEN_RE.finditer(text):
+        # A spaced sign/parenthesis that the grammar could not consume is not
+        # permission to reinterpret its magnitude as a positive number.
+        prefix = text[:match.start()].rstrip()
+        if prefix.endswith(("-", "+", "−", "(")):
+            continue
+        if match.group() == quote:
+            return _parse_quote(quote), match.start()
     raise SourceCalculationError("quote is not a whole numeric token in cited evidence")
-
-
-def _whole_token_boundary(text: str, start: int, end: int, before: str, after: str) -> bool:
-    """Reject numeric substrings while allowing sentence punctuation."""
-    if before in _TOKEN_BOUNDARY_CHARS and before not in ".,":
-        return False
-    if after in _TOKEN_BOUNDARY_CHARS and after not in ".,":
-        return False
-    if before == "." and start >= 2 and text[start - 2].isdigit():
-        return False
-    if before == "," and start >= 2 and text[start - 2].isdigit():
-        return False
-    if after == "." and end + 1 < len(text) and text[end + 1].isdigit():
-        return False
-    if after == "," and end + 1 < len(text) and text[end + 1].isdigit():
-        return False
-    return True
 
 
 def _parse_quote(quote: str) -> Decimal:
     accounting = quote.startswith("(")
-    percent = quote.endswith("%")
     raw = quote[1:-1] if accounting else quote
-    if percent:
-        raw = raw[:-1]
-    if raw.startswith(("+", "-")):
-        sign = raw[0]
-        raw = raw[1:]
-    else:
-        sign = ""
-    digits, _, fraction = raw.partition(".")
-    compact_digits = digits.replace(",", "")
-    if len(compact_digits) > MAX_DIGITS or len(fraction) > MAX_DECIMAL_PLACES:
+    raw = raw.replace("$", "").replace("%", "").replace(" ", "").replace("\t", "")
+    unsigned = raw.lstrip("+-")
+    digits, _, fraction = unsigned.partition(".")
+    if len(digits.replace(",", "")) > MAX_DIGITS or len(fraction) > MAX_DECIMAL_PLACES:
         raise SourceCalculationError("quote exceeds bounded numeric precision")
     try:
         value = Decimal(raw.replace(",", ""))
     except InvalidOperation as exc:
         raise SourceCalculationError("quote must be finite") from exc
-    if sign == "-" or accounting:
-        value = -value
-    if not value.is_finite() or abs(value) > MAX_ABS_VALUE:
+    if accounting:
+        value = value.copy_negate()
+    if not value.is_finite() or value.copy_abs() > MAX_ABS_VALUE:
         raise SourceCalculationError("quote exceeds bounded numeric magnitude")
     return value
 
@@ -275,17 +260,19 @@ def _compute(operation: str, values: list[Decimal]) -> Decimal | None:
         raise
     except (ArithmeticError, InvalidOperation) as exc:
         raise SourceCalculationError("calculation overflow") from exc
-    if not result.is_finite() or abs(result) > MAX_ABS_VALUE:
+    if not result.is_finite() or result.copy_abs() > MAX_ABS_VALUE:
         raise SourceCalculationError("calculation overflow")
     return result
 
 
 def _rounded_text(value: Decimal) -> str:
     try:
-        rounded = value.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        with localcontext() as context:
+            context.prec = 80
+            rounded = value.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
     except (ArithmeticError, InvalidOperation) as exc:
         raise SourceCalculationError("calculation overflow") from exc
-    if not rounded.is_finite() or abs(rounded) > MAX_ABS_VALUE:
+    if not rounded.is_finite() or rounded.copy_abs() > MAX_ABS_VALUE:
         raise SourceCalculationError("calculation overflow")
     return format(rounded, ".2f")
 
