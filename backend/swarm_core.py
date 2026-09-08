@@ -17,9 +17,16 @@ from collections.abc import Callable, Mapping, Sequence
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
+from backend.source_calculation import (
+    SOURCE_CALCULATION_POLICY_ID,
+    compute_source_calculation,
+    source_calculation_response_format,
+    source_calculation_system,
+)
+
 
 PROTOCOLS = ("single", "independent_vote", "peer_review", "signal_board")
-OUTPUT_POLICY_IDS = ("prompt_only", "constrained_short_v1")
+OUTPUT_POLICY_IDS = ("prompt_only", "constrained_short_v1", SOURCE_CALCULATION_POLICY_ID)
 OUTPUT_POLICIES = (
     {
         "id": "prompt_only",
@@ -30,6 +37,11 @@ OUTPUT_POLICIES = (
         "id": "constrained_short_v1",
         "label": "Constrained short v1",
         "description": "Schema-bound JSON communication with short public briefs.",
+    },
+    {
+        "id": SOURCE_CALCULATION_POLICY_ID,
+        "label": "Source calculation v1",
+        "description": "Source-bound Decimal arithmetic with an explicit calculation trace.",
     },
 )
 _MAX_SEED = 2_147_483_647
@@ -283,7 +295,7 @@ class _Execution:
         parse_error: str | None = None
         try:
             payload = parser(content)
-            if self.output_policy == "constrained_short_v1":
+            if _uses_constrained_schema(self.output_policy, self.task, kind):
                 _validate_constrained_payload(payload, self.task, kind)
         except (ValueError, TypeError, _PayloadError) as exc:
             payload = None
@@ -656,7 +668,7 @@ def _run_single(
         round_number=0,
         recipient="none",
         actor=model_key,
-        parser=lambda content: _parse_answer(content, task),
+        parser=lambda content: _parse_answer_for_policy(content, task, output_policy),
     )
     answer = outcome["payload"]["answer"] if outcome and outcome["status"] == "ok" else None
     return _finish_cell(execution, answer)
@@ -676,7 +688,7 @@ def _run_independent_vote(execution: _Execution) -> tuple[str | None, list[dict[
                 round_number=0,
                 recipient="none",
                 actor=f"{model_key}:sample:{sample}",
-                parser=lambda content, task=execution.task: _parse_answer(content, task),
+                parser=lambda content, task=execution.task: _parse_answer_for_policy(content, task, execution.output_policy),
             )
             if outcome is not None:
                 ballots.append(outcome)
@@ -707,7 +719,7 @@ def _run_peer_review(execution: _Execution) -> tuple[str | None, list[dict[str, 
                 round_number=0,
                 recipient="none",
                 actor=f"{model_key}:initial",
-                parser=lambda content, task=execution.task: _parse_answer(content, task),
+                parser=lambda content, task=execution.task: _parse_answer_for_policy(content, task, execution.output_policy),
             )
         )
     while len(initials) < len(models):
@@ -781,7 +793,7 @@ def _run_peer_review(execution: _Execution) -> tuple[str | None, list[dict[str, 
             parent_ids=[initial_event["message_id"], critique_event["message_id"]]
             + [proposal["message_id"] for proposal in peer_proposals],
             actor=f"{model_key}:revision",
-            parser=lambda content, task=execution.task: _parse_answer(content, task),
+            parser=lambda content, task=execution.task: _parse_answer_for_policy(content, task, execution.output_policy),
         )
 
     if execution.stopped or execution.actual_calls < execution.expected_calls:
@@ -814,7 +826,7 @@ def _run_signal_board(execution: _Execution) -> tuple[str | None, list[dict[str,
             recipient="board",
             expires_round=1,
             actor=f"{model_key}:board:0",
-            parser=lambda content, task=execution.task: _parse_answer(content, task),
+            parser=lambda content, task=execution.task: _parse_answer_for_policy(content, task, execution.output_policy),
         )
         if outcome and outcome["status"] == "ok":
             signal = _signal_view(model_key, outcome)
@@ -855,7 +867,7 @@ def _run_signal_board(execution: _Execution) -> tuple[str | None, list[dict[str,
                 parent_ids=parent_ids,
                 expires_round=round_number + 1,
                 actor=f"{model_key}:board:{round_number}",
-                parser=lambda content, task=execution.task: _parse_answer(content, task),
+                parser=lambda content, task=execution.task: _parse_answer_for_policy(content, task, execution.output_policy),
             )
             revisions[index] = outcome
             if outcome and outcome["status"] == "ok":
@@ -1047,6 +1059,15 @@ def _signal_view(model_key: str, outcome: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
+def _uses_constrained_schema(output_policy: str, task: Mapping[str, Any], kind: str) -> bool:
+    if output_policy == "constrained_short_v1":
+        return True
+    return (
+        output_policy == SOURCE_CALCULATION_POLICY_ID
+        and (task["answer_type"] == "choice" or kind == "critique")
+    )
+
+
 def _validate_output_policy(output_policy: str) -> None:
     if output_policy not in OUTPUT_POLICY_IDS:
         raise ValueError(f"unknown output policy: {output_policy!r}")
@@ -1069,6 +1090,12 @@ def build_response_format(
     if output_policy == "prompt_only":
         return None
     _validate_task(task)
+    if (
+        output_policy == SOURCE_CALCULATION_POLICY_ID
+        and task["answer_type"] == "decimal"
+        and kind in {"claim", "revision", "answer"}
+    ):
+        return source_calculation_response_format(task)
 
     if kind == "critique":
         if not isinstance(target_message_id, str) or not target_message_id:
@@ -1121,6 +1148,8 @@ def _answer_system(task: Mapping[str, Any], output_policy: str) -> str:
     _validate_output_policy(output_policy)
     if output_policy == "prompt_only":
         return _ANSWER_SYSTEM
+    if output_policy == SOURCE_CALCULATION_POLICY_ID and task["answer_type"] == "decimal":
+        return source_calculation_system()
     if task["answer_type"] == "choice":
         answer_rule = (
             "answer must be exactly one of "
@@ -1149,6 +1178,15 @@ def _critique_system(
         + f" target_message_id must be exactly {target_message_id!r}; "
         "evidence_ids may contain at most 3 unique supplied IDs; brief must be at most 160 characters."
     )
+
+
+def _parse_answer_for_policy(
+    content: str, task: Mapping[str, Any], output_policy: str
+) -> dict[str, Any]:
+    if output_policy == SOURCE_CALCULATION_POLICY_ID and task["answer_type"] == "decimal":
+        plan = _strict_object(content, {"operation", "operands", "brief"})
+        return compute_source_calculation(plan, task)
+    return _parse_answer(content, task)
 
 
 def _parse_answer(content: str, task: Mapping[str, Any]) -> dict[str, Any]:
@@ -1470,6 +1508,7 @@ __all__ = [
     "OUTPUT_POLICIES",
     "OUTPUT_POLICY_IDS",
     "PROTOCOLS",
+    "SOURCE_CALCULATION_POLICY_ID",
     "build_response_format",
     "estimate_calls",
     "output_policy_catalog",

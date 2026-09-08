@@ -69,7 +69,9 @@ def test_output_policy_defaults_to_prompt_only_and_catalog_exposes_both_policies
     client, _ = client_for(tmp_path)
     assert ResearchRequest.model_validate(request()).output_policy == 'prompt_only'
     catalog = client.get('/research/catalog').json()
-    assert [policy['id'] for policy in catalog['output_policies']] == ['prompt_only', 'constrained_short_v1']
+    assert [policy['id'] for policy in catalog['output_policies']] == [
+        'prompt_only', 'constrained_short_v1', 'source_calculation_v1'
+    ]
     assert all(policy['label'] and policy['description'] for policy in catalog['output_policies'])
 
 
@@ -86,6 +88,18 @@ def test_constrained_policy_is_forwarded_and_persisted_per_event(tmp_path):
     assert event['output_policy'] == 'constrained_short_v1'
     assert event['response_format']['type'] == 'json_schema'
     assert models.settings[0]['response_format'] == event['response_format']
+
+
+def test_source_calculation_policy_is_opt_in_persisted_and_hashed(tmp_path):
+    client, _ = client_for(tmp_path)
+    response = client.post('/research/runs', json=request(output_policy='source_calculation_v1', tasks_per_dataset=1))
+    assert response.status_code == 202, response.text
+    body = wait_result(client, response.json()['run_id'])
+    assert body['request']['output_policy'] == 'source_calculation_v1'
+    assert body['cells'][0]['output_policy'] == 'source_calculation_v1'
+    assert body['events'][0]['output_policy'] == 'source_calculation_v1'
+    assert body['source_hashes']['source_calculation.py']
+    assert client.get('/research/runs').json()['items'][0]['output_policy'] == 'source_calculation_v1'
 
 
 def test_legacy_report_policy_display_does_not_rewrite_stored_bytes(tmp_path):

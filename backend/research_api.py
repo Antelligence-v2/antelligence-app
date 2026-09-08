@@ -32,7 +32,7 @@ class ResearchRequest(BaseModel):
     target_accuracy: float = Field(gt=0,le=1)
     max_calls: int = Field(ge=1,le=600)
     max_wall_seconds: int = Field(ge=10,le=3600)
-    output_policy: Literal['prompt_only','constrained_short_v1'] = 'prompt_only'
+    output_policy: Literal['prompt_only','constrained_short_v1','source_calculation_v1'] = 'prompt_only'
 
     @model_validator(mode='after')
     def unique_lists(self):
@@ -156,7 +156,7 @@ class ResearchService:
                       models=roster,selected_task_ids=[t['task_id'] for t in tasks],total_cells=len(cells),completed_cells=0,
                       estimated_calls=calls,actual_calls=0,cells=cells,summary=summarize(cells,data['target_accuracy']),events=[],errors=[],
                       limitations=LIMITATIONS,metered_api_cost_usd=0,proof_ok=False,cancel_requested=False,
-                      source_hashes={p.name:digest(p.read_text()) for p in [Path(__file__),Path(__file__).with_name('swarm_core.py'),Path(__file__).with_name('research_models.py'),Path(__file__).with_name('research_data.py')]})
+                      source_hashes={p.name:digest(p.read_text()) for p in [Path(__file__),Path(__file__).with_name('swarm_core.py'),Path(__file__).with_name('source_calculation.py'),Path(__file__).with_name('research_models.py'),Path(__file__).with_name('research_data.py')]})
             self.store.save(body)
             self.worker_failure=None
             self.thread=threading.Thread(target=self._run,args=(body,tasks,models,handle),daemon=True,name='antelligence-research')
