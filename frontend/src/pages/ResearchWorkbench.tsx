@@ -28,7 +28,7 @@ import {
   DEFAULT_RESEARCH_FORM,
   DEFAULT_RESEARCH_PROTOCOLS,
   buildResearchRequest,
-  collectiveBehaviourLines,
+  collectiveBehaviourViews,
   estimateResearchCalls,
   formatResearchNumber,
   formatResearchPercent,
@@ -176,10 +176,53 @@ function SourceCalculation({ payload }: { payload: unknown }) {
   return <div data-testid="source-calculation" className="rounded-md border border-indigo-300 p-3 dark:border-indigo-800"><p className="font-semibold">Source-backed calculation</p><p className="mb-2 text-muted-foreground">Arithmetic only — source relevance, units, and interpretation remain unverified.</p><ul className="space-y-1 break-words font-mono">{lines.map((line, index) => <li key={index}>{line}</li>)}</ul></div>;
 }
 
+function collectiveProtocolLabel(protocol: string): string {
+  switch (protocol) {
+    case "evidence_exchange": return "Evidence exchange";
+    case "evidence_sources": return "Evidence sources (source-only)";
+    case "evidence_isolated": return "Evidence isolated";
+    case "solo_refine": return "Solo refine";
+    default: return protocol;
+  }
+}
+
+function CollectiveSourceList({ title, sources, senderLabel }: { title: string; sources: { id: string; text: string; sender?: string }[]; senderLabel?: (sender: string) => string }) {
+  return <div className="space-y-2"><p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{title}</p>{sources.length === 0 ? <p className="rounded-md border border-dashed p-3 text-sm text-muted-foreground">Source text unavailable</p> : <ul className="space-y-2">{sources.map((source, index) => <li key={`${source.id}:${source.sender || ""}:${index}`} className="rounded-md border bg-background/70 p-3"><p className="whitespace-pre-wrap break-words text-sm leading-relaxed">{source.text}</p>{source.sender && senderLabel && <p className="mt-2 text-xs text-muted-foreground">Shared by {senderLabel(source.sender)}</p>}</li>)}</ul>}</div>;
+}
+
 function CollectiveBehaviourPanel({ report }: { report: ResearchReport }) {
-  const lines = collectiveBehaviourLines(report.cells || []);
-  if (lines.length === 0) return null;
-  return <Card data-testid="collective-behaviour-panel"><CardHeader><CardTitle>Collective behaviour</CardTitle><CardDescription>Evidence flow is shown from the saved cooperation record. A changed answer is not necessarily an improved answer.</CardDescription></CardHeader><CardContent><div className="space-y-1 rounded-md border bg-muted/30 p-4 font-mono text-xs">{lines.map((line, index) => <p key={`${line}-${index}`} className={line.startsWith("Variant ") ? "mt-3 first:mt-0 font-semibold text-foreground" : line.startsWith("Mode: ") ? "font-semibold text-indigo-700 dark:text-indigo-300" : "text-muted-foreground"}>{line}</p>)}</div></CardContent></Card>;
+  const [selectedTask, setSelectedTask] = useState("");
+  const views = collectiveBehaviourViews(report.cells || []);
+  const questions = [...new Map(views.map((view) => [view.task_id, view.question])).entries()];
+  const activeTask = questions.some(([id]) => id === selectedTask) ? selectedTask : questions[0]?.[0];
+  if (views.length === 0) return null;
+  return <Card data-testid="collective-behaviour-panel">
+    <CardHeader><CardTitle>Collective behaviour</CardTitle><CardDescription>What each researcher received and how their answer changed. A changed answer is not necessarily better.</CardDescription></CardHeader>
+    <CardContent className="space-y-5">
+      <label className="block space-y-2 font-medium">Question to explore
+        <select aria-label="Question to explore" className="block w-full min-w-0 rounded-md border bg-background p-2 text-sm" value={activeTask} onChange={(event) => setSelectedTask(event.target.value)}>
+          {questions.map(([id, question], index) => <option key={id} value={id}>{index + 1}. {question}</option>)}
+        </select>
+      </label>
+      <p className="text-lg font-semibold">{questions.find(([id]) => id === activeTask)?.[1]}</p>
+      {views.filter((view) => view.task_id === activeTask).map((view) => {
+        const labels = new Map(view.agents.map((agent) => [agent.agent_id, agent.label]));
+        const senderLabel = (sender: string) => labels.get(sender) || "another researcher";
+        return <section key={view.cell_id} data-protocol={view.protocol} className="rounded-lg border bg-muted/20 p-4">
+          <div className="flex flex-wrap items-start justify-between gap-3"><div><h3 className="font-semibold">{collectiveProtocolLabel(view.protocol)}</h3><p className="mt-1 text-sm text-muted-foreground">{view.mode_label}</p></div><Badge variant="outline">{view.agents.length} researcher{view.agents.length === 1 ? "" : "s"}</Badge></div>
+          <div className="mt-4 grid gap-4 lg:grid-cols-3">{view.agents.map((agent) => <article key={agent.agent_id} className="min-w-0 space-y-4 rounded-md border bg-background p-4">
+            <h4 className="text-base font-semibold">{agent.label}</h4>
+            <div className="space-y-2 text-sm"><p><span className="font-semibold">Initial answer:</span> {agent.initial_answer ?? "Answer unavailable"}</p><p><span className="font-semibold">Final answer:</span> {agent.final_answer ?? "Answer unavailable"}</p></div>
+            <details><summary className="cursor-pointer text-sm font-medium">Read starting evidence ({agent.starting_sources.length} passages)</summary><div className="mt-2"><CollectiveSourceList title="Starting source passages" sources={agent.starting_sources} /></div></details>
+            {agent.shared_sources.length > 0 ? <details><summary className="cursor-pointer text-sm font-medium">Read received evidence ({agent.shared_sources.length} passages)</summary><div className="mt-2"><CollectiveSourceList title="Shared source passages" sources={agent.shared_sources} senderLabel={senderLabel} /></div></details> : <p className="text-sm text-muted-foreground">No shared source passages received.</p>}
+            {view.source_only && <p className="text-sm text-muted-foreground">Peers’ answers and summaries were not sent.</p>}
+            {agent.received_findings.map((finding, index) => <div key={index} className="rounded-md border p-3 text-sm"><p className="font-medium">{senderLabel(finding.sender)} shared: {finding.answer ?? "abstained"}</p><p>{finding.brief}</p><p className="mt-1 text-xs text-muted-foreground">Peer claim, not a verified fact.</p></div>)}
+            <details className="border-t pt-3 text-xs"><summary className="cursor-pointer text-muted-foreground">Machine identifiers and provenance</summary><div className="mt-2 space-y-1 break-all font-mono text-muted-foreground"><p>agent: {agent.agent_id}</p><p>starting IDs: {agent.initial_evidence_ids.join(", ") || "none recorded"}</p>{agent.shared_sources.map((source, index) => <p key={`${source.id}:${index}`}>shared: {source.id} · sender {source.sender || "unknown"} · message {source.message_id || "unknown"}</p>)}</div></details>
+          </article>)}</div>
+        </section>;
+      })}
+    </CardContent>
+  </Card>;
 }
 
 function TraceExplorer({ report }: { report: ResearchReport }) {

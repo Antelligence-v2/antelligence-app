@@ -64,9 +64,10 @@ test("the default four-protocol two-domain budget is 80 calls", () => {
 });
 
 test("new collective protocols and fallback use six calls per model", () => {
-  assert.equal(estimateResearchCalls(1, 1, 1, ["evidence_exchange", "evidence_isolated", "solo_refine", "fallback"]), 24);
-  const request = buildResearchRequest({ ...DEFAULT_RESEARCH_FORM, model_keys: ["model-a"], protocols: ["single", "independent_vote", "peer_review", "signal_board", "evidence_exchange", "evidence_isolated", "solo_refine"], datasets: ["finqa"] });
-  const collectiveCatalog = { ...catalog, protocols: [...catalog.protocols, { id: "evidence_exchange", label: "Evidence exchange", description: "", calls_per_model: 6 }, { id: "evidence_isolated", label: "Evidence isolated", description: "", calls_per_model: 6 }, { id: "solo_refine", label: "Solo refine", description: "", calls_per_model: 6 }] };
+  assert.equal(estimateResearchCalls(1, 1, 1, ["evidence_exchange", "evidence_isolated", "solo_refine", "evidence_sources", "fallback"]), 30);
+  const protocols = ["single", "independent_vote", "peer_review", "signal_board", "evidence_exchange", "evidence_isolated", "solo_refine", "evidence_sources"];
+  const request = buildResearchRequest({ ...DEFAULT_RESEARCH_FORM, model_keys: ["model-a"], protocols, datasets: ["finqa"] });
+  const collectiveCatalog = { ...catalog, protocols: [...catalog.protocols, { id: "evidence_exchange", label: "Evidence exchange", description: "", calls_per_model: 6 }, { id: "evidence_isolated", label: "Evidence isolated", description: "", calls_per_model: 6 }, { id: "solo_refine", label: "Solo refine", description: "", calls_per_model: 6 }, { id: "evidence_sources", label: "Evidence sources", description: "", calls_per_model: 6 }] };
   assert.deepEqual(validateResearchRequest(request, collectiveCatalog), []);
 });
 test("request builder preserves explicit bounded settings", () => {

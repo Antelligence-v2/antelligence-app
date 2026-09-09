@@ -53,6 +53,35 @@ def test_foreign_citation_is_not_transferred_or_counted_as_success():
     assert all(s['sender'] != 'm:worker-1' for p in prompts[3:] for s in p['signals'])
 
 
+def test_source_only_preserves_evidence_but_hides_peer_conclusions():
+    on, on_prompts = execute('evidence_exchange')
+    sources, source_prompts = execute('evidence_sources')
+    assert on_prompts[:3] == source_prompts[:3]
+    assert [m['request_hash'] for m in on['messages'][:3]] == [m['request_hash'] for m in sources['messages'][:3]]
+    assert sources['cooperation']['mode'] == 'evidence_sources'
+    assert sources['answer'] == 'yes'
+    assert estimate_calls(1, 1, ['evidence_sources']) == 6
+    for full, blind, full_event, blind_event in zip(on_prompts[3:], source_prompts[3:], on['messages'][3:], sources['messages'][3:]):
+        assert full['task'] == blind['task']
+        assert full_event['response_format'] == blind_event['response_format']
+        assert full['instruction'] == blind['instruction']
+        assert len(full['signals']) == len(blind['signals'])
+        for a, b in zip(full['signals'], blind['signals']):
+            assert a['evidence'] == b['evidence']
+            assert a['sender'] == b['sender']
+            assert a['expires_round'] == b['expires_round'] == 1
+            assert b['payload'] == {'evidence_ids': a['payload']['evidence_ids']}
+            assert b['message_id'] in blind_event['parent_ids']
+        assert blind['own_previous']['payload']['answer'] is not None  # hide only peers, not self
+
+
+def test_source_only_never_transfers_invalid_findings():
+    cell, prompts = execute('evidence_sources', bad=True)
+    assert cell['status'] == 'invalid' and cell['answer'] is None
+    assert cell['messages'][0]['payload'] is None
+    assert all(s['sender'] != 'm:worker-1' for p in prompts[3:] for s in p['signals'])
+
+
 def test_sharing_transfers_selected_evidence_and_changes_group_answer():
     on,prompts=execute('evidence_exchange')
     off,off_prompts=execute('evidence_isolated')

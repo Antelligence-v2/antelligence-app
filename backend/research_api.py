@@ -22,7 +22,7 @@ class ResearchRequest(BaseModel):
     model_config = ConfigDict(extra='forbid', strict=True, allow_inf_nan=False)
     name: str = Field(min_length=1, max_length=120)
     model_keys: list[Literal['qwen','phi4']] = Field(min_length=1,max_length=2)
-    protocols: list[Literal['single','independent_vote','peer_review','signal_board','evidence_exchange','evidence_isolated','solo_refine']] = Field(min_length=1,max_length=7)
+    protocols: list[Literal['single','independent_vote','peer_review','signal_board','evidence_exchange','evidence_isolated','solo_refine','evidence_sources']] = Field(min_length=1,max_length=8)
     datasets: list[Literal['pubmedqa','finqa']] = Field(min_length=1,max_length=2)
     split: Literal['development','evaluation']
     tasks_per_dataset: int = Field(ge=1,le=50)
@@ -127,6 +127,7 @@ class ResearchService:
                         'signal_board':'Typed task-scoped signals with round snapshots and one-round TTL.',
                         'evidence_exchange':'Three same-model agents with different evidence share chosen source passages, then revise. No retained learning.',
                         'evidence_isolated':'Sharing off: same agents, local evidence, seeds and six calls; no peer findings delivered.',
+                        'evidence_sources':'Same selected source passages as evidence exchange, but peer answers and briefs are withheld. Six calls; input costs differ.',
                         'solo_refine':'One agent receives all evidence and six successive answer checks. Same output ceiling, actual input costs differ.'}[p],
                         calls_per_model=estimate_calls(1,1,[p])) for p in PROTOCOLS],
                     limits=dict(max_calls=600,max_wall_seconds=3600,max_tasks_per_dataset=50),limitations=LIMITATIONS)

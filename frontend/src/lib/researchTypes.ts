@@ -79,6 +79,12 @@ export interface ResearchMessage {
   [key: string]: unknown;
 }
 
+export interface ResearchEvidence {
+  id: string;
+  text?: string | null;
+  [key: string]: unknown;
+}
+
 export interface ResearchEvent {
   message_id: string;
   task_id: string;
@@ -111,6 +117,7 @@ export interface ResearchReceivedEvidence {
   sender: string;
   message_id: string;
   evidence_ids: string[];
+  evidence?: ResearchEvidence[];
 }
 
 export interface ResearchCooperationAgent {

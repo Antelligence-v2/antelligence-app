@@ -25,7 +25,7 @@ from backend.source_calculation import (
 )
 
 
-COLLECTIVE_PROTOCOLS = ("evidence_exchange", "evidence_isolated", "solo_refine")
+COLLECTIVE_PROTOCOLS = ("evidence_exchange", "evidence_isolated", "solo_refine", "evidence_sources")
 PROTOCOLS = ("single", "independent_vote", "peer_review", "signal_board") + COLLECTIVE_PROTOCOLS
 OUTPUT_POLICY_IDS = ("prompt_only", "constrained_short_v1", SOURCE_CALCULATION_POLICY_ID)
 OUTPUT_POLICIES = (
@@ -347,7 +347,7 @@ class _Execution:
         }
 
     def _seed_for(self, actor: str, round_number: int) -> int:
-        seed_protocol = "evidence_exchange" if self.protocol == "evidence_isolated" else self.protocol
+        seed_protocol = "evidence_exchange" if self.protocol in {"evidence_isolated", "evidence_sources"} else self.protocol
         material = f"{self.task_id}\x1f{seed_protocol}\x1f{actor}\x1f{round_number}".encode("utf-8")
         offset = int.from_bytes(hashlib.sha256(material).digest()[:8], "big") % (_MAX_SEED + 1)
         return (self.settings["seed"] + offset) % (_MAX_SEED + 1)
@@ -676,7 +676,7 @@ def _run_collective(task, model, protocol, settings, infer, emit, should_stop, o
             own = previous[i]
             signals = []
             visible_ids = {e["id"] for e in shards[i]}
-            if round_number == 1 and protocol == "evidence_exchange":
+            if round_number == 1 and protocol in {"evidence_exchange", "evidence_sources"}:
                 for j, outcome in enumerate(initial):
                     if j == i or not outcome or outcome["status"] != "ok":
                         continue
@@ -684,7 +684,9 @@ def _run_collective(task, model, protocol, settings, infer, emit, should_stop, o
                     sources = [e for e in shards[j] if e["id"] in cited]
                     signals.append(dict(sender=agents[j]["agent_id"],
                                         message_id=outcome["message_id"], kind="finding",
-                                        round=0, expires_round=1, payload=outcome["payload"],
+                                        round=0, expires_round=1,
+                                        payload=({"evidence_ids": outcome["payload"]["evidence_ids"]}
+                                                 if protocol == "evidence_sources" else outcome["payload"]),
                                         evidence=sources))
                     visible_ids.update(e["id"] for e in sources)
                 agent["received"] = [dict(sender=s["sender"], message_id=s["message_id"],

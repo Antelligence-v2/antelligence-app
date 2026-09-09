@@ -5,6 +5,8 @@ import type {
   ResearchRunRequest,
   ResearchOutputPolicy,
   ResearchCell,
+  ResearchEvidence,
+  ResearchEvent,
 } from "./researchTypes";
 
 export const DEFAULT_RESEARCH_FORM = {
@@ -31,6 +33,7 @@ export const FALLBACK_PROTOCOL_CALLS: Record<string, number> = {
   evidence_exchange: 6,
   evidence_isolated: 6,
   solo_refine: 6,
+  evidence_sources: 6,
   fallback: 6,
 };
 
@@ -76,7 +79,7 @@ export function validateResearchRequest(request: ResearchRunRequest, catalog?: R
   else if (policy !== "prompt_only" && catalog && !catalog.output_policies?.some((entry) => entry.id === policy)) errors.push(`Output policy ${policy} is not supported by this backend.`);
   if (!request.name.trim()) errors.push("Name is required.");
   if (request.model_keys.length < 1 || request.model_keys.length > 2) errors.push("Select 1–2 models.");
-  if (request.protocols.length < 1 || request.protocols.length > 7) errors.push("Select 1–7 protocols.");
+  if (request.protocols.length < 1 || request.protocols.length > 8) errors.push("Select 1–8 protocols.");
   if (request.datasets.length < 1 || request.datasets.length > 2) errors.push("Select 1–2 datasets.");
   if (!Number.isInteger(request.tasks_per_dataset) || request.tasks_per_dataset < 1) errors.push("Tasks per dataset must be a positive integer.");
   if (catalog && request.tasks_per_dataset > catalog.limits.max_tasks_per_dataset) errors.push(`Tasks per dataset cannot exceed ${catalog.limits.max_tasks_per_dataset}.`);
@@ -183,23 +186,235 @@ export function sourceCalculationLines(payload: unknown): string[] {
   return [`Operation: ${calculation.operation}`, ...operands, `Stored result: ${calculation.result ?? "abstained"}`, ...limitations];
 }
 
-export function collectiveBehaviourLines(cells: ResearchCell[]): string[] {
-  const lines: string[] = [];
-  for (const cell of cells) {
-    if (!cell.cooperation || !["evidence_exchange", "evidence_isolated", "solo_refine"].includes(cell.protocol)) continue;
-    const mode = cell.cooperation.mode === "evidence_exchange" ? "Sharing on" : cell.cooperation.mode === "solo_refine" ? "Solo full evidence" : cell.cooperation.mode === "evidence_isolated" ? "Sharing off" : "Unknown";
-    lines.push(`Variant ${cell.variant}`, `Mode: ${mode}`);
-    for (const agent of cell.cooperation.agents || []) {
-      lines.push(`Agent ${agent.agent_id} knowledge IDs: ${agent.initial_evidence_ids.join(", ") || "none"}`);
-      const received = (agent.received || []).flatMap((item) => item.evidence_ids.map((evidenceId) => `${evidenceId} (from ${item.sender})`));
-      if (received.length > 0) lines.push(`Shared source IDs: ${received.join(", ")}`);
-      const initial = agent.initial_answer ?? "—";
-      const final = agent.final_answer ?? "—";
-      lines.push(`Answer: ${initial} → ${final}`);
-      if (agent.initial_answer !== agent.final_answer) lines.push("Changed answer; this is not necessarily an improvement.");
+export interface CollectiveBehaviourSource {
+  id: string;
+  text: string;
+  sender?: string;
+  message_id?: string;
+}
+
+export interface CollectiveBehaviourAgentView {
+  label: string;
+  agent_id: string;
+  initial_evidence_ids: string[];
+  starting_sources: CollectiveBehaviourSource[];
+  shared_sources: CollectiveBehaviourSource[];
+  received_findings: { sender: string; answer: string | null; brief: string }[];
+  initial_answer: string | null;
+  final_answer: string | null;
+}
+
+export interface CollectiveBehaviourView {
+  cell_id: string;
+  task_id: string;
+  question: string;
+  variant: string;
+  protocol: string;
+  mode_label: string;
+  source_only: boolean;
+  agents: CollectiveBehaviourAgentView[];
+}
+
+const COLLECTIVE_BEHAVIOUR_PROTOCOLS = new Set(["evidence_exchange", "evidence_isolated", "solo_refine", "evidence_sources"]);
+const SOURCE_TEXT_UNAVAILABLE = "Source text unavailable";
+
+function record(value: unknown): Record<string, any> | null {
+  return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, any> : null;
+}
+
+function strings(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
+}
+
+function promptRecord(event: ResearchEvent | null | undefined): Record<string, any> | null {
+  const messages = Array.isArray(event?.prompt_messages) ? event.prompt_messages : [];
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    const content = messages[index]?.content;
+    if (typeof content === "string") {
+      try {
+        const parsed = JSON.parse(content);
+        const parsedRecord = record(parsed);
+        if (parsedRecord) return parsedRecord;
+      } catch {
+        // Legacy traces can contain non-JSON prompts; their IDs still remain useful.
+      }
+    } else {
+      const parsedRecord = record(content);
+      if (parsedRecord) return parsedRecord;
     }
   }
-  return lines;
+  return null;
+}
+
+function evidenceRecord(value: unknown, fallbackId?: string, metadata?: Pick<CollectiveBehaviourSource, "sender" | "message_id">): CollectiveBehaviourSource | null {
+  const source = record(value);
+  const id = typeof source?.id === "string" ? source.id : fallbackId;
+  if (!id) return null;
+  const text = typeof source?.text === "string" && source.text.length > 0 ? source.text : SOURCE_TEXT_UNAVAILABLE;
+  return { id, text, ...metadata };
+}
+
+function sourcesForIds(evidence: unknown, ids: string[], metadata?: Pick<CollectiveBehaviourSource, "sender" | "message_id">): CollectiveBehaviourSource[] {
+  const entries = Array.isArray(evidence) ? evidence : [];
+  const byId = new Map<string, CollectiveBehaviourSource>();
+  for (const entry of entries) {
+    const source = evidenceRecord(entry, undefined, metadata);
+    if (source) byId.set(source.id, source);
+  }
+  return ids.map((id) => byId.get(id) || evidenceRecord(undefined, id, metadata)!).filter(Boolean);
+}
+
+function dedupeSources(sources: CollectiveBehaviourSource[]): CollectiveBehaviourSource[] {
+  const seen = new Set<string>();
+  return sources.filter((source) => {
+    const key = `${source.sender || ""}\u0000${source.message_id || ""}\u0000${source.id}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function answerFromEvent(event: ResearchEvent | null | undefined): string | null {
+  if (event?.parse_error || event?.error) return null;
+  const payload = record(event?.payload);
+  return typeof payload?.answer === "string" ? payload.answer : null;
+}
+
+function agentLabel(protocol: string, index: number): string {
+  if (protocol === "solo_refine") return "Solo researcher";
+  return `Researcher ${String.fromCharCode(65 + index)}`;
+}
+
+function modeLabel(protocol: string): string {
+  switch (protocol) {
+    case "evidence_exchange": return "Sources and peer conclusions shared";
+    case "evidence_sources": return "Sources shared; peer conclusions hidden";
+    case "evidence_isolated": return "Sources kept separate";
+    case "solo_refine": return "One researcher with all sources";
+    default: return "Collective trace";
+  }
+}
+
+function collectiveEvents(cell: ResearchCell): ResearchEvent[] {
+  return Array.isArray(cell.messages) ? cell.messages : [];
+}
+
+function sourceOnlySharedSources(events: ResearchEvent[], agent: { received?: { sender: string; message_id: string; evidence_ids: string[]; evidence?: ResearchEvidence[] }[] }): CollectiveBehaviourSource[] {
+  const sources: CollectiveBehaviourSource[] = [];
+  for (const event of events) {
+    if (event.kind !== "revision") continue;
+    const prompt = promptRecord(event);
+    const signals = Array.isArray(prompt?.signals) ? prompt.signals : [];
+    for (const signalValue of signals) {
+      const signal = record(signalValue);
+      if (!signal) continue;
+      const sender = typeof signal.sender === "string" ? signal.sender : undefined;
+      const messageId = typeof signal.message_id === "string" ? signal.message_id : undefined;
+      const payload = record(signal.payload);
+      const ids = strings(payload?.evidence_ids);
+      const evidence = Array.isArray(signal.evidence) ? signal.evidence : [];
+      for (const source of sourcesForIds(evidence, ids, { sender, message_id: messageId })) sources.push(source);
+    }
+  }
+  if (sources.length === 0) {
+    for (const received of agent.received || []) {
+      for (const source of sourcesForIds(received.evidence, strings(received.evidence_ids), { sender: received.sender, message_id: received.message_id })) sources.push(source);
+    }
+  }
+  return dedupeSources(sources);
+}
+
+export function collectiveBehaviourViews(cells: ResearchCell[]): CollectiveBehaviourView[] {
+  const views: CollectiveBehaviourView[] = [];
+  for (const cell of cells || []) {
+    const cooperation = cell.cooperation;
+    const protocol = typeof cell.protocol === "string" ? cell.protocol : cooperation?.mode;
+    if (!cooperation || !protocol || !COLLECTIVE_BEHAVIOUR_PROTOCOLS.has(protocol)) continue;
+    const events = collectiveEvents(cell);
+    const agents = Array.isArray(cooperation.agents) ? cooperation.agents : [];
+    const task = record(promptRecord(events[0])?.task);
+    views.push({
+      cell_id: cell.cell_id,
+      task_id: cell.task_id,
+      question: typeof task?.question === "string" ? task.question : "Question text unavailable",
+      variant: typeof cell.variant === "string" ? cell.variant : protocol,
+      protocol,
+      mode_label: modeLabel(protocol),
+      source_only: protocol === "evidence_sources",
+      agents: agents.map((agent, index) => {
+        const agentEvents = events.filter((event) => event.role === agent.agent_id);
+        const initialEvent = agentEvents.find((event) => event.round === 0 && event.kind === "claim") || agentEvents.find((event) => event.round === 0) || null;
+        const revisionEvents = agentEvents.filter((event) => event.kind === "revision" || event.round > 0);
+        const finalEvent = revisionEvents[revisionEvents.length - 1] || initialEvent;
+        const initialPrompt = promptRecord(initialEvent);
+        const startingEvidence = initialPrompt?.task && record(initialPrompt.task) ? (initialPrompt.task as Record<string, any>).evidence : undefined;
+        const initialIds = strings(agent.initial_evidence_ids);
+        const startingSources = sourcesForIds(startingEvidence, initialIds);
+        const initialAnswer = agent.initial_answer === null || typeof agent.initial_answer === "string" ? agent.initial_answer : answerFromEvent(initialEvent);
+        const finalAnswer = agent.final_answer === null || typeof agent.final_answer === "string" ? agent.final_answer : answerFromEvent(finalEvent);
+        return {
+          label: agentLabel(protocol, index),
+          agent_id: agent.agent_id,
+          initial_evidence_ids: initialIds,
+          starting_sources: startingSources,
+          shared_sources: protocol === "solo_refine" || protocol === "evidence_isolated" ? [] : sourceOnlySharedSources(agentEvents, agent),
+          received_findings: protocol !== "evidence_exchange" ? [] : revisionEvents.flatMap((event) => {
+            const signals = promptRecord(event)?.signals;
+            return !Array.isArray(signals) ? [] : signals.flatMap((value) => {
+              const signal = record(value);
+              const finding = record(signal?.payload);
+              if (!finding || typeof signal?.sender !== "string") return [];
+              return [{ sender: signal.sender, answer: typeof finding.answer === "string" ? finding.answer : null, brief: typeof finding.brief === "string" ? finding.brief : "Finding text unavailable" }];
+            });
+          }),
+          initial_answer: initialAnswer,
+          final_answer: finalAnswer,
+        };
+      }),
+    });
+  }
+  return views;
+}
+
+function hasReadablePromptTrace(cells: ResearchCell[]): boolean {
+  return (cells || []).some((cell) => collectiveEvents(cell).some((event) => promptRecord(event) !== null));
+}
+
+export function collectiveBehaviourLines(cells: ResearchCell[]): string[] {
+  // Preserve the compact projection used by old saved reports with no prompt trace.
+  // Newer reports use the source-text projection below, while the structured view
+  // remains the UI source of truth in both cases.
+  if (!hasReadablePromptTrace(cells)) {
+    const lines: string[] = [];
+    for (const cell of cells) {
+      const protocol = typeof cell.protocol === "string" ? cell.protocol : cell.cooperation?.mode;
+      if (!cell.cooperation || !protocol || !COLLECTIVE_BEHAVIOUR_PROTOCOLS.has(protocol)) continue;
+      const mode = cell.cooperation.mode === "evidence_exchange" ? "Sharing on" : cell.cooperation.mode === "solo_refine" ? "Solo full evidence" : cell.cooperation.mode === "evidence_isolated" ? "Sharing off" : cell.cooperation.mode === "evidence_sources" ? "Sources only" : "Unknown";
+      lines.push(`Variant ${cell.variant}`, `Mode: ${mode}`);
+      for (const agent of cell.cooperation.agents || []) {
+        lines.push(`Agent ${agent.agent_id} knowledge IDs: ${agent.initial_evidence_ids.join(", ") || "none"}`);
+        const received = (agent.received || []).flatMap((item) => item.evidence_ids.map((evidenceId) => `${evidenceId} (from ${item.sender})`));
+        if (received.length > 0) lines.push(`Shared source IDs: ${received.join(", ")}`);
+        const initial = agent.initial_answer ?? "—";
+        const final = agent.final_answer ?? "—";
+        lines.push(`Answer: ${initial} → ${final}`);
+        if (agent.initial_answer !== agent.final_answer) lines.push("Changed answer; this is not necessarily an improvement.");
+      }
+    }
+    return lines;
+  }
+
+  return collectiveBehaviourViews(cells).flatMap((view) => [
+    `Variant ${view.variant}`,
+    `Mode: ${view.mode_label}`,
+    ...view.agents.flatMap((agent) => [
+      agent.label,
+      ...(agent.starting_sources.length > 0 ? agent.starting_sources.map((source) => `Starting source text: ${source.text}`) : ["Starting source text: Source text unavailable"]),
+      ...(agent.shared_sources.length > 0 ? agent.shared_sources.map((source) => `Shared source text: ${source.text}`) : []),
+      `Initial answer: ${agent.initial_answer ?? "Answer unavailable"}`,
+      `Final answer: ${agent.final_answer ?? "Answer unavailable"}`,
+    ]),
+  ]);
 }
 
 export function isTerminalResearchStatus(status: string): boolean {

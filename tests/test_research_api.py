@@ -69,6 +69,26 @@ def test_collective_api_budget_and_persisted_cells(tmp_path):
     assert all(p['calls_per_model'] == 6 for p in catalog['protocols'] if p['id'] in protocols)
 
 
+def test_source_only_api_budget_persistence_and_catalog(tmp_path):
+    client, service = client_for(tmp_path)
+    payload = request(protocols=['evidence_sources'], tasks_per_dataset=1, max_calls=5)
+    assert client.post('/research/runs', json=payload).status_code == 422
+    assert service.store.list() == []
+    payload['max_calls'] = 6
+    response = client.post('/research/runs', json=payload)
+    assert response.status_code == 202, response.text
+    body = wait_result(client, response.json()['run_id'])
+    assert body['actual_calls'] == body['estimated_calls'] == 6
+    assert body['completed_cells'] == body['total_cells'] == 1
+    assert body['cells'][0]['variant'] == 'evidence_sources:qwen'
+    assert body['cells'][0]['cooperation']['mode'] == 'evidence_sources'
+    assert service.store.get(body['run_id']) == body
+    again, _ = client_for(tmp_path)
+    assert again.get('/research/runs/' + body['run_id']).json() == body
+    catalog = client.get('/research/catalog').json()
+    assert next(p for p in catalog['protocols'] if p['id'] == 'evidence_sources')['calls_per_model'] == 6
+
+
 def test_actual_persistence_and_restart_readback(tmp_path):
     client, service = client_for(tmp_path)
     response = client.post('/research/runs',json=request())
