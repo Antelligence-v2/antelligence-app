@@ -109,6 +109,21 @@ export function validateResearchRequest(request: ResearchRunRequest, catalog?: R
   return errors;
 }
 
+export function researchUsage(report: ResearchReport) {
+  const accounting = report.call_accounting;
+  if (accounting?.mode === "shared_initial_fork_v1") {
+    const complete = accounting.usage_complete && accounting.fresh_calls === report.actual_calls && accounting.logical_steps === report.events.length && accounting.fresh_calls + accounting.reused_initial_steps === accounting.logical_steps;
+    const measured = (value: number | null) => complete && value !== null && Number.isFinite(value) && value >= 0 ? value : null;
+    return { prompt_tokens: measured(accounting.physical_prompt_tokens), completion_tokens: measured(accounting.physical_completion_tokens), elapsed_s: measured(accounting.physical_elapsed_s), complete,
+      note: `${accounting.fresh_calls} fresh API calls; ${accounting.logical_steps} logical steps include ${accounting.reused_initial_steps} reused initial steps. Per-condition rows allocate the common starting findings to each condition; these totals count real requests once.` };
+  }
+  const complete = report.summary.length > 0 && report.summary.every((row) => row.usage_complete);
+  return { prompt_tokens: complete ? report.summary.reduce((sum, row) => sum + row.prompt_tokens, 0) : null,
+    completion_tokens: complete ? report.summary.reduce((sum, row) => sum + row.completion_tokens, 0) : null,
+    elapsed_s: complete ? report.summary.reduce((sum, row) => sum + row.elapsed_s, 0) : null, complete,
+    note: "Recorded physical usage. Missing usage stays unknown, not zero." };
+}
+
 export function formatResearchPercent(value: number | null | undefined): string {
   return value === null || value === undefined || !Number.isFinite(value) ? "—" : `${(value * 100).toFixed(1)}%`;
 }
@@ -157,16 +172,17 @@ export function researchToCsv(report: ResearchReport): string {
     "task_success_rate", "answered_accuracy", "wilson_lower_95", "gate", "target_accuracy", "min_cases", "call_count",
     "prompt_tokens", "completion_tokens", "elapsed_s", "cell_id", "task_id", "answer", "correct", "instruction_compliant",
     "usage_complete", "message_id", "model_key", "requested_model", "served_model", "role", "kind", "round", "recipient",
-    "parent_ids", "response_id", "request_hash", "finish_reason", "prompt_messages", "content", "error", "limitations", "output_policy", "response_format", "payload",
+    "parent_ids", "response_id", "request_hash", "finish_reason", "prompt_messages", "content", "error", "limitations", "output_policy", "response_format", "payload", "inference_provenance", "call_accounting",
   ];
   const rows: unknown[][] = [headers];
   const add = (row: Record<string, unknown>) => {
     const full = { run_id: report.run_id, name: report.name, status: report.status, output_policy: report.request.output_policy ?? "prompt_only", ...row };
     rows.push(headers.map((key) => (full as Record<string, unknown>)[key]));
   };
+  if (report.call_accounting) add({ row_type: "accounting", call_accounting: JSON.stringify(report.call_accounting) });
   for (const row of report.summary || []) add({ ...row, row_type: "summary", model_keys: row.model_keys.join(" | ") });
   for (const cell of report.cells || []) add({ ...cell, row_type: "cell", status: report.status, model_keys: cell.model_keys.join(" | ") });
-  for (const event of report.events || []) add({ ...event, row_type: "event", parent_ids: (event.parent_ids || []).join(" | "), prompt_messages: JSON.stringify(event.prompt_messages || []), response_format: JSON.stringify(event.response_format ?? null), payload: JSON.stringify(event.payload ?? null) });
+  for (const event of report.events || []) add({ ...event, row_type: "event", parent_ids: (event.parent_ids || []).join(" | "), prompt_messages: JSON.stringify(event.prompt_messages || []), response_format: JSON.stringify(event.response_format ?? null), payload: JSON.stringify(event.payload ?? null), inference_provenance: JSON.stringify(event.inference_provenance ?? null) });
   for (const error of report.errors || []) add({ row_type: "error", error });
   for (const limitation of report.limitations || []) add({ row_type: "limitation", limitations: limitation });
   return rows.map((row) => row.map(csvCell).join(",")).join("\n") + "\n";

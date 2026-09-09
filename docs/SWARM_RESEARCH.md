@@ -25,6 +25,12 @@ Protocol ensembles have equal call/output-token ceilings, **not equal input-toke
 
 The Collective behaviour panel groups by the actual question and labels Researcher A/B/C or Solo researcher. Stored initial/final answers, expandable exact starting/received passages, sender attribution and public peer claims make the difference between source-only and full-finding exchange visible. Peer claims are unverified; invalid raw model text cannot override a stored null answer. Machine identifiers remain in expandable provenance and JSON/CSV exports. A changed answer is not necessarily better; compare task correctness including all failures. The app has no retained-experience learning, adaptive task allocation, automatic experiment tuning or guarantee that sharing wins. This is one bounded evidence-sharing behaviour, not the finished hive mind.
 
+## Authorized cloud study archives
+
+The interactive builder and execution API remain local-only. Explicitly authorized, separately budgeted cloud studies can be imported as saved reports, with their hosted model/cohort clearly labelled; an unregistered cloud model key cannot silently replay through the local builder. These reports do not establish equality with local quantized weights.
+
+`shared_initial_fork_v1` reports explicitly reuse common initial public findings across communication conditions. Per-condition rows allocate those initials to each condition; physical usage totals count actual requests once. JSON keeps the full report, and CSV preserves fork origin attribution plus a separate accounting row. Incomplete physical usage remains unknown, and unknown billing is not displayed as zero. Every revision/solo/vote request remains fresh; this archive support is not a hidden inference cache or an automatic cloud fallback.
+
 ## Public task tracks
 
 `backend/research_fixtures/tasks.json` pins 200 projected tasks: 50 development + 50 evaluation examples per domain, selected in SHA256(source ID) order after recorded admission checks. Per-run subsets use SHA256(seed:task ID) ordering and record all selected IDs. Fixture byte hash is checked on every load.

@@ -203,7 +203,14 @@ export interface ResearchReport {
   events: ResearchEvent[];
   errors: string[];
   limitations: string[];
-  metered_api_cost_usd: number;
+  metered_api_cost_usd: number | null;
+  execution_note?: string;
+  call_accounting?: {
+    mode: "shared_initial_fork_v1";
+    fresh_calls: number; logical_steps: number; reused_initial_steps: number;
+    physical_prompt_tokens: number | null; physical_completion_tokens: number | null; physical_elapsed_s: number | null;
+    usage_complete: boolean;
+  };
   proof_ok: boolean;
 }
 

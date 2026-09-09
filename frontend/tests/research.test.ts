@@ -8,6 +8,7 @@ import {
   estimateResearchCalls,
   researchToCsv,
   researchToJson,
+  researchUsage,
   validateResearchRequest,
 } from "../src/lib/research.ts";
 import type { ResearchCatalog, ResearchReport } from "../src/lib/researchTypes.ts";
@@ -58,6 +59,26 @@ const report = {
   metered_api_cost_usd: 0,
   proof_ok: false,
 } as unknown as ResearchReport;
+
+test("forked cloud usage counts physical requests once and labels reused initial steps", () => {
+  const cloud = { ...report, actual_calls: 21, events: Array(27).fill({}), call_accounting: { mode: "shared_initial_fork_v1" as const, fresh_calls: 21, logical_steps: 27, reused_initial_steps: 6, physical_prompt_tokens: 210, physical_completion_tokens: 105, physical_elapsed_s: 2.1, usage_complete: true } };
+  const usage = researchUsage(cloud);
+  assert.equal(usage.prompt_tokens, 210);
+  assert.equal(usage.completion_tokens, 105);
+  assert.match(usage.note, /21 fresh API calls/);
+  assert.match(usage.note, /6 reused initial steps/);
+  assert.equal(researchUsage({ ...cloud, call_accounting: { ...cloud.call_accounting, usage_complete: false } }).prompt_tokens, null);
+  assert.equal(researchUsage({ ...cloud, actual_calls: 22 }).complete, false);
+  assert.equal(researchUsage(report).prompt_tokens, 10);
+});
+
+test("CSV retains explicit fork accounting and origin attribution", () => {
+  const copied = { ...report, events: [{ message_id: "copy-1", response_id: "original-1", parent_ids: [], prompt_messages: [], inference_provenance: { fresh_request: false, fork_reuse: true, origin_response_id: "original-1" } }], call_accounting: { mode: "shared_initial_fork_v1", fresh_calls: 21, logical_steps: 27, reused_initial_steps: 6 } } as unknown as ResearchReport;
+  const csv = researchToCsv(copied);
+  assert.ok(csv.split("\n")[0].includes("inference_provenance"));
+  assert.ok(csv.includes("fork_reuse"));
+  assert.ok(csv.includes("shared_initial_fork_v1"));
+});
 
 test("the default four-protocol two-domain budget is 80 calls", () => {
   assert.equal(estimateResearchCalls(2, 2, 2, catalog.protocols), 80);
