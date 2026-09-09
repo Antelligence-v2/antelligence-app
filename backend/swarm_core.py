@@ -25,7 +25,8 @@ from backend.source_calculation import (
 )
 
 
-PROTOCOLS = ("single", "independent_vote", "peer_review", "signal_board")
+COLLECTIVE_PROTOCOLS = ("evidence_exchange", "evidence_isolated", "solo_refine")
+PROTOCOLS = ("single", "independent_vote", "peer_review", "signal_board") + COLLECTIVE_PROTOCOLS
 OUTPUT_POLICY_IDS = ("prompt_only", "constrained_short_v1", SOURCE_CALCULATION_POLICY_ID)
 OUTPUT_POLICIES = (
     {
@@ -346,7 +347,8 @@ class _Execution:
         }
 
     def _seed_for(self, actor: str, round_number: int) -> int:
-        material = f"{self.task_id}\x1f{self.protocol}\x1f{actor}\x1f{round_number}".encode("utf-8")
+        seed_protocol = "evidence_exchange" if self.protocol == "evidence_isolated" else self.protocol
+        material = f"{self.task_id}\x1f{seed_protocol}\x1f{actor}\x1f{round_number}".encode("utf-8")
         offset = int.from_bytes(hashlib.sha256(material).digest()[:8], "big") % (_MAX_SEED + 1)
         return (self.settings["seed"] + offset) % (_MAX_SEED + 1)
 
@@ -498,7 +500,7 @@ def estimate_calls(task_count: int, model_count: int, protocols: Sequence[str]) 
     if not _is_int(model_count) or model_count < 0:
         raise ValueError("model_count must be a nonnegative integer")
     selected = _validate_protocols(protocols)
-    per_task = sum(1 if protocol == "single" else 3 for protocol in selected)
+    per_task = sum(6 if protocol in COLLECTIVE_PROTOCOLS else 1 if protocol == "single" else 3 for protocol in selected)
     return task_count * model_count * per_task
 
 
@@ -521,6 +523,10 @@ def run_task(
     normalized_settings = _validate_settings(settings)
     if not callable(infer) or not callable(emit) or not callable(should_stop):
         raise ValueError("infer, emit, and should_stop must be callable")
+
+    if protocol in COLLECTIVE_PROTOCOLS:
+        return [_run_collective(task, model, protocol, normalized_settings, infer, emit, should_stop, output_policy)
+                for model in models]
 
     if protocol == "single":
         return [
@@ -637,6 +643,89 @@ def summarize(
             }
         )
     return rows
+
+
+def _run_collective(task, model, protocol, settings, infer, emit, should_stop, output_policy):
+    """Three partial-view workers exchange chosen sources once; solo gets all six calls.
+
+    The host transports citations, never chooses relevant evidence or the answer.
+    All agents in a cell use the same model: knowledge diversity, not model diversity.
+    """
+    execution = _Execution(task=task, protocol=protocol, variant=f"{protocol}:{model}",
+                           model_keys=[model], settings=settings, infer=infer, emit=emit,
+                           should_stop=should_stop, expected_calls=6, output_policy=output_policy)
+    def parse_visible(content, view):
+        payload = _parse_answer_for_policy(content, view, output_policy)
+        if len(payload['evidence_ids']) > 3:
+            raise _PayloadError('collective findings may cite at most 3 sources')
+        return payload
+
+    solo = protocol == "solo_refine"
+    shards = [list(task["evidence"])] if solo else [list(task["evidence"])[i::3] for i in range(3)]
+    agents: list[dict[str, Any]] = [dict(agent_id=f"{model}:worker-{i + 1}",
+                   initial_evidence_ids=[e["id"] for e in shard],
+                   initial_answer=None, final_answer=None, received=[])
+              for i, shard in enumerate(shards)]
+    initial = []
+    previous: list[dict[str, Any] | None] = [None] * len(agents)
+    finals = []
+    for round_number in range(6 if solo else 2):
+        for i, agent in enumerate(agents):
+            if execution.stopped:
+                break
+            own = previous[i]
+            signals = []
+            visible_ids = {e["id"] for e in shards[i]}
+            if round_number == 1 and protocol == "evidence_exchange":
+                for j, outcome in enumerate(initial):
+                    if j == i or not outcome or outcome["status"] != "ok":
+                        continue
+                    cited = set(outcome["payload"]["evidence_ids"])
+                    sources = [e for e in shards[j] if e["id"] in cited]
+                    signals.append(dict(sender=agents[j]["agent_id"],
+                                        message_id=outcome["message_id"], kind="finding",
+                                        round=0, expires_round=1, payload=outcome["payload"],
+                                        evidence=sources))
+                    visible_ids.update(e["id"] for e in sources)
+                agent["received"] = [dict(sender=s["sender"], message_id=s["message_id"],
+                                          evidence_ids=[e["id"] for e in s["evidence"]]) for s in signals]
+            view = dict(task, evidence=[e for e in task["evidence"] if e["id"] in visible_ids])
+            own_view = None if not own or own["status"] != "ok" else dict(
+                message_id=own["message_id"], payload=own["payload"])
+            instruction = (
+                "Review the full evidence independently. Check your previous answer for mistakes; revise or abstain."
+                if solo else
+                "You have only a local evidence shard. Share your most useful findings by citing up to three evidence IDs. "
+                "Your cited source passages will be delivered to peers. Answer only what the evidence supports; abstain when insufficient."
+                if round_number == 0 else
+                "Reconsider your initial answer using your local evidence and any received findings. "
+                "Challenge unsupported peer conclusions; source passages matter more than agreement. Revise or abstain."
+            )
+            messages = [dict(role="system", content=_answer_system(view, output_policy)),
+                        dict(role="user", content=_json_text(dict(task=public_task(view),
+                             agent_id=agent["agent_id"], round=round_number, own_previous=own_view,
+                             signals=signals, instruction=instruction)))]
+            # Schema, prompt and parser share the SAME visibility boundary.
+            execution.task = view
+            outcome = execution.call(model_key=model, messages=messages, role=agent["agent_id"],
+                kind="claim" if round_number == 0 else "revision", round_number=round_number,
+                recipient="peers" if not solo and round_number == 0 else "none",
+                parent_ids=([own["message_id"]] if own else []) + [s["message_id"] for s in signals],
+                expires_round=1 if not solo and round_number == 0 else None,
+                actor=agent["agent_id"], parser=lambda content, v=view: parse_visible(content, v))
+            previous[i] = outcome
+            answer = outcome["payload"]["answer"] if outcome and outcome["status"] == "ok" else None
+            if round_number == 0:
+                initial.append(outcome)
+                agent["initial_answer"] = answer
+            agent["final_answer"] = answer
+        finals = list(previous)
+    execution.task = task
+    answers = [o["payload"]["answer"] for o in finals if o and o["status"] == "ok"]
+    answer = (answers[0] if answers else None) if solo else _strict_majority(task, answers, 3)
+    cell = _finish_cell(execution, answer)
+    cell["cooperation"] = dict(mode=protocol, agents=agents)
+    return cell
 
 
 def _run_single(
@@ -1128,8 +1217,8 @@ def build_response_format(
     evidence_ids = [evidence["id"] for evidence in task["evidence"]]
     properties["evidence_ids"] = {
         "type": "array",
-        "items": {"type": "string", "enum": evidence_ids},
-        "maxItems": _MAX_SHORT_EVIDENCE_IDS,
+        "items": {"type": "string", "enum": evidence_ids} if evidence_ids else {"type": "string"},
+        "maxItems": _MAX_SHORT_EVIDENCE_IDS if evidence_ids else 0,
     }
     properties["brief"] = {"type": "string", "maxLength": _MAX_SHORT_BRIEF_CHARS}
     schema = {

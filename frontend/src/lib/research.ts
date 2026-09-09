@@ -4,6 +4,7 @@ import type {
   ResearchReport,
   ResearchRunRequest,
   ResearchOutputPolicy,
+  ResearchCell,
 } from "./researchTypes";
 
 export const DEFAULT_RESEARCH_FORM = {
@@ -27,7 +28,13 @@ export const FALLBACK_PROTOCOL_CALLS: Record<string, number> = {
   independent_vote: 3,
   peer_review: 3,
   signal_board: 3,
+  evidence_exchange: 6,
+  evidence_isolated: 6,
+  solo_refine: 6,
+  fallback: 6,
 };
+
+export const DEFAULT_RESEARCH_PROTOCOLS = ["single", "independent_vote", "peer_review", "signal_board"] as const;
 
 export type ResearchForm = typeof DEFAULT_RESEARCH_FORM;
 
@@ -69,7 +76,7 @@ export function validateResearchRequest(request: ResearchRunRequest, catalog?: R
   else if (policy !== "prompt_only" && catalog && !catalog.output_policies?.some((entry) => entry.id === policy)) errors.push(`Output policy ${policy} is not supported by this backend.`);
   if (!request.name.trim()) errors.push("Name is required.");
   if (request.model_keys.length < 1 || request.model_keys.length > 2) errors.push("Select 1–2 models.");
-  if (request.protocols.length < 1 || request.protocols.length > 4) errors.push("Select 1–4 protocols.");
+  if (request.protocols.length < 1 || request.protocols.length > 7) errors.push("Select 1–7 protocols.");
   if (request.datasets.length < 1 || request.datasets.length > 2) errors.push("Select 1–2 datasets.");
   if (!Number.isInteger(request.tasks_per_dataset) || request.tasks_per_dataset < 1) errors.push("Tasks per dataset must be a positive integer.");
   if (catalog && request.tasks_per_dataset > catalog.limits.max_tasks_per_dataset) errors.push(`Tasks per dataset cannot exceed ${catalog.limits.max_tasks_per_dataset}.`);
@@ -174,6 +181,25 @@ export function sourceCalculationLines(payload: unknown): string[] {
   }
   const limitations = "limitations" in calculation && Array.isArray(calculation.limitations) ? calculation.limitations.filter((value): value is string => typeof value === "string") : [];
   return [`Operation: ${calculation.operation}`, ...operands, `Stored result: ${calculation.result ?? "abstained"}`, ...limitations];
+}
+
+export function collectiveBehaviourLines(cells: ResearchCell[]): string[] {
+  const lines: string[] = [];
+  for (const cell of cells) {
+    if (!cell.cooperation || !["evidence_exchange", "evidence_isolated", "solo_refine"].includes(cell.protocol)) continue;
+    const mode = cell.cooperation.mode === "evidence_exchange" ? "Sharing on" : cell.cooperation.mode === "solo_refine" ? "Solo full evidence" : cell.cooperation.mode === "evidence_isolated" ? "Sharing off" : "Unknown";
+    lines.push(`Variant ${cell.variant}`, `Mode: ${mode}`);
+    for (const agent of cell.cooperation.agents || []) {
+      lines.push(`Agent ${agent.agent_id} knowledge IDs: ${agent.initial_evidence_ids.join(", ") || "none"}`);
+      const received = (agent.received || []).flatMap((item) => item.evidence_ids.map((evidenceId) => `${evidenceId} (from ${item.sender})`));
+      if (received.length > 0) lines.push(`Shared source IDs: ${received.join(", ")}`);
+      const initial = agent.initial_answer ?? "—";
+      const final = agent.final_answer ?? "—";
+      lines.push(`Answer: ${initial} → ${final}`);
+      if (agent.initial_answer !== agent.final_answer) lines.push("Changed answer; this is not necessarily an improvement.");
+    }
+  }
+  return lines;
 }
 
 export function isTerminalResearchStatus(status: string): boolean {

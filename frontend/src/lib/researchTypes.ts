@@ -107,6 +107,25 @@ export interface ResearchEvent {
   [key: string]: unknown;
 }
 
+export interface ResearchReceivedEvidence {
+  sender: string;
+  message_id: string;
+  evidence_ids: string[];
+}
+
+export interface ResearchCooperationAgent {
+  agent_id: string;
+  initial_evidence_ids: string[];
+  initial_answer: string | null;
+  final_answer: string | null;
+  received: ResearchReceivedEvidence[];
+}
+
+export interface ResearchCooperation {
+  mode: string;
+  agents: ResearchCooperationAgent[];
+}
+
 export interface ResearchCell {
   cell_id: string;
   task_id: string;
@@ -125,6 +144,7 @@ export interface ResearchCell {
   completion_tokens: number;
   elapsed_s: number;
   messages: ResearchEvent[];
+  cooperation?: ResearchCooperation;
   error?: string | null;
   usage_complete: boolean;
   [key: string]: unknown;

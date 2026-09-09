@@ -15,14 +15,14 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from backend.research_data import BUNDLE_SHA256, LIMITATIONS, digest, load_bundle, select_tasks
 from backend.research_models import LocalModels, MODELS
-from backend.swarm_core import PROTOCOLS, estimate_calls, output_policy_catalog, run_task, summarize
+from backend.swarm_core import COLLECTIVE_PROTOCOLS, PROTOCOLS, estimate_calls, output_policy_catalog, run_task, summarize
 
 
 class ResearchRequest(BaseModel):
     model_config = ConfigDict(extra='forbid', strict=True, allow_inf_nan=False)
     name: str = Field(min_length=1, max_length=120)
     model_keys: list[Literal['qwen','phi4']] = Field(min_length=1,max_length=2)
-    protocols: list[Literal['single','independent_vote','peer_review','signal_board']] = Field(min_length=1,max_length=4)
+    protocols: list[Literal['single','independent_vote','peer_review','signal_board','evidence_exchange','evidence_isolated','solo_refine']] = Field(min_length=1,max_length=7)
     datasets: list[Literal['pubmedqa','finqa']] = Field(min_length=1,max_length=2)
     split: Literal['development','evaluation']
     tasks_per_dataset: int = Field(ge=1,le=50)
@@ -124,8 +124,11 @@ class ResearchService:
                         'single':'One blind answer per model (cheaper baseline).',
                         'independent_vote':'Three blind samples per model, strict-majority vote.',
                         'peer_review':'Blind claims, named peer critique, then revisions.',
-                        'signal_board':'Typed task-scoped signals with round snapshots and one-round TTL.'}[p],
-                        calls_per_model=1 if p=='single' else 3) for p in PROTOCOLS],
+                        'signal_board':'Typed task-scoped signals with round snapshots and one-round TTL.',
+                        'evidence_exchange':'Three same-model agents with different evidence share chosen source passages, then revise. No retained learning.',
+                        'evidence_isolated':'Sharing off: same agents, local evidence, seeds and six calls; no peer findings delivered.',
+                        'solo_refine':'One agent receives all evidence and six successive answer checks. Same output ceiling, actual input costs differ.'}[p],
+                        calls_per_model=estimate_calls(1,1,[p])) for p in PROTOCOLS],
                     limits=dict(max_calls=600,max_wall_seconds=3600,max_tasks_per_dataset=50),limitations=LIMITATIONS)
 
     def start(self,request):
@@ -143,7 +146,7 @@ class ResearchService:
             cells=[]
             for task in tasks:
                 for protocol in data['protocols']:
-                    variants=[('single:'+m,[m]) for m in data['model_keys']] if protocol=='single' else [(protocol,data['model_keys'])]
+                    variants=[(protocol+':'+m,[m]) for m in data['model_keys']] if protocol=='single' or protocol in COLLECTIVE_PROTOCOLS else [(protocol,data['model_keys'])]
                     for variant,keys in variants:
                         cells.append(dict(cell_id=f'{task["task_id"]}:{variant}',task_id=task['task_id'],dataset=task['dataset'],domain=task['domain'],
                            variant=variant,protocol=protocol,model_keys=keys,output_policy=data['output_policy'],status='error',answer=None,expected_answer=task['expected_answer'],

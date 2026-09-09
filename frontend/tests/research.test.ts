@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   DEFAULT_RESEARCH_FORM,
   buildResearchRequest,
+  collectiveBehaviourLines,
   estimateResearchCalls,
   researchToCsv,
   researchToJson,
@@ -62,6 +63,12 @@ test("the default four-protocol two-domain budget is 80 calls", () => {
   assert.equal(estimateResearchCalls(2, 2, 2, catalog.protocols), 80);
 });
 
+test("new collective protocols and fallback use six calls per model", () => {
+  assert.equal(estimateResearchCalls(1, 1, 1, ["evidence_exchange", "evidence_isolated", "solo_refine", "fallback"]), 24);
+  const request = buildResearchRequest({ ...DEFAULT_RESEARCH_FORM, model_keys: ["model-a"], protocols: ["single", "independent_vote", "peer_review", "signal_board", "evidence_exchange", "evidence_isolated", "solo_refine"], datasets: ["finqa"] });
+  const collectiveCatalog = { ...catalog, protocols: [...catalog.protocols, { id: "evidence_exchange", label: "Evidence exchange", description: "", calls_per_model: 6 }, { id: "evidence_isolated", label: "Evidence isolated", description: "", calls_per_model: 6 }, { id: "solo_refine", label: "Solo refine", description: "", calls_per_model: 6 }] };
+  assert.deepEqual(validateResearchRequest(request, collectiveCatalog), []);
+});
 test("request builder preserves explicit bounded settings", () => {
   const request = buildResearchRequest({ ...DEFAULT_RESEARCH_FORM, name: "  check  ", model_keys: ["model-a"], protocols: ["single"], datasets: ["finqa"] });
   assert.equal(request.name, "check");
@@ -137,4 +144,50 @@ test("calculation exports retain the complete computed payload alongside the raw
 
 test("JSON export is the complete saved report", () => {
   assert.deepEqual(JSON.parse(researchToJson(report)), report);
+});
+
+test("collective behaviour lines explain sharing, provenance, and answer changes", () => {
+  const lines = collectiveBehaviourLines([{
+    cell_id: "cell-collective",
+    task_id: "task-1",
+    dataset: "finqa",
+    domain: "finance",
+    variant: "evidence_exchange:model-a",
+    protocol: "evidence_exchange",
+    model_keys: ["model-a"],
+    status: "completed",
+    answer: "final answer",
+    correct: null,
+    instruction_compliant: true,
+    call_count: 6,
+    prompt_tokens: 1,
+    completion_tokens: 1,
+    elapsed_s: 0.1,
+    messages: [],
+    usage_complete: true,
+    cooperation: {
+      mode: "evidence_exchange",
+      agents: [{ agent_id: "agent-a", initial_evidence_ids: ["ev-1"], initial_answer: "initial answer", final_answer: "final answer", received: [{ sender: "agent-b", message_id: "msg-2", evidence_ids: ["ev-2"] }] }],
+    },
+  }]);
+  assert.deepEqual(lines, [
+    "Variant evidence_exchange:model-a",
+    "Mode: Sharing on",
+    "Agent agent-a knowledge IDs: ev-1",
+    "Shared source IDs: ev-2 (from agent-b)",
+    "Answer: initial answer → final answer",
+    "Changed answer; this is not necessarily an improvement.",
+  ]);
+});
+
+test("collective behaviour labels isolated and solo modes", () => {
+  assert.deepEqual(collectiveBehaviourLines([
+    { variant: "evidence_isolated:model-a", protocol: "evidence_isolated", cooperation: { mode: "evidence_isolated", agents: [] } },
+    { variant: "solo_refine:model-a", protocol: "solo_refine", cooperation: { mode: "solo_refine", agents: [] } },
+  ] as any), [
+    "Variant evidence_isolated:model-a",
+    "Mode: Sharing off",
+    "Variant solo_refine:model-a",
+    "Mode: Solo full evidence",
+  ]);
 });

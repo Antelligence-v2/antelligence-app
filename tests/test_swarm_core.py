@@ -57,8 +57,8 @@ def test_public_task_excludes_evaluator_labels_and_call_budget_is_equalized():
     assert "expected_answer" not in safe
     assert "tolerance" not in safe
     assert safe["question"] == task()["question"]
-    assert set(PROTOCOLS) == {"single", "independent_vote", "peer_review", "signal_board"}
-    assert estimate_calls(2, 2, PROTOCOLS) == 40
+    assert set(PROTOCOLS) == {"single", "independent_vote", "peer_review", "signal_board", "evidence_exchange", "evidence_isolated", "solo_refine"}
+    assert estimate_calls(2, 2, PROTOCOLS) == 112
 
 
 def test_single_uses_explicit_settings_and_never_sends_gold():

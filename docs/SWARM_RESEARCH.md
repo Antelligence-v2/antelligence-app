@@ -15,6 +15,14 @@ Model disagreement can abstain. Missing/invalid required messages cannot become 
 
 Protocol ensembles have equal call/output-token ceilings, **not equal input-token costs**. The single baseline is cheaper. Compare observed prompt tokens, output tokens and latency. One-model peer review is self-review, not model diversity. A proper scientific comparison still requires same-model and heterogeneous teams, repeated sampling seeds, token-matched controls, pre-registration and held-out replication.
 
+## Collective evidence exchange
+
+`evidence_exchange` gives three independent contexts of each selected model different evidence shards (source order, round-robin). Each worker chooses up to three source IDs to share alongside its public finding. The host delivers those exact source passages, attributed to the sender, in one frozen round-zero snapshot expiring after round one. Each worker then revises independently; a strict majority determines the group answer. Unselected sources are not broadcast. Invalid findings never propagate. Prompts, response schemas and citation validation all use the worker's visible evidence, not the full task. Empty shards remain empty rather than borrowing hidden evidence.
+
+`evidence_isolated` is the sharing-off control: identical initial shards/instructions and worker seeds, same six-call ceiling, but no findings cross between workers. `solo_refine` gives one agent all evidence from the start and six successive answer checks. Each selected model gets its own cell in these three modes. This isolates **knowledge diversity**, not heterogeneous-model cooperation. Equal calls and output ceilings do not match input-token cost; compare actual usage. The original four protocols retain their original full-evidence behavior and default selection.
+
+The Collective behaviour panel shows each agent's starting source IDs, received findings and initial → final answer. Exact passages and findings remain in the expandable prompts and JSON/CSV exports. A changed answer is not necessarily better; compare task correctness including all failures. The app has no retained-experience learning, adaptive task allocation, automatic experiment tuning or guarantee that sharing wins. This is one bounded evidence-sharing behaviour, not the finished hive mind.
+
 ## Public task tracks
 
 `backend/research_fixtures/tasks.json` pins 200 projected tasks: 50 development + 50 evaluation examples per domain, selected in SHA256(source ID) order after recorded admission checks. Per-run subsets use SHA256(seed:task ID) ordering and record all selected IDs. Fixture byte hash is checked on every load.

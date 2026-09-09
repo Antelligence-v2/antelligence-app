@@ -50,6 +50,25 @@ def wait_result(client, run_id):
     pytest.fail('unit worker did not finish')
 
 
+def test_collective_api_budget_and_persisted_cells(tmp_path):
+    client, service = client_for(tmp_path)
+    protocols = ['evidence_exchange', 'evidence_isolated', 'solo_refine']
+    payload = request(protocols=protocols, tasks_per_dataset=1, max_calls=17)
+    assert client.post('/research/runs', json=payload).status_code == 422
+    assert service.store.list() == []
+    payload['max_calls'] = 18
+    response = client.post('/research/runs', json=payload)
+    assert response.status_code == 202, response.text
+    body = wait_result(client, response.json()['run_id'])
+    assert body['actual_calls'] == body['estimated_calls'] == 18
+    assert body['completed_cells'] == body['total_cells'] == 3
+    assert {c['variant'] for c in body['cells']} == {p+':qwen' for p in protocols}
+    assert all(c['cooperation']['agents'] for c in body['cells'])
+    assert service.store.get(body['run_id']) == body
+    catalog = client.get('/research/catalog').json()
+    assert all(p['calls_per_model'] == 6 for p in catalog['protocols'] if p['id'] in protocols)
+
+
 def test_actual_persistence_and_restart_readback(tmp_path):
     client, service = client_for(tmp_path)
     response = client.post('/research/runs',json=request())
