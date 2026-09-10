@@ -25,7 +25,7 @@ Use bounded root runs and persist committed checkpoints before time limits. A ti
 
 ## ASSIGNMENT prerequisites
 
-Controller supplies: feature/outcome ID; absolute worktree and branch; exact base and C0 contract commits; accepted dependency commit IDs; exclusive paths; absolute interpreter; scratch/evidence/output paths; owner session; hard run budget; assigned worker slot and host-admission receipt. Missing assignments are a concrete blocker, not permission to invent paths, overwrite a live lane or reset budgets. New worktrees lack .venv/untracked fixtures: use a verified interpreter with PYTHONPATH pointing at the lane, after checking imports and test side effects.
+Controller supplies: feature/outcome ID; absolute worktree and branch; exact base and C0 contract commits; accepted dependency commit IDs; exclusive paths; absolute interpreter; scratch/evidence/output paths; owner session; hard run budget; assigned worker slot and host-admission receipt. Missing assignments are a concrete blocker, not permission to invent paths, overwrite a live lane or reset budgets. New worktrees lack .venv/untracked fixtures: use the supplied verified interpreter with `python -m pytest` from the explicit owned worktree, remove inherited PYTHONPATH, and assert the imported source location after checking test side effects. Do not inject interpreter paths or hide an import fix in dynamic script execution. Preserve any refusal for normal parent approval; the active ASSIGNMENT supplies the verified invocation.
 
 ## Definition of feature-ready
 

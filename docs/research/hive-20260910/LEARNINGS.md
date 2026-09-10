@@ -26,6 +26,10 @@ The unattended root correctly stopped when its PYTHONPATH override required appr
 
 Evidence: `/Volumes/WD_BLACK/antelligence-collective-20260908/sol-luna-features-20260910/controller-20260910_154850_489cf7/check-c0-01/CONTROLLER-NO-GO.md` and adjacent executable regression/observations. Current owner/return: [feature controller](../sol-luna-features-20260910/CONTROLLER.md).
 
+## F1 source-lineage and same-handle verification gaps
+
+Controller reproduced all 116 submitted tests at `1524185ffbccc470cf7adc959b8e8391be8f43b7`. New adversarial acceptance found three failures covering two defects: stable source lineage was conflated with versioned record identity, so r1→r2 changes retained usable stale descendants; metadata validation at construction did not protect an already-open handle from later corruption. Same-version tests and reopened-handle corruption tests alone missed these boundaries. Parent verified real fresh-process recall/targeted invalidation separately; no learned-memory or superiority claim. The original standalone probe failed for a bad positional oracle (both fixtures matched the same query; deterministic ID order is not relevance order). Preserve it as failed evidence, not a code defect. Exact cases/records: `/Volumes/WD_BLACK/antelligence-collective-20260908/sol-luna-features-20260910/controller-20260910_154850_489cf7/check-f1-01/CONTROLLER-NO-GO.md` and `/Volumes/WD_BLACK/antelligence-collective-20260908/sol-luna-features-20260910/controller-20260910_154850_489cf7/check-f1-01/verification.json`. Bounded Sol/Luna repair is active; successor execution, full independent review and complete F1 return remain required.
+
 ## Current boundary
 
 Model-free substrate development continues. Learned memory, adaptive Queen routing and collective performance improvement remain unproven. A new model experiment requires an admitted task/evaluator/message contract, frozen conditions, real resource accounting and the existing cumulative cost authority. No new scheduling, service ownership, clinical/financial permission or publication is implied.
