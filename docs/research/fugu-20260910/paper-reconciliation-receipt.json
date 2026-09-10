@@ -1,0 +1,26 @@
+{
+  "checked_at": "2026-09-10T13:40:33.475648+00:00",
+  "checks": {
+    "trinity_primary_table2": true,
+    "trinity_learnable_under20k": true,
+    "trinity_voting_control": true,
+    "conductor_primary_table7": true,
+    "conductor_fixed_worker_table10": true,
+    "conductor_fullbudget_identity": true,
+    "conductor_unlimited_retry_control": true,
+    "conductor_finegrained_not_better": true,
+    "trinity_text_table_disagreement": true
+  },
+  "calculations": {
+    "trinity_table1_three_percentage_mean": "54.20666666666666666666666667",
+    "trinity_table1_naive_four_column_mean_not_use": "43.055",
+    "conductor_table7_vs_gemini_points": "4.75",
+    "conductor_table7_vs_gpt5_points": "7.83"
+  },
+  "files": {
+    "paper-critique.md": "c2439800d6ae7f3cdbb9778762422aee066d2a71bcc096697fe6feda0025b72a",
+    "sources/trinity-v3.md": "bab95c9f2b0ec4e7e513cc87fda0b3dcf2d3b94948b2030f0e0976e951326d91",
+    "sources/conductor-v5.md": "c5e952e556aeb8e8f552cc0a6a74c7061c2264470f8e7c05a065aec891998ddf"
+  },
+  "scope": "Parent verified selected load-bearing passages/tables; not a replication or complete independent numerical audit of every appendix."
+}

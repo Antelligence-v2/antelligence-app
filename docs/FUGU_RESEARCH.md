@@ -42,6 +42,21 @@ The AutoResearch case (§4.3.1, Table 2) does use a shared scaffold, per-experim
 
 The [official Fugu page](https://sakana.ai/fugu/) explicitly says selected model identities and routing are proprietary. The [official repository](https://github.com/SakanaAI/fugu/tree/cb5a66d84fcd4ba377eaed440affcea101e69b19) was inspected at that exact commit: it supplies integrations, demonstrations, reports and example artifacts; it is not a released reproduction of the proprietary coordinator. No installer was run, no account was opened, and no Fugu API experiment was performed.
 
+### What the earlier TRINITY and Conductor papers establish
+
+The independent paper reading is complete and [parent-reconciled](research/fugu-20260910/paper-reconciliation.md). The parent checked the following directly against [TRINITY v3](https://arxiv.org/html/2512.04695v3) and [Conductor v5](https://arxiv.org/html/2512.04388v5):
+
+| Study | Learned behavior | Most useful reported comparison |
+|---|---|---|
+| TRINITY | A small coordinator selects a worker and a Thinker/Worker/Verifier role from the current transcript; evolutionary training adjusts fewer than 20K parameters. | Table 2: 61.46 LiveCodeBench, 70.44 four-task average under the default 4K/minimal setting. The 86.2% headline removes the output constraint (§4.4), so it is a different operating point. |
+| Conductor | A 7B model writes subtasks, worker assignments and prior-output visibility; reinforcement learning rewards workflow validity and final correctness. | Table 7: 72.35 average versus 67.60 Gemini 5× context and 64.52 GPT-5 5× self-reflection. These are stronger controls than a one-call baseline, but not proof of equal realized inference cost. |
+
+There are important counterweights. TRINITY's MMLU score of 91.56 (Table 2) does not clearly beat Gemini majority@5 at 91.57 ± 0.70 (Table 7). Conductor's fine-grained access-list ablation does not clearly beat its simpler `[]`/`all` interface (§B.8, Table 9). Thus **learned organization is promising; finer communication control is not automatically better**.
+
+These methods learn coordinator parameters across training tasks. That is different from a persistent store of evidence-backed lessons retrieved by later tasks. Also, their central orchestrators are not proof that Antelligence must adopt a centrally knowledgeable Queen.
+
+The delegated experiment suggestion was **not admitted as a launch specification**: empty message slots do not equalize token costs; fully informed adjudication is a different question from distributed evidence discovery; valid-only accuracy hides differing failure denominators; its sample size and thresholds were not justified. The reconciliation also records a Conductor budget misclassification and inconsistencies in TRINITY's own text/tables. None affects the narrower mechanism-based research direction below.
+
 ## 2. Two complementary research directions
 
 ### Preserve independence: Debate or Vote
@@ -109,7 +124,7 @@ These are distinct research questions, not one compound intervention:
 3. **Different expertise.** Cross model identities only in a subsequent or explicitly factorial experiment. Establish measured complementary errors rather than assigning permanent brand-based specialties. A task-adaptive router must use public task/state features, not evaluation labels.
 4. **Shared experience—the hive-mind increment.** Store small, attributable lessons about successful and failed collaboration, with supporting runs, scope, expiry and contradictory evidence. Retrieve only relevant experiences. Compare identical workers with memory off, transcript-only memory, structured lessons, and shuffled memory under a token budget. Freeze memory before evaluation; use chronological/source-family separation and prevent evaluation labels or future outcomes from entering it. Online memory updating is a different experiment and needs its own isolation protocol.
 
-The next behavioral experiment should center on **evidence-grounded selective checking**, with output reliability as its admission gate. It should ask whether the group can preserve justified uncertainty rather than merely become more unanimous. A prototype can use an inspectable rule-based access policy before expensive coordinator training; that prototype must be labelled hand-designed, not learned Fugu.
+The next behavioral experiment should center on **evidence-grounded selective checking**, with output reliability as its admission gate. Report valid-and-reference-matching outcomes over all assigned cases, with separate validity and conditional accuracy; a valid-only denominator must not hide failures. It should ask whether the group can preserve justified uncertainty rather than merely become more unanimous. A prototype can use an inspectable rule-based access policy before expensive coordinator training; that prototype must be labelled hand-designed, not learned Fugu.
 
 No new paid cohort or training run was launched in this research pass. The existing research allowance is not permission to add subscriptions or reset the cumulative credit ledger. Existing evaluation cases remain consumed; sample size, exact protocols, budgets and decision thresholds must be frozen before a new pilot. A small pilot is for feasibility, not a universal swarm ranking.
 
@@ -119,7 +134,8 @@ Working evidence: `/Volumes/WD_BLACK/antelligence-collective-20260908/fugu-resea
 
 - `source-manifest.json` and `sources/`: retrieved primary-source text snapshots with hashes.
 - `headroom.json`: executed diagnostic, with original report and analyzer hashes.
-- `paper-critique.md`: independent TRINITY/Conductor reading; pending reconciliation at initial draft.
-- [Headroom review](research/fugu-20260910/headroom-review.md): independent recomputation PASS, no blocker/high; parent confirmed the exact reviewed analyzer and output hashes. Paper critique remains pending.
+- `paper-critique.md`: completed independent TRINITY/Conductor reading, retained unmodified in the evidence root. [Parent reconciliation](research/fugu-20260910/paper-reconciliation.md) accepts the core source reading with explicit corrections and rejects the draft pilot as a launch-ready specification.
+- `sources/trinity-v3.md`, `sources/conductor-v5.md`: additional version-pinned primary-source snapshots; hashes and parent checks are recorded in [the reconciliation receipt](research/fugu-20260910/paper-reconciliation-receipt.json).
+- [Headroom review](research/fugu-20260910/headroom-review.md): independent recomputation PASS, no blocker/high; parent confirmed the exact reviewed analyzer and output hashes. Both research checks are reconciled; neither is approval of a new behavioral experiment.
 
 This report deliberately separates what Sakana reports, what our code actually does, and what remains a hypothesis. A useful swarm is not defined by its agent count; a useful hive is not defined by the size of its transcript archive.
