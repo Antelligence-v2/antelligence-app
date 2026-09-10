@@ -25,7 +25,11 @@ C0 run-01 **returned but was not accepted**. Candidate `236cf3b2f43f938b416496c4
 
 Controller verdict and executable reproduction: `/Volumes/WD_BLACK/antelligence-collective-20260908/sol-luna-features-20260910/controller-20260910_154850_489cf7/check-c0-01/CONTROLLER-NO-GO.md`. Prior code, reports and reviews are preserved.
 
-A fresh artifact-driven Sol continuation is launched from the existing C0 candidate and lane, with bounded Luna repair and fresh non-author review. Run-02 assignment/return directory: `/Volumes/WD_BLACK/antelligence-collective-20260908/sol-luna-features-20260910/C0/run-02`. Completion handle `proc_a1ee6e8a374d`, launcher PID `55548`, notify enabled; runtime identity is recorded separately in the live registry. No old chat is resumed. No feature source is integrated.
+Run-02 returned a committed minimal fix at `c5f59de5b7359664606a211a5e98ce22ab6291af`, but correctly stopped on an unattended PYTHONPATH permission check. The main controller executed the missing gate through normal tool approval: **77 tests passed**, and the actual evaluator produced full success, safe partial progress, first-action rejection and no-action failure. No security configuration was changed. A narrower normal `python -m pytest` command with PYTHONPATH removed also passed **78 tests**, including the identical inspected evaluator probe and an exact candidate import-location assertion. Source hashes independently matched the frozen commit and trace.
+
+Execution proof: `/Volumes/WD_BLACK/antelligence-collective-20260908/sol-luna-features-20260910/controller-20260910_154850_489cf7/check-c0-02/CONTROLLER-VERIFIED.md`, `evaluator-trace.json`, `no-path-override-tests.txt`, and `source-and-runtime-identity.json`.
+
+Run-03 is finalization only: Sol `20260910_170855_b0ed5a`, process `proc_28dca222ef3c`, PID `67181`, notification enabled. Runtime Sol/openai-codex identity and actual calls were independently observed. Assignment/return: `/Volumes/WD_BLACK/antelligence-collective-20260908/sol-luna-features-20260910/C0/run-03`. Its work is a first-hand rerun, fresh non-author Luna review and complete C0 return, not another implementation. No old chat is resumed; no feature is accepted or integrated yet.
 
 Complete feature return, evaluator-derived behaviour and successor exact-object review remain mandatory before freezing C0. F1/F2 stay dependency-gated, then F3/F5, F4 and F6 per exact FEATURES dependencies. Later F3/F4 trace coverage for F5 remains explicit. All model experiments remain separately gated.
 
