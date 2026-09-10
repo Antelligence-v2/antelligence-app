@@ -1,0 +1,30 @@
+{
+  "retrieved_at": "2026-09-10T13:21:27.054812+00:00",
+  "sources": [
+    {
+      "name": "fugu-report-v2.md",
+      "url": "https://arxiv.org/html/2606.21228v2",
+      "sha256": "10ffd77066d7c79ee45e85c997a8860f8528c49a18852ef29f4784621550c375",
+      "extracted_text_not_raw_html": true
+    },
+    {
+      "name": "fugu-product.md",
+      "url": "https://sakana.ai/fugu/",
+      "sha256": "01ec5bfe18f5414a877c707b7ec28614e03ada60cbf14deb8b288da0bd5914a7",
+      "extracted_text_not_raw_html": true
+    },
+    {
+      "name": "g-memory-v2.md",
+      "url": "https://arxiv.org/html/2506.07398v2",
+      "sha256": "ccc9210731c6b92b3b089b64596f654597f8425ce9917c72638d2d45ec419377",
+      "extracted_text_not_raw_html": true
+    },
+    {
+      "name": "debate-or-vote-v1.md",
+      "url": "https://arxiv.org/html/2508.17536v1",
+      "sha256": "3b178e9d9529fb03f54d92541f53e8dffb3f0e32315f9a195acc07e0eff0512f",
+      "extracted_text_not_raw_html": true
+    }
+  ],
+  "official_fugu_repo_commit": "cb5a66d84fcd4ba377eaed440affcea101e69b19"
+}
