@@ -1,0 +1,38 @@
+[
+  {
+    "url": "https://arxiv.org/html/2509.25140v1",
+    "path": "/Volumes/WD_BLACK/antelligence-collective-20260908/hive-research-20260910/sources/reasoningbank-v1.md",
+    "chars": 63428,
+    "sha256": "8cc69cfedbdd130451f4d1b7fae73e5520a2482b2bfca8af74dbd2a1d04f9396"
+  },
+  {
+    "url": "https://arxiv.org/html/2507.07957v1",
+    "path": "/Volumes/WD_BLACK/antelligence-collective-20260908/hive-research-20260910/sources/mirix-v1.md",
+    "chars": 50532,
+    "sha256": "3070c20fb15111ff29bfb6ee07af6892ccfd84331d76e106d09694363b3eb05c"
+  },
+  {
+    "url": "https://arxiv.org/html/2305.16291v2",
+    "path": "/Volumes/WD_BLACK/antelligence-collective-20260908/hive-research-20260910/sources/voyager-v2.md",
+    "chars": 63612,
+    "sha256": "be57a487389bab93700b3fae5c0ba2346fe630c93bb1a28cb64e2c1e7878d06f"
+  },
+  {
+    "url": "https://arxiv.org/html/2601.13295v1",
+    "path": "/Volumes/WD_BLACK/antelligence-collective-20260908/hive-research-20260910/sources/cooperbench-v1.md",
+    "chars": 68003,
+    "sha256": "c6dc47d77cbd24a0c73f078a46ba83d290c9a7ee0b8bf3eb9c5e616c25242526"
+  },
+  {
+    "url": "https://arxiv.org/html/2503.01935v1",
+    "path": "/Volumes/WD_BLACK/antelligence-collective-20260908/hive-research-20260910/sources/multiagentbench-v1.md",
+    "chars": 115200,
+    "sha256": "ac289ba9abc873a179f114bbfd0269a6ef89d9bab1c7958b35ffd85aa5fb61e3"
+  },
+  {
+    "url": "https://arxiv.org/html/2506.07982v1",
+    "path": "/Volumes/WD_BLACK/antelligence-collective-20260908/hive-research-20260910/sources/tau2-v1.md",
+    "chars": 56068,
+    "sha256": "83399a482188c239cf30fc7445e8f5fe44cd82b292a529d7f8621bc7e336c4fb"
+  }
+]

@@ -1,0 +1,22 @@
+{
+  "candidate_code_commit": "c0ed98600ed2528e029bfde42b3426d5f0167474",
+  "cause": "terminal result display strips final LF; original packet text is the entire blob minus exactly one trailing newline",
+  "scope": "display/transport normalization only; no code changed and no lines omitted",
+  "checks": [
+    {
+      "path": "backend/research_coldroom.py",
+      "git_blob_sha256": "67f399b2ad4524e6436f759a5348c3eb9edfb6b5a82e941278e81c04336d143a",
+      "packet_text_plus_one_LF_equals_exact_git_blob": true
+    },
+    {
+      "path": "scripts/probe_hive_coldroom.py",
+      "git_blob_sha256": "bfb3939165815b6c91b7e383595a9a8b00a0af79f74b270702df57afd936a0e5",
+      "packet_text_plus_one_LF_equals_exact_git_blob": true
+    },
+    {
+      "path": "tests/test_research_coldroom.py",
+      "git_blob_sha256": "b1e8de472266286d5c222bc667503d0ce7742b936b6553417270ef3bf8d065bf",
+      "packet_text_plus_one_LF_equals_exact_git_blob": true
+    }
+  ]
+}

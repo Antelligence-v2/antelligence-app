@@ -1,6 +1,6 @@
 # Antelligence: broad memory, bounded Queen, verifiable collective work
 
-Date: 2026-09-10. **Research synthesis and an executed model-free testbed—not a demonstrated LLM hive mind.** Independent memory/benchmark source critiques are in flight at this checkpoint. This expands [the Fugu investigation](FUGU_RESEARCH.md), not the old calculator roadmap.
+Date: 2026-09-10. **Research synthesis and an executed model-free testbed—not a demonstrated LLM hive mind.** The memory/benchmark source critiques are complete and parent-reconciled; the [corrections and adoption boundaries](research/hive-20260910/review-reconciliation.md) supersede conflicting worker interpretations. This expands [the Fugu investigation](FUGU_RESEARCH.md), not the old calculator roadmap.
 
 ## The direction in plain language
 
@@ -62,6 +62,21 @@ A useful hypothesis for Antelligence: learn a small **memory-usefulness selector
 
 For our design, authentic authorship alone cannot make a false lesson correct. Keep the validator and memory-admission service outside the workers' write authority; scope memories by environment version and preserve contradictions. Evaluate harmless stale/conflicting-memory cases in an isolated testbed before any adversarial model test or live integration.
 
+### Completed memory and benchmark readings
+
+| Lead | Finding that changes our design | Limit we retain |
+|---|---|---|
+| [ReasoningBank v1](https://arxiv.org/html/2509.25140v1#A3.SS1) | On one Shopping ablation: 39.0% with no experience, 49.7% with one, 44.4% with four. Retrieve a small useful set, not the largest available set. | Single-agent memory; self-judged lessons; no complete token/cost parity; four still beats zero here |
+| [MIRIX v1](https://arxiv.org/html/2507.07957v1#S4.T2) | Typed stores and type-specific managers are a useful interface. | LOCOMO J-score 85.38 versus Full-Context 87.52; unanswerable questions excluded; no matched single-manager ablation |
+| [Voyager v2](https://arxiv.org/html/2305.16291v2#S3.T2) | Store reusable procedures, not just narratives: fresh-world Diamond Pickaxe 3/3 versus 2/3 without the library, in three trials. | GPT-4 skill-admission critic, not an independent deterministic checker; one-domain transfer and censored iteration budgets |
+| [CooperBench v1](https://arxiv.org/html/2601.13295v1) | Test whether separately produced artifacts actually fit together, against a fully informed solo control. | Cooperation underperformed; paper merge assistance and current evaluator differ; not a memory benchmark |
+| [τ²-bench v1](https://arxiv.org/html/2506.07982v1#S3.SS2) | Generate tasks from composable initialization/solution/assertion units, rather than hand-writing a list of questions. | Agent–user dual control, not a peer swarm; final-state checks need additional trajectory safety checks |
+| [MultiAgentBench v1](https://arxiv.org/html/2503.01935v1) / MARBLE code | Broad task/role vocabulary is useful for scenario design. | Current pinned evaluator has deferred DB scoring and a syntax defect; do not transplant it as an evaluation foundation |
+
+**Most useful synthesis:** a colony retains what happened, what the evidence suggests, and which procedure worked as distinct records. A fresh Queen consults that library selectively, but changed rules and contrary evidence can invalidate a previously useful procedure. The Queen is an attention/commitment coordinator, not the authority that declares its own success.
+
+The unedited [memory critique](research/hive-20260910/memory-critique.md) and [sandbox critique](research/hive-20260910/sandbox-critique.md) remain available for provenance. In particular, the worker's Voyager Table 2 count and description of its verifier were corrected. A citation-check pass did not catch either issue. Proposed two-episode/two-signature admission rules and unspecified plan-voting tie breaks were **not adopted**.
+
 ## 4. Promising syntheses—novel to this project, not claims of global novelty
 
 | Idea | What is different | A falsifiable test |
@@ -110,7 +125,7 @@ Run without additional dependencies or model credentials:
 python3 scripts/probe_hive_coldroom.py --output-dir /absolute/path/to/a/NEW/folder
 ```
 
-The runner refuses an existing output directory. Evidence from the actual run is in `/Volumes/WD_BLACK/antelligence-collective-20260908/hive-research-20260910/coldroom-probe-1/`. The [recorded browser replay](research/hive-20260910/coldroom-replay.html) steps through those saved state changes; it is not live inference. Focused tests returned **25 passed** (20 testbed checks plus five existing headroom checks). The independent source critiques and an independent code review remain distinct gates; testbed machinery passing does not admit a model experiment.
+The runner refuses an existing output directory. Evidence from the actual run is in `/Volumes/WD_BLACK/antelligence-collective-20260908/hive-research-20260910/coldroom-probe-1/`. The [recorded browser replay](research/hive-20260910/coldroom-replay.html) steps through those saved state changes; it is not live inference. Focused tests returned **25 passed** (20 testbed checks plus five existing headroom checks). The source critiques are accepted only with parent corrections. Independent static review of the frozen code is pending; testbed machinery passing does not admit a model experiment.
 
 A typed-action simulator is not an OS security sandbox. Do not execute arbitrary agent Python/shell in this process. Code-repair/scientific execution needs a separate hardened environment with disposable storage, no credentials, restricted network and an evaluator workers cannot modify.
 
@@ -124,4 +139,4 @@ The next research-to-build seam is a **typed, replayable evidence-and-memory env
 
 ## Review checkpoint
 
-Parent source snapshots and hashes: `hive-research-20260910/sources/` and `parent-source-manifest.json` in the evidence root. Delegation `deleg_8ea6fa2a` researches memory mechanisms and sandbox benchmarks in parallel. Those readings are pending parent reconciliation; no claims from their unfinished artifacts are included here.
+Parent source snapshots and hashes: `hive-research-20260910/sources/`, `parent-source-manifest.json`, `delegation-primary-manifest.json` and `code-source-manifest.json` in the evidence root. Both outputs from `deleg_8ea6fa2a` are complete, preserved and reconciled. The coldroom code remains frozen at `c0ed98600ed2528e029bfde42b3426d5f0167474`; independent packet-only static review `deleg_4929999d` is pending. No foreign benchmark was installed or executed and no new model experiment was started.
