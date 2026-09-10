@@ -12,6 +12,10 @@ Update the relevant row when evidence changes. Keep **finding → limitation →
 | A colony should survive Queen replacement | Hypothesis; ordinary process-restart memory retrieval is not Queen succession | No learned/controller replacement implementation yet | Replace coordinator mid-task; measure duplicate/lost actions, safety and outcome |
 | Novel tasks must change structure, not just identifiers | Design constraint from reviewed benchmarks | Current coldroom is public development fixtures only | New task compositions, shifted rules and separated held-out families |
 
+## Review-transport learning
+
+A correct source hash does not prove the reviewer could read the source. JSON-escaped code on one long physical line was clipped before the new function; the first FIT was revoked. A fresh plain-file review read the entire unchanged candidate and passed, followed by parent byte/visibility/test checks. Source snapshots now keep real line breaks and a separate hash manifest. Runtime tests and source review are separate evidence.
+
 ## Current boundary
 
 Model-free substrate development continues. Learned memory, adaptive Queen routing and collective performance improvement remain unproven. A new model experiment requires an admitted task/evaluator/message contract, frozen conditions, real resource accounting and the existing cumulative cost authority. No new scheduling, service ownership, clinical/financial permission or publication is implied.

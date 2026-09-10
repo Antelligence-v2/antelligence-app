@@ -1,0 +1,114 @@
+{
+  "verdict": "FIT_for_continued_model_free_research_only",
+  "accepted_at": "2026-09-10T12:57:36.114622-04:00",
+  "candidate_commit": "f4f20323137a94ecab80a34df9161dbc881fb141",
+  "code_commit": "8e212292e56cb85ef0f12a639d862de4a4d484d3",
+  "base_commit": "4a5acfe10d33a94754a0f9c43fbde23f0bfd1edf",
+  "reviewer": {
+    "delegation_id": "deleg_48c438d8",
+    "model": "gpt-5.6-luna",
+    "provider": "openai-codex",
+    "kind": "independent_static_only",
+    "observed_tools": [
+      "read_file",
+      "write_file"
+    ]
+  },
+  "review_artifact": "/Volumes/WD_BLACK/antelligence-collective-20260908/hive-next-wave-20260910/memory-gate-evidence/memory-gate-review-v3.md",
+  "review_sha256": "6fab465373b6971363f34986e82d9b50e287dc02b17e4aab124ac0a3a105b791",
+  "source_visibility": [
+    {
+      "path": "/Volumes/WD_BLACK/antelligence-collective-20260908/hive-next-wave-20260910/memory-gate-evidence/review-source-v3/backend/research_coldroom.py",
+      "lines_read": 172,
+      "truncated": false,
+      "sha256": "2c28481a2931105078484f3271098c1ef56e81342418a3fee71aa346abf7a9a1"
+    },
+    {
+      "path": "/Volumes/WD_BLACK/antelligence-collective-20260908/hive-next-wave-20260910/memory-gate-evidence/review-source-v3/scripts/probe_hive_coldroom.py",
+      "lines_read": 100,
+      "truncated": false,
+      "sha256": "27df00f8bc96e65be369ae82a54bad4cd3eb775e65d821f15346e860320fa08f"
+    },
+    {
+      "path": "/Volumes/WD_BLACK/antelligence-collective-20260908/hive-next-wave-20260910/memory-gate-evidence/review-source-v3/tests/test_research_coldroom.py",
+      "lines_read": 252,
+      "truncated": false,
+      "sha256": "83d39b16b6df45753f98b8bbf6b13ef1bf73d2735db7fe89827d366f99b5ebc1"
+    }
+  ],
+  "blockers": 0,
+  "high": 0,
+  "parent_tests": {
+    "command": [
+      "/Users/operator/Desktop/research/antelligence-app/.venv/bin/python",
+      "-m",
+      "pytest",
+      "tests/test_research_coldroom.py",
+      "tests/test_collective_headroom.py",
+      "-q"
+    ],
+    "returncode": 0,
+    "stdout": "============================= test session starts ==============================\nplatform darwin -- Python 3.11.15, pytest-9.0.3, pluggy-1.6.0\nrootdir: /Users/operator/Desktop/research/antelligence-app\nconfigfile: pyproject.toml\nplugins: anyio-4.13.0\ncollected 31 items\n\ntests/test_research_coldroom.py ..........................               [ 83%]\ntests/test_collective_headroom.py .....                                  [100%]\n\n============================== 31 passed in 0.11s ==============================\n",
+    "stderr": ""
+  },
+  "parent_same_version_gate_probe": {
+    "complete": false,
+    "safe_success": false,
+    "submitted_actions": 6,
+    "attempted_actions": 2,
+    "stop_reason": "incompatible_zone",
+    "placed": {},
+    "events": [
+      {
+        "action": {
+          "op": "reserve",
+          "sample": "vial-29-80",
+          "slot": "locker-29-2",
+          "revision": 0
+        },
+        "accepted": true,
+        "reason": null,
+        "placed": {},
+        "reserved": {
+          "locker-29-2": "vial-29-80"
+        }
+      },
+      {
+        "action": {
+          "op": "place",
+          "sample": "vial-29-80",
+          "slot": "locker-29-2",
+          "revision": 0
+        },
+        "accepted": false,
+        "reason": "incompatible_zone",
+        "placed": {},
+        "reserved": {
+          "locker-29-2": "vial-29-80"
+        }
+      }
+    ],
+    "status": "memory_replayed",
+    "memory": {
+      "episode_id": "050dc155e540238987ce914aa101ea48f12550ce92c72ced7e5ab5a0c9b95a82",
+      "source_task_id": "coldroom-development-11-r0",
+      "protocol": "inert-coldroom-v1",
+      "revision": 0,
+      "rules": {
+        "amber": 0,
+        "teal": 1,
+        "violet": 2
+      }
+    }
+  },
+  "superseded_review": {
+    "delegation_id": "deleg_53059437",
+    "reason": "read_file clips each long physical line: JSON-escaped source on one line was truncated before the new gate. Direct read of packet line8 confirms truncated=true and source ends within worker_views. Parent test evidence remains valid; full static review not established.",
+    "receipt": "memory-gate-acceptance-superseded-source-truncation.json"
+  },
+  "limits": [
+    "No model experiment or production admission.",
+    "Trusted evaluator/task/insertion caller; no arbitrary-writer or OS isolation guarantee.",
+    "No autonomous fresh-evidence recovery or structural-generalization evidence."
+  ]
+}

@@ -1,4 +1,4 @@
-# Memory action gate: tested implementation, review pending
+# Memory action gate: tested implementation, static review accepted
 
 Date: 2026-09-10. Code commit `8e212292e56cb85ef0f12a639d862de4a4d484d3`; source base `4a5acfe10d33a94754a0f9c43fbde23f0bfd1edf`.
 
@@ -23,4 +23,8 @@ Date: 2026-09-10. Code commit `8e212292e56cb85ef0f12a639d862de4a4d484d3`; source
 
 A real model-free memory→planner→state-checker path now replaces a scripted abstention label. It does not prove that a learned agent chooses wisely, that graph routing improves performance, or that memory is generally truthful. The task generator/evaluator and insertion caller are trusted; this is not malicious-writer protection, cross-user access control or an OS sandbox. Unexpected faults may propagate rather than yield a structured result; they must remain failures, never success. Scope validation does not replace the external state checker. No autonomous fresh-evidence fallback, interrupted-run recovery, broad shared memory, Queen succession or live application integration is implemented by this change.
 
-Independent static review of the frozen successor is **pending**. No new experimental model requests were made and no prior credit authority was reset.
+Independent static review of candidate `f4f20323137a94ecab80a34df9161dbc881fb141` is **accepted for continued model-free research only**, with zero blocker/high findings. [Replacement review](memory-gate-review-v3.md) and [parent acceptance](memory-gate-acceptance-v3.json) bind the exact three source files and fresh parent tests. Source remains identical to the code commit named above; subsequent documentation-only closeout does not claim a new source review.
+
+The first review was revoked because JSON-escaped source strings were clipped at the reader's physical-line limit. Plain-source replacement `deleg_48c438d8` read all 172/100/252 source lines; the parent verified full reader visibility, raw-Git hashes, final source/test lines, read/write-only transcript and another 31 passing tests. The superseded review/receipt are retained externally, not reused as approval. Passing tests were never treated as a waiver for the missing review.
+
+No new experimental model requests were made and no prior credit authority was reset.
