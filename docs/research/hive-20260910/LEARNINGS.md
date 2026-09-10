@@ -16,6 +16,14 @@ Update the relevant row when evidence changes. Keep **finding → limitation →
 
 A correct source hash does not prove the reviewer could read the source. JSON-escaped code on one long physical line was clipped before the new function; the first FIT was revoked. A fresh plain-file review read the entire unchanged candidate and passed, followed by parent byte/visibility/test checks. Source snapshots now keep real line breaks and a separate hash manifest. Runtime tests and source review are separate evidence.
 
+## C0 controller acceptance correction
+
+The first returned C0 contract passed its 69 focused tests and a non-author static FIT, but the controller's actual evaluator→outcome-wire probe exposed a known-failure encoding defect. `task_success=False` with no accepted transition was rejected like true success; changing it to null would lose the known failure. The controller regression produced **3 failed, 1 passed** on exact candidate `236cf3b2f43f938b416496c4bff490e064f20986`.
+
+The returned demo directly supplied success=True, so it proves serialization of a trusted claim—not an evaluated task success. Both findings remain open pending a bounded Sol/Luna repair and fresh successor review. This does not reopen the completed coldroom memory-action gate or claim a problem in its evaluator. No feature integration or experimental rescoring occurred.
+
+Evidence: `/Volumes/WD_BLACK/antelligence-collective-20260908/sol-luna-features-20260910/controller-20260910_154850_489cf7/check-c0-01/CONTROLLER-NO-GO.md` and adjacent executable regression/observations. Current owner/return: [feature controller](../sol-luna-features-20260910/CONTROLLER.md).
+
 ## Current boundary
 
 Model-free substrate development continues. Learned memory, adaptive Queen routing and collective performance improvement remain unproven. A new model experiment requires an admitted task/evaluator/message contract, frozen conditions, real resource accounting and the existing cumulative cost authority. No new scheduling, service ownership, clinical/financial permission or publication is implied.

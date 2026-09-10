@@ -21,7 +21,13 @@ This narrowly supersedes COMMON/LAUNCH's default-profile assumption. Do not modi
 
 ## Next gate
 
-C0 is **running, not delivered**. Complete feature return, first-hand requirement/behaviour checks and fresh non-author complete-source review are mandatory before accepting/freezing its contract. Afterwards sequence F1/F2, F3/F5, F4, then F6 per exact FEATURES dependencies. Later F3/F4 trace coverage for F5 remains explicit. All model experiments remain separately gated.
+C0 run-01 **returned but was not accepted**. Candidate `236cf3b2f43f938b416496c4bff490e064f20986` passed 69 targeted tests again under the main controller, but actual evaluator-derived negative outcomes exposed a C0-R1/R4 defect: known failure with no accepted transition cannot be represented. Controller regression: 3 failed, 1 passed. The old demo's hard-coded success establishes serialization, not evaluator success; its behavioural evidence also needs correction. Final Luna static FIT does not waive either gap.
+
+Controller verdict and executable reproduction: `/Volumes/WD_BLACK/antelligence-collective-20260908/sol-luna-features-20260910/controller-20260910_154850_489cf7/check-c0-01/CONTROLLER-NO-GO.md`. Prior code, reports and reviews are preserved.
+
+A fresh artifact-driven Sol continuation is launched from the existing C0 candidate and lane, with bounded Luna repair and fresh non-author review. Run-02 assignment/return directory: `/Volumes/WD_BLACK/antelligence-collective-20260908/sol-luna-features-20260910/C0/run-02`. Completion handle `proc_a1ee6e8a374d`, launcher PID `55548`, notify enabled; runtime identity is recorded separately in the live registry. No old chat is resumed. No feature source is integrated.
+
+Complete feature return, evaluator-derived behaviour and successor exact-object review remain mandatory before freezing C0. F1/F2 stay dependency-gated, then F3/F5, F4 and F6 per exact FEATURES dependencies. Later F3/F4 trace coverage for F5 remains explicit. All model experiments remain separately gated.
 
 The controller owns joined candidate integration/tests and final independent review. No maker/lead self-promotion. Preserve old reports and all partial evidence; use bounded continuations after checking surviving commits. No old-chat recovery or completed-work repetition.
 
