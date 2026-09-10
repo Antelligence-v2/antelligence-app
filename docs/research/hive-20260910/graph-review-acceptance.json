@@ -1,0 +1,19 @@
+{
+  "accepted_at": "2026-09-10T13:06:25.195800-04:00",
+  "status": "reading_accepted_with_parent_corrections_not_experiment_admission",
+  "delegation": "deleg_b08bf590",
+  "source_url": "https://arxiv.org/html/2606.21666v1",
+  "source_sha256": "345b929e9c3f42b8e39bf858c6466234b65d7727cd9012104328245b5d4100f3",
+  "source_bytes": 148605,
+  "critique_sha256": "815f7121fc54150cdc5e123693eb32005748577a12a88472ec8ae8054c1cb827",
+  "critique_bytes": 16623,
+  "source_original_path": "/Volumes/WD_BLACK/antelligence-collective-20260908/hive-next-wave-20260910/sources/context-drift-2606.21666v1.html",
+  "worker_original_path": "/Volumes/WD_BLACK/antelligence-collective-20260908/hive-next-wave-20260910/graph-paper-critique.md",
+  "reconciliation": "graph-review-reconciliation.md",
+  "corrections": [
+    "Table1 explicitly labels intervals95%CI; construction method is unreported, not the stated interval type.",
+    "No-sync threshold exceedance is not independently labelled false-positive evidence; initialization includes injected mismatches.",
+    "As-defined factuality is separate from agreement, but judge independence and assertion de-duplication remain unverified."
+  ],
+  "reproduction": "No implementation was executed; no model experiment, topology change or new performance claim."
+}
