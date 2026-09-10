@@ -120,6 +120,6 @@ Working evidence: `/Volumes/WD_BLACK/antelligence-collective-20260908/fugu-resea
 - `source-manifest.json` and `sources/`: retrieved primary-source text snapshots with hashes.
 - `headroom.json`: executed diagnostic, with original report and analyzer hashes.
 - `paper-critique.md`: independent TRINITY/Conductor reading; pending reconciliation at initial draft.
-- `headroom-review.md`: independent diagnostic check; pending reconciliation at initial draft.
+- [Headroom review](research/fugu-20260910/headroom-review.md): independent recomputation PASS, no blocker/high; parent confirmed the exact reviewed analyzer and output hashes. Paper critique remains pending.
 
 This report deliberately separates what Sakana reports, what our code actually does, and what remains a hypothesis. A useful swarm is not defined by its agent count; a useful hive is not defined by the size of its transcript archive.
