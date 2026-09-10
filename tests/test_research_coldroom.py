@@ -124,3 +124,27 @@ def test_recall_refuses_corrupted_misindexed_or_contradictory_memory(tmp_path, f
                 db.execute('UPDATE episodes SET revision=1')
     with pytest.raises(ValueError, match='memory'):
         m.recall(path, task['protocol'], 1 if fault == 'forged_scope' else 0)
+
+
+def test_demo_runs_real_cross_process_recall_and_preserves_prior_output(tmp_path):
+    import json
+    import subprocess
+    import sys
+    script = Path(__file__).resolve().parents[1] / 'scripts/probe_hive_coldroom.py'
+    assert script.exists(), 'cross-process coldroom probe is not implemented'
+    output = tmp_path / 'new-only-artifacts'
+    command = [sys.executable, str(script), '--output-dir', str(output)]
+    run = subprocess.run(command, capture_output=True, text=True, check=True)
+    report = json.loads(run.stdout)
+    assert report['model_requests'] == 0
+    assert report['cross_process_recall'] is True
+    assert report['scenarios']['restarted_memory']['safe_success'] is True
+    assert report['scenarios']['stale_memory_unchecked']['stop_reason'] == 'incompatible_zone'
+    assert report['scenarios']['stale_memory_scoped']['safe_success'] is False
+    assert report['scenarios']['stale_memory_scoped']['status'] == 'abstained_scope_miss'
+    assert report['scenarios']['current_evidence_after_change']['safe_success'] is True
+    assert report['scenarios']['self_claimed_success']['safe_success'] is False
+    saved = (output / 'report.json').read_bytes()
+    again = subprocess.run(command, capture_output=True, text=True)
+    assert again.returncode != 0
+    assert (output / 'report.json').read_bytes() == saved
