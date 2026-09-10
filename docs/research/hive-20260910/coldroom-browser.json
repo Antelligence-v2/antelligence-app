@@ -1,0 +1,41 @@
+{
+  "scenarios": [
+    {
+      "scenario": "current_evidence",
+      "status": "COMPLETE \u2014 all vials safely placed",
+      "rows": 3
+    },
+    {
+      "scenario": "restarted_memory",
+      "status": "COMPLETE \u2014 all vials safely placed",
+      "rows": 3
+    },
+    {
+      "scenario": "stale_memory_unchecked",
+      "status": "REJECTED \u2014 incompatible zone",
+      "rows": 3
+    },
+    {
+      "scenario": "stale_memory_scoped",
+      "status": "ABSTAINED \u2014 no in-scope memory",
+      "rows": 3
+    },
+    {
+      "scenario": "current_evidence_after_change",
+      "status": "COMPLETE \u2014 all vials safely placed",
+      "rows": 3
+    },
+    {
+      "scenario": "self_claimed_success",
+      "status": "REJECTED \u2014 invalid action",
+      "rows": 3
+    }
+  ],
+  "count": 6,
+  "mobile_layout": {
+    "width": 390,
+    "scroll": 390,
+    "body": true
+  },
+  "method": "real browser DOM interaction; no visual aesthetic claim"
+}

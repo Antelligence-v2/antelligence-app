@@ -1,0 +1,35 @@
+{
+  "code_commit": "c0ed98600ed2528e029bfde42b3426d5f0167474",
+  "classification": "model-free development fixtures only; no heldout or model quality claim",
+  "model_requests": 0,
+  "paths": [
+    {
+      "path": "/Users/operator/Desktop/research/antelligence-app/backend/research_coldroom.py",
+      "sha256": "67f399b2ad4524e6436f759a5348c3eb9edfb6b5a82e941278e81c04336d143a"
+    },
+    {
+      "path": "/Users/operator/Desktop/research/antelligence-app/tests/test_research_coldroom.py",
+      "sha256": "b1e8de472266286d5c222bc667503d0ce7742b936b6553417270ef3bf8d065bf"
+    },
+    {
+      "path": "/Users/operator/Desktop/research/antelligence-app/scripts/probe_hive_coldroom.py",
+      "sha256": "bfb3939165815b6c91b7e383595a9a8b00a0af79f74b270702df57afd936a0e5"
+    },
+    {
+      "path": "/Volumes/WD_BLACK/antelligence-collective-20260908/hive-research-20260910/coldroom-probe-1/report.json",
+      "sha256": "e34aaed5413004bddb37f9d67462982bfc853b541cbf08a9c2a8c0db0068dcdf"
+    },
+    {
+      "path": "/Volumes/WD_BLACK/antelligence-collective-20260908/hive-research-20260910/coldroom-probe-1/prototype-memory.sqlite3",
+      "sha256": "c4adb9a26466458c1d34916e484d259c0043e774843aaa6e19d9a052886d1e12"
+    },
+    {
+      "path": "/Volumes/WD_BLACK/antelligence-collective-20260908/hive-research-20260910/coldroom-probe-1/development-tasks.json",
+      "sha256": "5809c68042cdcbeac0d432b6294fd57835c70d091db4151b54654d6a3551b8db"
+    },
+    {
+      "path": "/Volumes/WD_BLACK/antelligence-collective-20260908/hive-research-20260910/coldroom-browser.json",
+      "sha256": "383810256bcd8f012c526a00365696613bae616d0c94405f168aea585217e3ca"
+    }
+  ]
+}

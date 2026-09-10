@@ -99,6 +99,8 @@ npm --prefix frontend run lint
 
 ## Vision contribution and unfinished research
 
+The [hive-memory research extension](HIVE_MEMORY_RESEARCH.md) maps broad persistent memory, a bounded Queen and checkable critical-task families. Its inert coldroom testbed and recorded replay use handwritten policies and a scratch database, not live LLM agents or an OS security sandbox.
+
 The [Fugu-inspired research investigation](FUGU_RESEARCH.md) distinguishes learned routing, selective information access and cross-task memory, and includes a reproducible diagnostic of existing collective traces. It is research evidence, not a new deployed coordination policy or a successor evaluation.
 
 The signal board operationalizes typed, expiring agent communication; peer critique makes agent-to-agent review inspectable; model/protocol controls and evidence gates begin the reproducibility layer beyond tumor physics. Blockchain remains a future commitment/provenance adapter, not the hot communication bus. `proof_ok` remains false.

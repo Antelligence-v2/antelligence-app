@@ -1,0 +1,17 @@
+{
+  "retrieved_at": "2026-09-10T15:15:51.503921+00:00",
+  "sources": [
+    {
+      "snapshot": "matm-extracted.md",
+      "url": "https://arxiv.org/html/2606.19911",
+      "sha256": "dbc5c448aeedd6614baff90b761eafce29cd19c9e500755854807f17f4cfa9f0",
+      "kind": "extracted_primary_text"
+    },
+    {
+      "snapshot": "memorygraft-v1.md",
+      "url": "https://arxiv.org/html/2512.16962v1",
+      "sha256": "6556be1b37c881bd569efe1ee420d00f90dacbf022f41a19e793abfd71a97dde",
+      "kind": "extracted_primary_text"
+    }
+  ]
+}
