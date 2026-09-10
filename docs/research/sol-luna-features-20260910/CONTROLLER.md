@@ -1,4 +1,16 @@
-# Fresh controller launch receipt
+# Sol/Luna controller — current state and history
+
+## Current state — 2026-09-10T21:37:37.432416+00:00
+
+**C0 accepted and frozen; F1 running.** Accepted C0 commit `c5f59de5b7359664606a211a5e98ce22ab6291af`, tree `ca4c603480aba82b8df2ebe050fc22b9efc3c252`, tag `ref/antelligence-contract-C0-20260910`. All C0-R1..R6, real evaluator-derived outcomes, 78-test evidence and fresh non-author Luna FIT were verified. The controller checked every physical line received by the reviewer against all eight plain snapshots and resolved actual root/leaf runtime IDs and artifact hashes. Acceptance: `/Volumes/WD_BLACK/antelligence-collective-20260908/sol-luna-features-20260910/controller-20260910_154850_489cf7/accept-c0-01/ACCEPTANCE.json`; full verification and corrections: `/Volumes/WD_BLACK/antelligence-collective-20260908/sol-luna-features-20260910/controller-20260910_154850_489cf7/accept-c0-01/verification.json`. Run-04 H1/E1 names were misexpanded in its report but actual functional coverage exists under C0-R4/R5; original return/review remain unchanged. This is accepted shared code, **not canonical integration or model-performance evidence**.
+
+F1 independent Sol root `20260910_173540_e9e4c7` is running under the approved isolated `antelligencefeatures` profile; actual openai-codex:gpt-5.6-sol route and API/tool calls verified. Process `proc_2dc96cbb62e1`, PID `89587`, completion notification enabled. One active Luna maximum. Its goal is persistent typed evidence/skill memory with a real C0 adapter, restart recall and targeted invalidation. Assignment and complete returns: `/Volumes/WD_BLACK/antelligence-collective-20260908/sol-luna-features-20260910/F1/run-01`. Runtime proof: `/Volumes/WD_BLACK/antelligence-collective-20260908/sol-luna-features-20260910/controller-20260910_154850_489cf7/F1-run01-runtime-identity.json`.
+
+Lane-a was clean and released after C0 root and reviewer ended; it is now `feature/antelligence-F1-20260910` from accepted C0. C0 branch/tag/receipts remain intact; old receipts describe immutable C0, not the reused lane's future HEAD. F2 is dependency-eligible but queued behind the profile's one-root/leaf slot. No extra profile, default routing edit, scheduler or model study was introduced.
+
+Next callback: inspect complete F1 requirements, actual restart/invalidation/atomicity/conflict/arm-isolation outcomes and frozen C0 adapter, then verify a fresh non-author full-source review. If native child toolset narrowing is unavailable, the source lead may return CODE_TESTED with a ready packet; the controller must supply the restricted static review/final-return continuation before accepting the complete feature. F2 starts independently from accepted C0; subsequent F3/F5, F4, F6 retain exact dependencies. Only the main controller owns joined candidate tests/review and later promotion decisions.
+
+## Historical initial C0 launch receipt
 
 Recorded 2026-09-10T20:03:07.639795+00:00. This is a live-controller pointer, not feature acceptance. The prepared README/FEATURES remain the immutable requirement pack.
 
@@ -19,7 +31,7 @@ Default config now has a paid fallback; explicit provider/model flags do not dis
 
 This narrowly supersedes COMMON/LAUNCH's default-profile assumption. Do not modify other profiles or treat the new profile as a sandbox. One root uses this profile at a time. Future parallel roots need separately isolated profile state and fresh aggregate resource admission; otherwise queue.
 
-## Next gate
+## Historical C0 acceptance cycle
 
 C0 run-01 **returned but was not accepted**. Candidate `236cf3b2f43f938b416496c4bff490e064f20986` passed 69 targeted tests again under the main controller, but actual evaluator-derived negative outcomes exposed a C0-R1/R4 defect: known failure with no accepted transition cannot be represented. Controller regression: 3 failed, 1 passed. The old demo's hard-coded success establishes serialization, not evaluator success; its behavioural evidence also needs correction. Final Luna static FIT does not waive either gap.
 
@@ -34,7 +46,7 @@ Run-03 **finished BLOCKED**, not running: its actual Sol verification passed **7
 Run-04 now owns **only fresh static review and complete return**, not another test or implementation run. Sol `20260910_172224_49389d`, Luna `20260910_172256_518a34`, process `proc_e7a6cf85b26d`, PID `78663`, notification enabled. Both actual openai-codex model identities and API/tool activity were verified at 2026-09-10T21:23:11.276317+00:00. Root toolsets are restricted to file/skills/delegation; the inspected child resolver cannot add absent terminal/network toolsets. This is capability reduction, not a filesystem sandbox. All eight plain-source inputs were prepared centrally and byte-checked against their source/Git objects: `/Volumes/WD_BLACK/antelligence-collective-20260908/sol-luna-features-20260910/C0/run-04/review-snapshots/MANIFEST.json`. Source/approval settings unchanged. Assignment and expected returns: `/Volumes/WD_BLACK/antelligence-collective-20260908/sol-luna-features-20260910/C0/run-04`. Actual review verdict/visibility and complete C0 package remain unverified until return; F1/F2 still gated.
 
 
-Complete feature return, evaluator-derived behaviour and successor exact-object review remain mandatory before freezing C0. F1/F2 stay dependency-gated, then F3/F5, F4 and F6 per exact FEATURES dependencies. Later F3/F4 trace coverage for F5 remains explicit. All model experiments remain separately gated.
+The historical pending C0 gate above is superseded by the accepted/frozen dependency in Current state. F1/F2 and later F3/F5, F4 and F6 retain their exact FEATURES dependencies. Later F3/F4 trace coverage for F5 remains explicit. All model experiments remain separately gated.
 
 The controller owns joined candidate integration/tests and final independent review. No maker/lead self-promotion. Preserve old reports and all partial evidence; use bounded continuations after checking surviving commits. No old-chat recovery or completed-work repetition.
 

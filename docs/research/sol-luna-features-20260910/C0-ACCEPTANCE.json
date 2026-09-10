@@ -1,0 +1,23 @@
+{
+  "feature_id": "C0",
+  "outcome_id": "hive-contract",
+  "status": "ACCEPTED_FROZEN_DEPENDENCY",
+  "candidate_commit": "c5f59de5b7359664606a211a5e98ce22ab6291af",
+  "candidate_tree": "ca4c603480aba82b8df2ebe050fc22b9efc3c252",
+  "original_base": "76b76703222bf0c2a0722204e3c06737b936c663",
+  "frozen_tag": "ref/antelligence-contract-C0-20260910",
+  "requirements": ["C0-R1", "C0-R2", "C0-R3", "C0-R4", "C0-R5", "C0-R6"],
+  "review_verdict": "FIT_FOR_INTEGRATION",
+  "reviewer_session": "20260910_172256_518a34",
+  "reviewer_route": "openai-codex:gpt-5.6-luna",
+  "review_visibility": "Controller compared every received physical source line against all eight exact snapshots; no missing or clipped lines.",
+  "test_evidence": "78 passed; predecessor Sol execution and separate first-hand controller evidence retained, unchanged source bindings checked.",
+  "behaviour": ["true completion", "safe partial progress", "first-action rejection", "no-action known failure", "three pre-replay negative controls"],
+  "return_sha256": "ae51f4167c9f9ec65f081c2aa0b74eb5e4fb16fe7b8d8ec032ff96eef151c599",
+  "review_sha256": "583fda4f018210222782d50d6a7cb9ff918b883f8a9f66c486d64531ae043adb",
+  "acceptance_path": "/Volumes/WD_BLACK/antelligence-collective-20260908/sol-luna-features-20260910/controller-20260910_154850_489cf7/accept-c0-01/ACCEPTANCE.json",
+  "verification_path": "/Volumes/WD_BLACK/antelligence-collective-20260908/sol-luna-features-20260910/controller-20260910_154850_489cf7/accept-c0-01/verification.json",
+  "corrections": "Run-04 misexpanded the H1/E1 headings; actual known-False semantics and evaluator-derived behaviour were covered and independently verified under C0-R4/R5. Parent supplied missing hashes and actual reviewer identity without altering original evidence.",
+  "integration": "not_performed",
+  "limits": "Model-free trusted-caller contract, not wire authentication, OS isolation, learned hive performance, live deployment or permission for a new experiment. Lost run-03 temporary JSON remains unavailable; the full retained trace is explicitly controller-generated."
+}
