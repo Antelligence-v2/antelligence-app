@@ -1,0 +1,34 @@
+{
+  "feature_id": "F1",
+  "outcome_id": "hive-memory",
+  "status": "ACCEPTED_FROZEN_DEPENDENCY",
+  "accepted_at": "2026-09-10T22:57:06.438921+00:00",
+  "controller_session": "20260910_154850_489cf7",
+  "candidate_commit": "bf09e21cc1d1e45f41b172dde6ae516cbc038088",
+  "candidate_tree": "444e5dd35c39268dfd419dc9c29a7a7990666bc0",
+  "base_commit": "c5f59de5b7359664606a211a5e98ce22ab6291af",
+  "contract_commit": "c5f59de5b7359664606a211a5e98ce22ab6291af",
+  "frozen_ref": "ref/antelligence-memory-F1-20260910",
+  "requirements": {
+    "F1-R1": "passed",
+    "F1-R2": "passed",
+    "F1-R3": "passed",
+    "F1-R4": "passed",
+    "F1-R5": "passed",
+    "F1-R6": "passed"
+  },
+  "reviewer_session_id": "20260910_184159_e80793",
+  "review_verdict": "FIT",
+  "review_sha256": "c5633ecd3849f1477c3dd2fb7c26442f1ab59410984c455d52456c526e51564c",
+  "return_sha256": "2e0867ee3d5cd65d9b5444e0c591a3d4eed998f228961b4d3d27f7a9521848e3",
+  "verification": "/Volumes/WD_BLACK/antelligence-collective-20260908/sol-luna-features-20260910/controller-20260910_154850_489cf7/accept-f1-01/verification.json",
+  "complete_return": "/Volumes/WD_BLACK/antelligence-collective-20260908/sol-luna-features-20260910/F1/run-04/DELIVERY.json",
+  "tests": "Luna RED 121/2 -> GREEN 123/0; Sol final 123/0; independent controller 123/0",
+  "behaviour": "Actual two-process C0 recall; stale dependent invalidated after source revision/content changes; unrelated knowledge retained; same-handle corruption rejected",
+  "integration": "not_performed",
+  "scope_limits": [
+    "Trusted in-process evaluator/insertion, not OS/authentication isolation",
+    "No learned performance or full-hive completion claim",
+    "Old branch and all evidence retained before lane reuse"
+  ]
+}
