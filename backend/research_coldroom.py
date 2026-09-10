@@ -153,3 +153,20 @@ def recall(path: Path, protocol: str, revision: int) -> dict | None:
         memories.append({'episode_id': episode_id, 'source_task_id': task['task_id'],
                          'protocol': protocol, 'revision': revision, 'rules': rules})
     return memories[0]
+
+
+def replay_with_memory(task: dict, path: Path) -> dict:
+    """Apply scoped recall before any simulated action; evaluator owns task.
+
+    This model-free gate is not an agent permission or OS security boundary.
+    """
+    try:
+        memory = recall(path, task['protocol'], task['revision'])
+    except (ValueError, sqlite3.Error) as exc:
+        return {**replay(task, []), 'status': 'blocked_memory_invalid',
+                'memory': None, 'memory_error': str(exc)}
+    if memory is None:
+        return {**replay(task, []), 'status': 'abstained_scope_miss', 'memory': None}
+    views = {role: view for role, view in worker_views(task).items() if role != 'protocol'}
+    actions = plan_from_rules(views, memory['rules'])
+    return {**replay(task, actions), 'status': 'memory_replayed', 'memory': memory}

@@ -122,8 +122,104 @@ def test_recall_refuses_corrupted_misindexed_or_contradictory_memory(tmp_path, f
                 db.execute("UPDATE episodes SET payload=payload || ' '")
             else:
                 db.execute('UPDATE episodes SET revision=1')
+    revision = 1 if fault == 'forged_scope' else 0
     with pytest.raises(ValueError, match='memory'):
-        m.recall(path, task['protocol'], 1 if fault == 'forged_scope' else 0)
+        m.recall(path, task['protocol'], revision)
+    before = path.read_bytes()
+    outcome = m.replay_with_memory(m.make_task(29, revision), path)
+    assert outcome['status'] == 'blocked_memory_invalid'
+    assert 'memory' in outcome['memory_error']
+    assert outcome['memory'] is None
+    assert outcome['submitted_actions'] == 0
+    assert outcome['attempted_actions'] == 0
+    assert outcome['events'] == []
+    assert outcome['safe_success'] is False
+    assert path.read_bytes() == before
+
+
+def test_memory_action_gate_abstains_before_any_action_on_scope_miss(tmp_path):
+    m = lab()
+    path = tmp_path / 'prototype-memory.sqlite3'
+    teacher = m.make_task(11)
+    m.remember(path, teacher, m.plan_from_rules(m.worker_views(teacher), teacher['rules']))
+    before = path.read_bytes()
+    task = m.make_task(29, revision=1)
+    outcome = m.replay_with_memory(task, path)
+    assert outcome['status'] == 'abstained_scope_miss'
+    assert outcome['memory'] is None
+    assert outcome['submitted_actions'] == 0
+    assert outcome['attempted_actions'] == 0
+    assert outcome['events'] == []
+    assert outcome['placed'] == {}
+    assert outcome['safe_success'] is False
+    assert outcome['complete'] is False
+    assert path.read_bytes() == before
+
+
+def test_memory_action_gate_replays_a_same_scope_episode_without_fresh_rules(tmp_path, monkeypatch):
+    m = lab()
+    path = tmp_path / 'prototype-memory.sqlite3'
+    teacher = m.make_task(11)
+    episode = m.remember(path, teacher, m.plan_from_rules(m.worker_views(teacher), teacher['rules']))
+    task = m.make_task(29)
+    original_planner = m.plan_from_rules
+    observed = []
+
+    def observing_planner(views, rules):
+        assert 'protocol' not in views, 'memory planner must not receive current protocol rules'
+        observed.append(copy.deepcopy(views))
+        return original_planner(views, rules)
+
+    monkeypatch.setattr(m, 'plan_from_rules', observing_planner)
+    before = path.read_bytes()
+    outcome = m.replay_with_memory(task, path)
+    assert outcome['status'] == 'memory_replayed'
+    assert outcome['memory']['episode_id'] == episode
+    assert outcome['safe_success'] is True
+    assert outcome['attempted_actions'] == 6
+    assert len(outcome['placed']) == 3
+    assert len(observed) == 1
+    assert path.read_bytes() == before
+
+
+@pytest.mark.parametrize('contents', [b'', b'not a sqlite database'])
+def test_memory_action_gate_reports_unusable_storage_without_actions(tmp_path, contents):
+    m = lab()
+    path = tmp_path / 'unusable.sqlite3'
+    path.write_bytes(contents)
+    outcome = m.replay_with_memory(m.make_task(29), path)
+    assert outcome['status'] == 'blocked_memory_invalid'
+    assert outcome['memory_error']
+    assert outcome['memory'] is None
+    assert outcome['submitted_actions'] == outcome['attempted_actions'] == 0
+    assert outcome['events'] == []
+    assert outcome['safe_success'] is False
+    assert path.read_bytes() == contents
+
+
+def test_memory_action_gate_does_not_override_the_current_state_verifier(tmp_path):
+    m = lab()
+    path = tmp_path / 'prototype-memory.sqlite3'
+    teacher = m.make_task(11)
+    m.remember(path, teacher, m.plan_from_rules(m.worker_views(teacher), teacher['rules']))
+    task = m.make_task(29)
+    task['rules'] = m.make_task(29, revision=1)['rules']  # change without a version bump
+    outcome = m.replay_with_memory(task, path)
+    assert outcome['status'] == 'memory_replayed'  # admission is not success
+    assert outcome['safe_success'] is False
+    assert outcome['stop_reason'] == 'incompatible_zone'
+    assert outcome['placed'] == {}
+    assert outcome['events'][-1]['accepted'] is False
+
+
+def test_memory_action_gate_missing_store_does_not_create_one(tmp_path):
+    m = lab()
+    path = tmp_path / 'missing.sqlite3'
+    outcome = m.replay_with_memory(m.make_task(29), path)
+    assert outcome['status'] == 'abstained_scope_miss'
+    assert outcome['safe_success'] is False
+    assert outcome['attempted_actions'] == 0
+    assert not path.exists()
 
 
 def test_demo_runs_real_cross_process_recall_and_preserves_prior_output(tmp_path):
@@ -138,6 +234,12 @@ def test_demo_runs_real_cross_process_recall_and_preserves_prior_output(tmp_path
     report = json.loads(run.stdout)
     assert report['model_requests'] == 0
     assert report['cross_process_recall'] is True
+    assert report['processes']['producer_pid'] != report['processes']['gate_pid']
+    assert report['scenarios']['restarted_memory']['status'] == 'memory_replayed'
+    assert report['scenarios']['restarted_memory']['memory'] == report['memory']
+    assert report['scenarios']['stale_memory_scoped']['submitted_actions'] == 0
+    assert report['scenarios']['stale_memory_scoped']['placed'] == {}
+    assert report['scenarios']['stale_memory_scoped']['memory'] is None
     assert report['scenarios']['restarted_memory']['safe_success'] is True
     assert report['scenarios']['stale_memory_unchecked']['stop_reason'] == 'incompatible_zone'
     assert report['scenarios']['stale_memory_scoped']['safe_success'] is False
