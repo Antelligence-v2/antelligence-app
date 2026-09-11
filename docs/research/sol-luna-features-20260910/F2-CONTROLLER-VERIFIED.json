@@ -1,0 +1,12 @@
+{
+  "status": "CODE_AND_BEHAVIOUR_VERIFIED_REVIEW_PENDING",
+  "candidate": "8d9998c3c8db8936314d71e6416d1427c8710558",
+  "tree": "cc79b2f623e4de6837d62b06152cadb2bcd99782",
+  "base": "c5f59de5b7359664606a211a5e98ce22ab6291af",
+  "verification": "/Volumes/WD_BLACK/antelligence-collective-20260908/sol-luna-features-20260910/controller-20260910_154850_489cf7/check-f2-02/source-execution-verification.json",
+  "tests": "/Volumes/WD_BLACK/antelligence-collective-20260908/sol-luna-features-20260910/controller-20260910_154850_489cf7/check-f2-02/controller-gate.json",
+  "review_packet": "/Volumes/WD_BLACK/antelligence-collective-20260908/sol-luna-features-20260910/F2/run-03/PARENT-PACKET.json",
+  "process_exception_correction": "/Volumes/WD_BLACK/antelligence-collective-20260908/sol-luna-features-20260910/controller-20260910_154850_489cf7/check-f2-02/preserved-refusal.json",
+  "accepted": false,
+  "integration": "none"
+}
