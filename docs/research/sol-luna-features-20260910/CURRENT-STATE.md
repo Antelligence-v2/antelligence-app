@@ -23,11 +23,11 @@ F3 historical acceptance: `/Volumes/WD_BLACK/antelligence-collective-20260908/so
 ## Review artifact
 
 - Isolated branch `review/hive-fit-20260911`, worktree `/Volumes/WD_BLACK/antelligence-review-20260911`, based on public `origin/main` rather than publishing the local development history.
-- Frozen packaging candidate `a0f3565482153c6367c19c8360499edc84f76fcc`.
+- Initial packaging candidate `a0f3565482153c6367c19c8360499edc84f76fcc`; independently rechecked final candidate `c37923eb2af04ed855b276f7d5dfc642df5d0673`.
 - Start at `REVIEW.md`, then `review/hive-fit-20260911/README.md` in that branch. Includes portable source/tests/runner, observed summaries, limitations and review questions.
-- Fresh isolated environment: 165 included tests pass; 480 rows and 24 drift controls reproduced the original summary exactly. This subset is not the full historical controller suite or a whole-application health check.
+- Fresh isolated environment: 165 initial included tests pass; two additional packaging regressions failed before repair, then all 167 pass. 480 rows and 24 drift controls reproduced the original summary exactly; moved-directory audit also passes. This subset is not the full historical controller suite or a whole-application health check.
 - Source snapshots are hash-bound; no raw private process logs, credentials, local paths, databases or private development history are intended for publication.
-- Independent packaging review is in progress; GitHub publication/read-back pending at this checkpoint. The canonical Vault review handoff records the final URL/state once available.
+- Independent packaging review and fresh delta recheck cleared DRAFT sharing only. Draft [PR #13](https://github.com/solmonger/antelligence-app/pull/13) is open at the exact final candidate; GitHub head, draft state, body, entry guide, source manifest and result summary were read back. Remote CI is recorded separately in the Vault handoff; no merge/deployment or whole-app approval.
 
 ## Decision to discuss
 
