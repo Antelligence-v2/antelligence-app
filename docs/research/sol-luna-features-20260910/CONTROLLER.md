@@ -1,6 +1,14 @@
 # Sol/Luna controller — current state and history
 
-## Current state — 2026-09-11T01:58:06.037483+00:00
+## Current review checkpoint — 2026-09-11
+
+C0, F1, F2 and F3 are complete as isolated, locally frozen research components. **Do not restart C0 or the completed F3 repair from the historical instructions below.** Read [CURRENT-STATE.md](CURRENT-STATE.md) before any new dispatch. The user now wants an outside review and discussion of the best next steps, not another feature launch.
+
+F3 candidate: `81e6289149f3f4a743ba046c494acad4f37258cd`. Historical source review found no code defects; controller supplied snapshot hash binding where the restricted reviewer could not. Preserve that distinction.
+
+The legacy-fit pilot demonstrated information recovery and safe stopping when explicit freshness notices are available. It did not beat a fully informed simple solver, detect unreported source drift, or establish model accuracy gains. No live application integration occurred. F4/F5/F6 and combined integration review remain pending; the previously quota-blocked provider has not been re-probed.
+
+## Historical state — 2026-09-11T01:58:06.037483+00:00
 
 **F3 independent review is complete: NOT_FIT, 0 BLOCKER / 2 HIGH. Bounded repair run-04 is running. C0/F1/F2 remain accepted; F3 is NOT accepted.** Rejected object `58efd0364f5b711948d5b9c72f3ea6ff137ec3fb`, tree `85c733bd255bedc992819691cadc0e839e09af16`. Parent verified exact source bytes and every reviewer-received line across 11 plain snapshots (2579 lines), actual Sol/Luna subscription routes and permitted file-only actions. Review: `/Volumes/WD_BLACK/antelligence-collective-20260908/sol-luna-features-20260910/F3/run-03/REVIEW.md`; complete return: `/Volumes/WD_BLACK/antelligence-collective-20260908/sol-luna-features-20260910/F3/run-03/DELIVERY.json`; provenance: `/Volumes/WD_BLACK/antelligence-collective-20260908/sol-luna-features-20260910/controller-20260910_154850_489cf7/check-f3-03/review-audit.json`. Reviewer session `20260910_213358_028cc8` ended; run-03 must not remain labelled active.
 

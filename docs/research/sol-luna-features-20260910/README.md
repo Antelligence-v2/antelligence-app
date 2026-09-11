@@ -1,5 +1,9 @@
 # Antelligence: new-chat Sol/Luna feature handoff
 
+**Current checkpoint: C0–F3 completed locally; review and next-step discussion requested.** Read [CURRENT-STATE.md](CURRENT-STATE.md) and [CONTROLLER.md](CONTROLLER.md) first. Do not launch C0 again or treat the historical dispatch instructions below as current. F4/F5/F6 and application integration remain pending.
+
+## Historical prepared handoff — 2026-09-10
+
 **Prepared—not dispatched.** User wants resumed implementation in fresh sessions, with Sol owning complete features, Luna executing bounded work, and the new main controller checking results before integration. Do not recover the giant chat. The user's temporary pause is superseded by this explicit resume/handoff request.
 
 ## Verified starting point
