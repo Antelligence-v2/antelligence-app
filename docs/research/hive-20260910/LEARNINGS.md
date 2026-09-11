@@ -12,6 +12,10 @@ Update the relevant row when evidence changes. Keep **finding → limitation →
 | A colony should survive Queen replacement | Hypothesis; ordinary process-restart memory retrieval is not Queen succession | No learned/controller replacement implementation yet | Replace coordinator mid-task; measure duplicate/lost actions, safety and outcome |
 | Novel tasks must change structure, not just identifiers | Design constraint from reviewed benchmarks | Current coldroom is public development fixtures only | New task compositions, shifted rules and separated held-out families |
 
+## F3 structured admission and real consumer repair gate
+
+The independent whole-source review rejected the otherwise 186-test-green F3 object on two real contract gaps. Semantic dedup decoded a canonical inner ID before checking received outer metadata, allowing malformed/replayed duplicates to disappear without rejection. The negative probe also emitted planner-gated flags without using them to control a planner call. Controller tests preserve valid dedup and all prior behavior while requiring malformed repeats to reject and the SAME real consumer to call F2 only after valid resolved consultation. A provisional useful role reply must become unusable after contradiction; missing/expired evidence must yield zero planner calls/actions and the external verifier's unknown result. Current scope, exact object, corrected 207-row RED and repair owner are in [CONTROLLER.md](../sol-luna-features-20260910/CONTROLLER.md). These fixtures do not establish model effectiveness or OS security; F3 acceptance remains closed pending repaired behavior and fresh exact-object review.
+
 ## Review-transport learning
 
 A correct source hash does not prove the reviewer could read the source. JSON-escaped code on one long physical line was clipped before the new function; the first FIT was revoked. A fresh plain-file review read the entire unchanged candidate and passed, followed by parent byte/visibility/test checks. Source snapshots now keep real line breaks and a separate hash manifest. Runtime tests and source review are separate evidence.
