@@ -1,0 +1,228 @@
+{
+  "experiment": "e15-fixed-provisioning",
+  "matrix_runs": [
+    {
+      "accepted": 8,
+      "composition": "chain",
+      "seed": 101,
+      "success": true
+    },
+    {
+      "accepted": 8,
+      "composition": "fork",
+      "seed": 102,
+      "success": true
+    },
+    {
+      "accepted": 8,
+      "composition": "chain",
+      "seed": 103,
+      "success": true
+    },
+    {
+      "accepted": 8,
+      "composition": "fork",
+      "seed": 104,
+      "success": true
+    },
+    {
+      "accepted": 0,
+      "composition": "impossible",
+      "seed": 105,
+      "success": false
+    },
+    {
+      "accepted": 8,
+      "composition": "chain",
+      "seed": 106,
+      "success": true
+    },
+    {
+      "accepted": 8,
+      "composition": "fork",
+      "seed": 107,
+      "success": true
+    },
+    {
+      "accepted": 8,
+      "composition": "chain",
+      "seed": 108,
+      "success": true
+    },
+    {
+      "accepted": 8,
+      "composition": "fork",
+      "seed": 109,
+      "success": true
+    },
+    {
+      "accepted": 0,
+      "composition": "impossible",
+      "seed": 110,
+      "success": false
+    },
+    {
+      "accepted": 8,
+      "composition": "chain",
+      "seed": 111,
+      "success": true
+    },
+    {
+      "accepted": 8,
+      "composition": "fork",
+      "seed": 112,
+      "success": true
+    },
+    {
+      "accepted": 8,
+      "composition": "chain",
+      "seed": 113,
+      "success": true
+    },
+    {
+      "accepted": 8,
+      "composition": "fork",
+      "seed": 114,
+      "success": true
+    },
+    {
+      "accepted": 0,
+      "composition": "impossible",
+      "seed": 115,
+      "success": false
+    },
+    {
+      "accepted": 8,
+      "composition": "chain",
+      "seed": 116,
+      "success": true
+    },
+    {
+      "accepted": 8,
+      "composition": "fork",
+      "seed": 117,
+      "success": true
+    },
+    {
+      "accepted": 8,
+      "composition": "chain",
+      "seed": 118,
+      "success": true
+    },
+    {
+      "accepted": 8,
+      "composition": "fork",
+      "seed": 119,
+      "success": true
+    },
+    {
+      "accepted": 0,
+      "composition": "impossible",
+      "seed": 120,
+      "success": false
+    }
+  ],
+  "offline": true,
+  "partition_coverage_case": {
+    "chain": {
+      "accepted": 8,
+      "passed": true,
+      "success": true
+    },
+    "fork": {
+      "accepted": 4,
+      "passed": false,
+      "success": false
+    },
+    "negative_control_three_agents_raises": true
+  },
+  "pass": false,
+  "policy": "ScriptedDAGPolicy",
+  "prompt_checks": {
+    "agent-0": {
+      "agent_count": true,
+      "own_sample": true
+    },
+    "agent-1": {
+      "agent_count": true,
+      "own_sample": true
+    },
+    "agent-2": {
+      "agent_count": true,
+      "own_sample": true
+    },
+    "agent-3": {
+      "agent_count": true,
+      "own_sample": true
+    }
+  },
+  "rule_cases": {
+    "contradiction": {
+      "accepted_count": 1,
+      "breakdown": {
+        "acyclicity": 0,
+        "contradiction_cascade": 1,
+        "reachability": 6,
+        "resource_consistency": 0,
+        "verifier_feasibility": 0
+      },
+      "passed": true
+    },
+    "cross_arm": {
+      "accepted_count": 0,
+      "breakdown": {
+        "acyclicity": 0,
+        "contradiction_cascade": 0,
+        "reachability": 7,
+        "resource_consistency": 1,
+        "verifier_feasibility": 0
+      },
+      "passed": true
+    },
+    "cyclic": {
+      "accepted_count": 0,
+      "breakdown": {
+        "acyclicity": 8,
+        "contradiction_cascade": 0,
+        "reachability": 0,
+        "resource_consistency": 0,
+        "verifier_feasibility": 0
+      },
+      "passed": true
+    },
+    "unreachable": {
+      "accepted_count": 8,
+      "breakdown": {
+        "acyclicity": 0,
+        "contradiction_cascade": 0,
+        "reachability": 1,
+        "resource_consistency": 0,
+        "verifier_feasibility": 0
+      },
+      "passed": true
+    },
+    "unsafe": {
+      "accepted_count": 1,
+      "breakdown": {
+        "acyclicity": 0,
+        "contradiction_cascade": 0,
+        "reachability": 6,
+        "resource_consistency": 0,
+        "verifier_feasibility": 1
+      },
+      "passed": true
+    },
+    "valid": {
+      "accepted_count": 8,
+      "breakdown": {
+        "acyclicity": 0,
+        "contradiction_cascade": 0,
+        "reachability": 0,
+        "resource_consistency": 0,
+        "verifier_feasibility": 0
+      },
+      "passed": true
+    }
+  },
+  "run_count": 20
+}

@@ -1,0 +1,32 @@
+{
+  "experiment": "e13-chain",
+  "historical": "hermes-4-405b via OpenRouter; offline replay only; seeds 101-112; not merged with v14",
+  "model": "nousresearch/hermes-4-405b",
+  "arms": {
+    "baseline": {
+      "runs": 12,
+      "sweep_moves": 1825,
+      "successes": 12,
+      "deliveries": 36,
+      "parse_errors": 0,
+      "cost_replayed": 0.23163300000000192
+    },
+    "hive_memory": {
+      "runs": 12,
+      "sweep_moves": 1667,
+      "successes": 12,
+      "deliveries": 36,
+      "parse_errors": 0,
+      "cost_replayed": 0.22758500000000112
+    },
+    "hive_memory_comm": {
+      "runs": 12,
+      "sweep_moves": 1609,
+      "successes": 12,
+      "deliveries": 36,
+      "parse_errors": 0,
+      "cost_replayed": 0.22385100000000088
+    }
+  },
+  "total_cache_cost_replayed": 0.6830690000000039
+}

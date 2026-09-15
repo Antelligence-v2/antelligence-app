@@ -1,0 +1,273 @@
+{
+  "experiment": "e13-chain",
+  "status": "complete",
+  "model": "z-ai/glm-5.3-flash",
+  "provider": "nousresearch",
+  "api": "https://inference-api.nousresearch.com/v1/chat/completions",
+  "cache_version": "v14",
+  "config": {
+    "agents": 3,
+    "grid": [
+      10,
+      10
+    ],
+    "view_k": 5,
+    "steps": 120,
+    "n_food": 3,
+    "seeds": [
+      101,
+      102,
+      103,
+      104,
+      105,
+      106,
+      107,
+      108,
+      109,
+      110,
+      111,
+      112,
+      113,
+      114,
+      115,
+      116,
+      117,
+      118,
+      119,
+      120
+    ],
+    "temperature": 0.0,
+    "max_tokens": 1500,
+    "auto_pick_drop": true,
+    "chain_constraint": true
+  },
+  "oracle": {
+    "solvable_count": 20,
+    "mean_steps": 33.0,
+    "max_steps": 60
+  },
+  "pretest": {
+    "experiment": "e13-chain",
+    "gate": "pretest",
+    "model": "z-ai/glm-5.3-flash",
+    "provider": "nousresearch",
+    "api": "https://inference-api.nousresearch.com/v1/chat/completions",
+    "cache_version": "v14-pretest",
+    "seeds": [
+      101,
+      102,
+      103
+    ],
+    "steps": 1,
+    "arms": {
+      "baseline": {
+        "runs": 3,
+        "parse_errors": 0,
+        "llm_calls": 9,
+        "transport_events": 0,
+        "failures": [
+          "delivered_0_of_3",
+          "delivered_0_of_3",
+          "delivered_0_of_3"
+        ]
+      },
+      "hive_memory": {
+        "runs": 3,
+        "parse_errors": 0,
+        "llm_calls": 9,
+        "transport_events": 0,
+        "failures": [
+          "delivered_0_of_3",
+          "delivered_0_of_3",
+          "delivered_0_of_3"
+        ]
+      },
+      "hive_memory_comm": {
+        "runs": 3,
+        "parse_errors": 0,
+        "llm_calls": 9,
+        "transport_events": 12,
+        "failures": [
+          "delivered_0_of_3",
+          "delivered_0_of_3",
+          "delivered_0_of_3"
+        ]
+      }
+    },
+    "pass": true,
+    "cost": 0.0014914025000000001,
+    "tokens": 5409,
+    "cache_entries": 51
+  },
+  "arms": {
+    "baseline": {
+      "runs": 20,
+      "seeds": [
+        101,
+        102,
+        103,
+        104,
+        105,
+        106,
+        107,
+        108,
+        109,
+        110,
+        111,
+        112,
+        113,
+        114,
+        115,
+        116,
+        117,
+        118,
+        119,
+        120
+      ],
+      "sweep_moves": 3057,
+      "mean_steps_to_success": 58.3,
+      "successes": 19,
+      "success_rate": 0.95,
+      "deliveries": 59,
+      "parse_errors": 2,
+      "llm_calls": 3663,
+      "memory_deposits": 0,
+      "memory_hits": 0,
+      "memory_relevant_hits": 0,
+      "transport_events": 0,
+      "failure_seeds": [
+        115
+      ],
+      "cache_rows": 3750,
+      "cache_duplicate_rows": 87,
+      "cache_provider_cost_usd": 0.19170271964998775,
+      "result_accounted_cost_usd": 0.1870597371499882,
+      "result_total_tokens": 814842
+    },
+    "hive_memory": {
+      "runs": 20,
+      "seeds": [
+        101,
+        102,
+        103,
+        104,
+        105,
+        106,
+        107,
+        108,
+        109,
+        110,
+        111,
+        112,
+        113,
+        114,
+        115,
+        116,
+        117,
+        118,
+        119,
+        120
+      ],
+      "sweep_moves": 2655,
+      "mean_steps_to_success": 54.5,
+      "successes": 19,
+      "success_rate": 0.95,
+      "deliveries": 59,
+      "parse_errors": 2,
+      "llm_calls": 3451,
+      "memory_deposits": 458,
+      "memory_hits": 2243,
+      "memory_relevant_hits": 334,
+      "transport_events": 0,
+      "failure_seeds": [
+        115
+      ],
+      "cache_rows": 3451,
+      "cache_duplicate_rows": 0,
+      "cache_provider_cost_usd": 0.17631326122998933,
+      "result_accounted_cost_usd": 0.17631326122998933,
+      "result_total_tokens": 780990
+    },
+    "hive_memory_comm": {
+      "runs": 20,
+      "seeds": [
+        101,
+        102,
+        103,
+        104,
+        105,
+        106,
+        107,
+        108,
+        109,
+        110,
+        111,
+        112,
+        113,
+        114,
+        115,
+        116,
+        117,
+        118,
+        119,
+        120
+      ],
+      "sweep_moves": 2590,
+      "mean_steps_to_success": 53.7,
+      "successes": 19,
+      "success_rate": 0.95,
+      "deliveries": 59,
+      "parse_errors": 1,
+      "llm_calls": 3402,
+      "memory_deposits": 442,
+      "memory_hits": 2189,
+      "memory_relevant_hits": 356,
+      "transport_events": 380,
+      "failure_seeds": [
+        115
+      ],
+      "cache_rows": 3402,
+      "cache_duplicate_rows": 0,
+      "cache_provider_cost_usd": 0.17384359820998985,
+      "result_accounted_cost_usd": 0.17384359820998985,
+      "result_total_tokens": 770238
+    }
+  },
+  "paired_sign_tests": {
+    "hive_memory_vs_baseline": {
+      "wins": 16,
+      "losses": 2,
+      "ties": 2,
+      "n_non_tied": 18,
+      "p_one_sided": 0.0006561279296875,
+      "aggregate_reduction_pct": 13.150147203140333
+    },
+    "hive_memory_comm_vs_baseline": {
+      "wins": 17,
+      "losses": 2,
+      "ties": 1,
+      "n_non_tied": 19,
+      "p_one_sided": 0.0003643035888671875,
+      "aggregate_reduction_pct": 15.276414785737652
+    }
+  },
+  "costs": {
+    "prior_mixed_v13_cache_provider_cost_usd": 1.143507140000008,
+    "prior_pretest_probe_cost_usd": 0.0001164,
+    "v14_pretest_all_attempts_provider_cost_usd": 0.002870371,
+    "v14_matrix_provider_cost_usd": 0.541859579089967,
+    "total_known_e13_spend_usd": 1.688353490089975,
+    "approved_cap_usd": 2.5,
+    "headroom_usd": 0.811646509910025,
+    "per_arm_hard_stop_usd": 0.8
+  },
+  "verdict": {
+    "preregistered_bar": "reduction >= 5% AND one-sided p < 0.05",
+    "hive_memory_reduction_pct": 13.150147203140333,
+    "hive_memory_p": 0.0006561279296875,
+    "hive_memory_comm_reduction_pct": 15.276414785737652,
+    "hive_memory_comm_p": 0.0003643035888671875,
+    "outcome": "generality_supported_within_second_task_family",
+    "cross_model_caveat": true
+  }
+}

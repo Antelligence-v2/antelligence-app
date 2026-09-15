@@ -1,0 +1,53 @@
+{
+  "experiment": "e13-chain",
+  "gate": "pretest",
+  "model": "z-ai/glm-5.3-flash",
+  "provider": "nousresearch",
+  "api": "https://inference-api.nousresearch.com/v1/chat/completions",
+  "cache_version": "v14-pretest",
+  "seeds": [
+    101,
+    102,
+    103
+  ],
+  "steps": 1,
+  "arms": {
+    "baseline": {
+      "runs": 3,
+      "parse_errors": 0,
+      "llm_calls": 9,
+      "transport_events": 0,
+      "failures": [
+        "delivered_0_of_3",
+        "delivered_0_of_3",
+        "delivered_0_of_3"
+      ]
+    },
+    "hive_memory": {
+      "runs": 3,
+      "parse_errors": 0,
+      "llm_calls": 9,
+      "transport_events": 0,
+      "failures": [
+        "delivered_0_of_3",
+        "delivered_0_of_3",
+        "delivered_0_of_3"
+      ]
+    },
+    "hive_memory_comm": {
+      "runs": 3,
+      "parse_errors": 0,
+      "llm_calls": 9,
+      "transport_events": 12,
+      "failures": [
+        "delivered_0_of_3",
+        "delivered_0_of_3",
+        "delivered_0_of_3"
+      ]
+    }
+  },
+  "pass": true,
+  "cost": 0.0014914025000000001,
+  "tokens": 5409,
+  "cache_entries": 51
+}
