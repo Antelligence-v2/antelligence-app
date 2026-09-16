@@ -9,6 +9,19 @@ agents' slices equals ``set(all_samples)``, and the pretest asserts that the goa
 node's sample is owned by some agent AND that at least one pretest seed reaches
 non-zero execution success. The model-free admission gate is unchanged.
 
+Second fix (2026-09-15, operator-approved; harness version v2): ``merge_partitioned``
+adds deterministic "take turns" edges for over-subscribed resources, so a fork-shaped
+fixture cannot lose a subtree to overlapping reservations (`resource_unavailable`)
+that the bare union leaves unordered. See DESIGN.md.
+
+Third fix (2026-09-15, operator-approved; harness version v4): each partition slice
+carries ``my_slot`` — the delegator's deterministic slot assignment — because globally
+unique slots are not derivable by independent proposers (same-zone agents collided on
+every pretest seed). Agents use the assigned slot verbatim. The prompt also states the
+resource-field contract explicitly (each node's resource is the sample's requirement
+value from the requirements map), applied symmetrically to partitioned and solo prompts;
+the merge layer is unchanged from v2. See DESIGN.md.
+
 ``--self-test`` never opens a network connection. ``--pretest`` is the cheap
 three-seed gate; matrix arms are run separately so their budgets and caches cannot
 bleed into one another.
@@ -42,7 +55,7 @@ from backend.research_hive_verifier import verify_task  # noqa: E402
 MODEL = os.environ.get("E15_MODEL", "z-ai/glm-5.3-flash")
 API = "https://inference-api.nousresearch.com/v1/chat/completions"
 API_KEY_ENV = "~/.hermes/auth.json:providers.nous.access_token|agent_key"
-VERSION = "e15-fixed-provisioning-v1"
+VERSION = "e15-fixed-provisioning-v4"
 ADAPTER_KEY = b"e11-development-adapter-key"  # unchanged packet adapter
 ARMS = ("solo_planner", "swarm_partitioned", "swarm_partitioned_merged")
 SEEDS = list(range(101, 121))
@@ -203,6 +216,12 @@ def assert_partition_coverage(task: Dict[str, Any], agents: Optional[List[str]] 
         raise RuntimeError(
             "partition coverage failure: {} agents for {} samples".format(len(slices), len(all_samples))
         )
+    assignment = delegated_slots(task)
+    if len(set(assignment.values())) != len(assignment) or any(
+        task["slot_zones"][assignment[sample]] != task["rules"][task["sample_kinds"][sample]]
+        for sample in assignment
+    ):
+        raise RuntimeError("slot assignment failure: assignments must be distinct and zone-compatible")
     return slices
 
 
@@ -547,22 +566,11 @@ class ScriptedDAGPolicy:
 def scripted_partitioned_proposal(task: Dict[str, Any], agent: str, sample: str) -> Dict[str, Any]:
     """Offline stand-in for a compliant agent: reserve/place sub-DAG for its own sample.
 
-    The slot copies the reference solution's assignment for this sample: the verifier
-    rejects an unavailable slot (e.g. one already claimed by another sample in the same
-    zone), so an oracle-grade agent must pick a free slot in its zone.
+    The slot is the delegator-assigned one (the same value real agents receive as
+    my_slot): globally distinct slots cannot be derived by independent proposers, so
+    the slice carries the assignment.
     """
-    plan = reference_solve(task) or []
-    picked = next(
-        (action.get("slot") for action in plan
-         if action.get("sample") == sample and isinstance(action.get("slot"), str)),
-        None,
-    )
-    if picked is None:
-        picked = next(
-            key for key, zone in task["slot_zones"].items()
-            if zone == task["rules"][task["sample_kinds"][sample]]
-        )
-    slot = picked
+    slot = delegated_slots(task)[sample]
     nodes = [
         {"id": "n0", "parents": [], "resource": task["requirements"][sample],
          "evidence": [{"source_id": "fixture", "revision": task["revision"]}],
@@ -585,6 +593,7 @@ def prompt_for(task: Dict[str, Any], seed: int, arm: str, agent: str) -> str:
         agent_idx = int(agent.split("-")[-1])
         all_samples = list(task["sample_kinds"].keys())
         my_sample = all_samples[agent_idx % len(all_samples)]
+        my_slot = delegated_slots(task)[my_sample]
         # Disjoint slice: public protocol + slot_zones + rules + my sample's requirements
         # and prerequisites (empty by construction in this packet, but included for generality).
         partitioned = {
@@ -596,12 +605,13 @@ def prompt_for(task: Dict[str, Any], seed: int, arm: str, agent: str) -> str:
             "rules": task["rules"],
             "resources": task["resources"],
             "my_sample": my_sample,
+            "my_slot": my_slot,
             "requirements": {my_sample: task["requirements"].get(my_sample)},
             "prerequisites": {my_sample: task["prerequisites"].get(my_sample, [])},
         }
         # Sanity: every sample still listed so the agent knows the DAG must cover all,
         # but it only has data for its own.
-        prompt_body = """You are an untrusted task planner in a three-agent swarm. Each agent receives a DISJOINT slice of the fixture: only the public protocol/goal/revision/slot_zones/rules plus the requirements and prerequisites for ONE sample assigned to that agent. You do NOT see the other samples' requirements or prerequisites. Your job is to propose a reserve/place sub-DAG for YOUR sample only, using the public slot_zones/rules and your sample's own data. Do NOT invent data for the other samples — propose only your sample's reserve and place.
+        prompt_body = """You are an untrusted task planner in a three-agent swarm. Each agent receives a DISJOINT slice of the fixture: only the public protocol/goal/revision/slot_zones/rules plus the requirements and prerequisites for ONE sample assigned to that agent. You do NOT see the other samples' requirements or prerequisites. Your job is to propose a reserve/place sub-DAG for YOUR sample only, using the public slot_zones/rules and your sample's own data. Your slot is pre-assigned: use the exact value of the "my_slot" key in your private slice for the "slot" field of BOTH action nodes — never the example value, never any other slot. Set each node's "resource" field to your sample's requirement value from the requirements map in your private slice (the single value shown there) — never a slot name, never an entry from the resources capacity map, never another sample's resource. Do NOT invent data for the other samples — propose only your sample's reserve and place.
 
 Return ONLY one JSON object, no markdown, with this exact top-level shape: {"goal":"node-id","nodes":[{"id":"local-id","parents":["local-id"],"resource":"resource-name","evidence":[{"source_id":"fixture","revision":0}],"action":{"op":"reserve","sample":"<your-actual-sample-name>","slot":"slot-0","revision":0}}]}. Build a complete executable sub-DAG for your sample: a reserve node followed by a place node that depends on the reserve. A child sample's reserve depends on all prerequisite sample place nodes; since you only know your own prerequisites, express them as parents if they appear in your slice, otherwise chain off the most recent node. Use local parent references only. Use the ACTUAL sample name from your private slice (the value of the "my_sample" key in the fixture json — e.g. "sample-0", "sample-1", or "sample-2") as the "sample" field in every action. Never include evaluator fields or prose. Output the JSON immediately; do not spend tokens on reasoning.
 
@@ -612,19 +622,135 @@ The public shared fields (protocol, slot_zones, rules) are the same for all agen
             'e.g. "sample-0", "sample-1", or "sample-2"',
             'in your case "{}"'.format(my_sample),
         )
+        prompt_body = prompt_body.replace('"slot":"slot-0"', '"slot":"{}"'.format(my_slot))
+        prompt_body = prompt_body.replace('"resource":"resource-name"', '"resource":"{}"'.format(task["requirements"].get(my_sample, "resource-name")))
         return prompt_body + "\n\n" + json.dumps({"seed": seed, "arm": arm, "agent": agent, "fixture": partitioned}, sort_keys=True)
-    return """You are an untrusted task planner. Return ONLY one JSON object, no markdown, with this exact top-level shape: {"goal":"node-id","nodes":[{"id":"local-id","parents":["local-id"],"resource":"resource-name","evidence":[{"source_id":"fixture","revision":0}],"action":{"op":"reserve","sample":"sample-0","slot":"slot-0","revision":0}}]}. Build a complete executable DAG using only the supplied fixture. Include reserve and place nodes for each sample; place must depend on its reserve; a child sample's reserve must depend on all prerequisite sample place nodes. Use local parent references only. Never include evaluator fields or prose.
+    return """You are an untrusted task planner. Return ONLY one JSON object, no markdown, with this exact top-level shape: {"goal":"node-id","nodes":[{"id":"local-id","parents":["local-id"],"resource":"resource-name","evidence":[{"source_id":"fixture","revision":0}],"action":{"op":"reserve","sample":"sample-0","slot":"slot-0","revision":0}}]}. Build a complete executable DAG using only the supplied fixture. Include reserve and place nodes for each sample; place must depend on its reserve; a child sample's reserve must depend on all prerequisite sample place nodes. Set each node's "resource" field to that sample's requirement value from the fixture requirements map. Use local parent references only. Never include evaluator fields or prose.
 
 """ + json.dumps({"seed": seed, "arm": arm, "agent": agent, "fixture": public}, sort_keys=True)
 
 
+def _sample_topological_order(task: Dict[str, Any]) -> List[str]:
+    """Fixture samples in prerequisite order (deterministic ties)."""
+    order: List[str] = []
+    state: Dict[str, int] = {}
+
+    def visit(sample: str) -> None:
+        if state.get(sample):
+            return
+        state[sample] = 1
+        for parent in task.get("prerequisites", {}).get(sample, []):
+            if parent in task["sample_kinds"]:
+                visit(parent)
+        order.append(sample)
+
+    for sample in task["sample_kinds"]:
+        visit(sample)
+    return order
+
+
+def delegated_slots(task: Dict[str, Any]) -> Dict[str, str]:
+    """E15: deterministic per-sample slot assignment carried by each agent's slice.
+
+    Globally unique, zone-compatible slots cannot be coordinated by independent
+    proposers (observed: same-zone agents re-used the same slot on every pretest seed),
+    so the delegator assigns them exactly as it already assigns samples: samples in
+    prerequisite order, slots in sorted order within each zone.
+    """
+    zones: Dict[int, List[str]] = defaultdict(list)
+    for slot, zone in task["slot_zones"].items():
+        zones[zone].append(slot)
+    for zone in zones:
+        zones[zone].sort()
+    used: Dict[int, int] = defaultdict(int)
+    assignment: Dict[str, str] = {}
+    for sample in _sample_topological_order(task):
+        zone = task["rules"][task["sample_kinds"][sample]]
+        if used[zone] >= len(zones[zone]):
+            raise RuntimeError("slot assignment failure: zone {} has no free slot for {}".format(zone, sample))
+        assignment[sample] = zones[zone][used[zone]]
+        used[zone] += 1
+    return assignment
+
+
+def _serialize_resource_claims(task: Dict[str, Any], merged_nodes: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """E15 serialization fix (2026-09-15, operator-approved).
+
+    The bare union leaves sibling reserves ordered only by tie-breaks; for a resource
+    whose claimants outnumber its capacity, admission could submit two overlapping
+    reservations and the verifier rejects the second (`resource_unavailable`), cascading
+    its subtree — a scheduling artifact, not a coverage result. For each over-subscribed
+    resource, add deterministic "take turns" edges: claimants in fixture topological
+    order, each next reserve depending on the previous claimant's place node. Edges the
+    prerequisite repair already implies are skipped; a pair that would close a cycle is
+    skipped. Deterministic, model-free, additive only.
+    """
+    sample_reserve: Dict[str, str] = {}
+    sample_place: Dict[str, str] = {}
+    for node in merged_nodes:
+        action = node.get("action", {})
+        sample = action.get("sample")
+        if not isinstance(sample, str):
+            continue
+        if action.get("op") == "reserve":
+            sample_reserve.setdefault(sample, node["id"])
+        elif action.get("op") == "place":
+            sample_place.setdefault(sample, node["id"])
+    by_id = {node["id"]: node for node in merged_nodes}
+
+    def ancestors(node_id: str) -> Set[str]:
+        seen: Set[str] = set()
+        stack = [node_id]
+        while stack:
+            for parent in by_id[stack.pop()]["parents"]:
+                if parent in by_id and parent not in seen:
+                    seen.add(parent)
+                    stack.append(parent)
+        return seen
+
+    def descendants(node_id: str) -> Set[str]:
+        children: Dict[str, List[str]] = {}
+        for node in merged_nodes:
+            for parent in node["parents"]:
+                children.setdefault(parent, []).append(node["id"])
+        seen: Set[str] = set()
+        stack = [node_id]
+        while stack:
+            for child in children.get(stack.pop(), []):
+                if child not in seen:
+                    seen.add(child)
+                    stack.append(child)
+        return seen
+
+    for resource in sorted(task.get("resources", {})):
+        capacity = int(task["resources"][resource])
+        claimants = [sample for sample in _sample_topological_order(task)
+                     if task.get("requirements", {}).get(sample) == resource]
+        if len(claimants) <= capacity:
+            continue
+        for previous, current in zip(claimants, claimants[1:]):
+            place_id = sample_place.get(previous)
+            reserve_id = sample_reserve.get(current)
+            if not place_id or not reserve_id:
+                continue
+            node = by_id[reserve_id]
+            if place_id in node["parents"] or place_id in ancestors(reserve_id):
+                continue
+            if place_id in descendants(reserve_id):  # cycle guard (degenerate fixtures)
+                continue
+            node["parents"] = sorted(set(node["parents"]) | {place_id})
+    return merged_nodes
+
+
 def merge_partitioned(task: Dict[str, Any], proposals: List[Dict[str, Any]]) -> Dict[str, Any]:
-    """Model-free union and prerequisite repair for the merged arm.
+    """Model-free union, prerequisite repair, and claim serialization for the merged arm.
 
     Local proposal IDs are namespaced by agent, then every reserve node is rewired to
-    the merged proposal's place node for each declared prerequisite. No nodes or edges
-    are invented beyond those deterministic rewrites; the unchanged admission gate
-    decides what survives.
+    the merged proposal's place node for each declared prerequisite. E15 serialization
+    fix (2026-09-15, operator-approved): for every resource whose claimants outnumber
+    its capacity, deterministic "take turns" edges are added so overlapping reservations
+    cannot be submitted. No other nodes or edges are invented beyond those deterministic
+    rewrites; the unchanged admission gate decides what survives.
     """
     merged_nodes: List[Dict[str, Any]] = []
     id_map: Dict[Tuple[str, str], str] = {}
@@ -651,6 +777,7 @@ def merge_partitioned(task: Dict[str, Any], proposals: List[Dict[str, Any]]) -> 
             else:
                 node["parents"] = sorted({id_map[(agent, parent)] for parent in raw.get("parents", []) if (agent, parent) in id_map})
             merged_nodes.append(node)
+    merged_nodes = _serialize_resource_claims(task, merged_nodes)
     terminal_samples = sorted(set(task["sample_kinds"]) - {p for ps in task["prerequisites"].values() for p in ps})
     goal = next((sample_places[s] for s in terminal_samples if s in sample_places), None)
     if goal is None and merged_nodes:

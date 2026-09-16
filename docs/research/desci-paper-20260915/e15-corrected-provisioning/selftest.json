@@ -130,13 +130,13 @@
       "success": true
     },
     "fork": {
-      "accepted": 4,
-      "passed": false,
-      "success": false
+      "accepted": 8,
+      "passed": true,
+      "success": true
     },
     "negative_control_three_agents_raises": true
   },
-  "pass": false,
+  "pass": true,
   "policy": "ScriptedDAGPolicy",
   "prompt_checks": {
     "agent-0": {

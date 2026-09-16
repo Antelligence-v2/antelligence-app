@@ -53,3 +53,13 @@ coverage. Assert this in the coverage self-test.
    `merge_partitioned` (a design change — needs sign-off and re-registration).
 2. Until then, do **not** report E15 `swarm_partitioned_merged` fork coverage as evidence about the
    merge's repair ability.
+
+## Resolution (2026-09-16)
+
+Fixed in E15 `run_e15.py` v2 (deterministic "take turns" edges for over-subscribed resources; see
+the experiment's `DESIGN.md` Fix 2). Because the same fixture family also has a second global
+coupling (slots), the merged arm became fully operable only after the delegator also supplied each
+agent its slot and both prompts stated the field contracts (Fixes 3/4). Final corrected re-run:
+merged **16/20** (8/8 nodes + executed success on every solvable fixture) vs raw-partitioned
+**0/20** vs solo **8/20**; verdict `SUPPORTED_WITH_REPAIR`; total spend $0.0175. Session record:
+`[[2026-09-15-antelligence-paper-v2-archive]]`.

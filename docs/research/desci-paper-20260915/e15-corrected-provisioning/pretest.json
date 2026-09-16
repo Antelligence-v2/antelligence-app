@@ -1,0 +1,55 @@
+{
+  "cost": 0.0007000000000000002,
+  "coverage_assert": true,
+  "expected_proposals": 12,
+  "experiment": "e15-fixed-provisioning",
+  "gate": "pretest",
+  "goal_owned_all": true,
+  "merged_admission_count": 3,
+  "merged_success_count": 3,
+  "model": "z-ai/glm-5.3-flash",
+  "parseable_count": 12,
+  "pass": true,
+  "rows": [
+    {
+      "agents": 4,
+      "calls": 5,
+      "goal_owned": true,
+      "goal_samples": [
+        "sample-3"
+      ],
+      "merged_admitted": 8,
+      "merged_success": true,
+      "parse_errors": 1,
+      "parseable": 4,
+      "seed": 101
+    },
+    {
+      "agents": 4,
+      "calls": 4,
+      "goal_owned": true,
+      "goal_samples": [
+        "sample-3"
+      ],
+      "merged_admitted": 8,
+      "merged_success": true,
+      "parse_errors": 0,
+      "parseable": 4,
+      "seed": 102
+    },
+    {
+      "agents": 4,
+      "calls": 5,
+      "goal_owned": true,
+      "goal_samples": [
+        "sample-3"
+      ],
+      "merged_admitted": 8,
+      "merged_success": true,
+      "parse_errors": 1,
+      "parseable": 4,
+      "seed": 103
+    }
+  ],
+  "tokens": 22244
+}
