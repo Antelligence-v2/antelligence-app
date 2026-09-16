@@ -1,0 +1,120 @@
+{
+  "arms": {
+    "solo_planner": {
+      "accepted_nodes": 55,
+      "admission_rate": 0.34375,
+      "cost_usd": 0.037033,
+      "determinism_failures": 0,
+      "execution_success_rate": 0.15,
+      "execution_successes": 3,
+      "max_width_mean": 0.8,
+      "mean_depth": 2.75,
+      "parse_errors": 0,
+      "proposed_nodes": 160,
+      "redundant_node_fraction": 0.0,
+      "rejection_breakdown": {
+        "acyclicity": 0,
+        "contradiction_cascade": 0,
+        "reachability": 59,
+        "resource_consistency": 32,
+        "verifier_feasibility": 14
+      },
+      "runs": 20,
+      "tokens_per_accepted_node": 323.4,
+      "total_tokens": 17787,
+      "unsafe_act_count": 0
+    },
+    "swarm_partitioned": {
+      "accepted_nodes": 20,
+      "admission_rate": 0.16666666666666666,
+      "cost_usd": 0.054605999999999995,
+      "determinism_failures": 0,
+      "execution_success_rate": 0.0,
+      "execution_successes": 0,
+      "max_width_mean": 0.8,
+      "mean_depth": 1.0,
+      "parse_errors": 0,
+      "proposed_nodes": 120,
+      "redundant_node_fraction": 0.0,
+      "rejection_breakdown": {
+        "acyclicity": 0,
+        "contradiction_cascade": 0,
+        "reachability": 32,
+        "resource_consistency": 46,
+        "verifier_feasibility": 22
+      },
+      "runs": 20,
+      "tokens_per_accepted_node": 2059.3,
+      "total_tokens": 41186,
+      "unsafe_act_count": 0
+    },
+    "swarm_proposal": {
+      "accepted_nodes": 48,
+      "admission_rate": 0.10020876826722339,
+      "cost_usd": 0.10920599999999996,
+      "determinism_failures": 0,
+      "execution_success_rate": 0.1,
+      "execution_successes": 2,
+      "max_width_mean": 0.8,
+      "mean_depth": 2.4,
+      "parse_errors": 0,
+      "proposed_nodes": 479,
+      "redundant_node_fraction": 0.6283924843423799,
+      "rejection_breakdown": {
+        "acyclicity": 0,
+        "contradiction_cascade": 0,
+        "reachability": 74,
+        "resource_consistency": 38,
+        "verifier_feasibility": 18
+      },
+      "runs": 20,
+      "tokens_per_accepted_node": 1099.375,
+      "total_tokens": 52770,
+      "unsafe_act_count": 0
+    }
+  },
+  "budget_cap_pass": true,
+  "determinism_all_pass": true,
+  "experiment": "e12-partitioned-dags",
+  "matrix_cost_usd": 0.20084499999999994,
+  "paired_sign_tests": {
+    "swarm_partitioned_vs_solo": {
+      "losses": 3,
+      "n_non_tied": 3,
+      "p_two_sided": 0.25,
+      "ties": 17,
+      "wins": 0
+    },
+    "swarm_proposal_vs_solo": {
+      "losses": 1,
+      "n_non_tied": 1,
+      "p_two_sided": 1.0,
+      "ties": 19,
+      "wins": 0
+    }
+  },
+  "pretest_cost_usd": 0.008203,
+  "seeds": [
+    101,
+    102,
+    103,
+    104,
+    105,
+    106,
+    107,
+    108,
+    109,
+    110,
+    111,
+    112,
+    113,
+    114,
+    115,
+    116,
+    117,
+    118,
+    119,
+    120
+  ],
+  "total_cost_usd": 0.20904799999999993
+}

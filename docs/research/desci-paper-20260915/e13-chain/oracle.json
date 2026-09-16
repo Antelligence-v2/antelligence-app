@@ -1,0 +1,147 @@
+{
+  "experiment": "e13-chain",
+  "model": "z-ai/glm-5.3-flash",
+  "config": {
+    "agents": 3,
+    "grid": [
+      10,
+      10
+    ],
+    "view_k": 5,
+    "steps": 120,
+    "n_food": 3,
+    "seeds": [
+      101,
+      102,
+      103,
+      104,
+      105,
+      106,
+      107,
+      108,
+      109,
+      110,
+      111,
+      112,
+      113,
+      114,
+      115,
+      116,
+      117,
+      118,
+      119,
+      120
+    ],
+    "temperature": 0.0,
+    "max_tokens": 1500,
+    "auto_pick_drop": true,
+    "chain_constraint": true
+  },
+  "results": [
+    {
+      "seed": 101,
+      "solvable": true,
+      "steps_to_success": 27
+    },
+    {
+      "seed": 102,
+      "solvable": true,
+      "steps_to_success": 32
+    },
+    {
+      "seed": 103,
+      "solvable": true,
+      "steps_to_success": 37
+    },
+    {
+      "seed": 104,
+      "solvable": true,
+      "steps_to_success": 60
+    },
+    {
+      "seed": 105,
+      "solvable": true,
+      "steps_to_success": 34
+    },
+    {
+      "seed": 106,
+      "solvable": true,
+      "steps_to_success": 36
+    },
+    {
+      "seed": 107,
+      "solvable": true,
+      "steps_to_success": 41
+    },
+    {
+      "seed": 108,
+      "solvable": true,
+      "steps_to_success": 28
+    },
+    {
+      "seed": 109,
+      "solvable": true,
+      "steps_to_success": 25
+    },
+    {
+      "seed": 110,
+      "solvable": true,
+      "steps_to_success": 54
+    },
+    {
+      "seed": 111,
+      "solvable": true,
+      "steps_to_success": 16
+    },
+    {
+      "seed": 112,
+      "solvable": true,
+      "steps_to_success": 28
+    },
+    {
+      "seed": 113,
+      "solvable": true,
+      "steps_to_success": 21
+    },
+    {
+      "seed": 114,
+      "solvable": true,
+      "steps_to_success": 58
+    },
+    {
+      "seed": 115,
+      "solvable": true,
+      "steps_to_success": 20
+    },
+    {
+      "seed": 116,
+      "solvable": true,
+      "steps_to_success": 33
+    },
+    {
+      "seed": 117,
+      "solvable": true,
+      "steps_to_success": 19
+    },
+    {
+      "seed": 118,
+      "solvable": true,
+      "steps_to_success": 34
+    },
+    {
+      "seed": 119,
+      "solvable": true,
+      "steps_to_success": 35
+    },
+    {
+      "seed": 120,
+      "solvable": true,
+      "steps_to_success": 21
+    }
+  ],
+  "summary": {
+    "solvable_count": 20,
+    "mean_steps": 33.0,
+    "max_steps": 60
+  }
+}

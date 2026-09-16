@@ -210,6 +210,15 @@ class Microenvironment:
         D = substrate.diffusion_coefficient
         λ = substrate.decay_rate
         S = substrate.source_sink
+        boundary_faces = []
+        if substrate.dirichlet_boundary_value is not None:
+            C = C.copy()
+            for axis in range(self.dimensionality):
+                for endpoint in (0, -1):
+                    face: list[slice | int] = [slice(None)] * C.ndim
+                    face[axis] = endpoint
+                    boundary_faces.append(tuple(face))
+                    C[tuple(face)] = substrate.dirichlet_boundary_value
         
         # OPTIMIZATION: Pre-compute common values for 2-3x speedup
         dx2_inv = 1.0 / (self.dx**2)
@@ -234,30 +243,26 @@ class Microenvironment:
                 dz2_inv * (C[1:-1, 1:-1, 2:] - 2*C[1:-1, 1:-1, 1:-1] + C[1:-1, 1:-1, :-2])
             )
         
-        # OPTIMIZATION: Vectorized boundary conditions
-        if substrate.dirichlet_boundary_value is not None:
-            # Dirichlet: fixed concentration at boundaries
-            boundary_val = substrate.dirichlet_boundary_value
-            C[0, :, :] = boundary_val
-            C[-1, :, :] = boundary_val
-            C[:, 0, :] = boundary_val
-            C[:, -1, :] = boundary_val
-            if self.dimensionality == 3:
-                C[:, :, 0] = boundary_val
-                C[:, :, -1] = boundary_val
-        else:
-            # Neumann (no-flux): zero gradient at boundaries
-            C[0, :, :] = C[1, :, :]
-            C[-1, :, :] = C[-2, :, :]
-            C[:, 0, :] = C[:, 1, :]
-            C[:, -1, :] = C[:, -2, :]
-            if self.dimensionality == 3:
-                C[:, :, 0] = C[:, :, 1]
-                C[:, :, -1] = C[:, :, -2]
+        if substrate.dirichlet_boundary_value is None:
+            # No-flux means zero exchange across the exterior faces, not
+            # copying interior concentrations onto boundary voxels. Every
+            # internal face transfers equal and opposite mass to its neighbors.
+            laplacian.fill(0.0)
+            for axis, spacing in enumerate((self.dx, self.dy, self.dz)[:self.dimensionality]):
+                flux = np.diff(C, axis=axis) / spacing**2
+                lower = [slice(None)] * C.ndim
+                upper = [slice(None)] * C.ndim
+                lower[axis] = slice(None, -1)
+                upper[axis] = slice(1, None)
+                laplacian[tuple(lower)] += flux
+                laplacian[tuple(upper)] -= flux
         
         # OPTIMIZATION: Combined vectorized update and clipping
         dC_dt = D * laplacian - λ * C + S
         substrate.concentration = np.maximum(C + dt * dC_dt, 0.0)
+        # A fixed reservoir is not changed by decay or source terms.
+        for boundary_face in boundary_faces:
+            substrate.concentration[boundary_face] = substrate.dirichlet_boundary_value
     
     def step(self, dt: Optional[float] = None):
         """
@@ -269,8 +274,9 @@ class Microenvironment:
         if dt is None:
             dt = self.dt
             
-        # Simulate all substrates
-        for substrate in self.substrates.values():
+        # Compatibility names may refer to the same physical field. Integrate
+        # each object once, not once per lookup name (which changes its clock).
+        for substrate in dict.fromkeys(self.substrates.values()):
             self.simulate_diffusion_decay(substrate, dt)
             
         self.time += dt
@@ -439,12 +445,12 @@ def create_pheromone_substrate(
 ) -> SubstrateField:
     """
     Create a pheromone substrate for nanobot communication.
-    
+
     Args:
         microenv: The microenvironment
         name: Pheromone name (e.g., 'trail', 'alarm', 'recruitment')
         decay_rate: How fast pheromone evaporates (1/min)
-        
+
     Returns:
         Pheromone SubstrateField
     """
@@ -454,5 +460,59 @@ def create_pheromone_substrate(
         decay_rate=decay_rate,
         initial_value=0.0,
         dirichlet_boundary_value=None  # No-flux boundaries
+    )
+
+
+def create_trail_pheromone(microenv: Microenvironment) -> SubstrateField:
+    """Create trail pheromone for marking successful delivery paths.
+
+    Inspired by ant trail pheromones: deposited along paths that led to
+    successful drug deliveries. Moderate diffusion, slow decay (persists
+    for ~10 min half-life = ln(2)/0.07 ≈ 10 min).
+
+    Nanobots secrete trail pheromone at rate 1.0 units/step during DELIVERING state.
+    """
+    return microenv.add_substrate(
+        name="trail_pheromone",
+        diffusion_coefficient=1e-6,  # cm²/s — moderate spread
+        decay_rate=0.07,  # 1/min — half-life ~10 min
+        initial_value=0.0,
+        dirichlet_boundary_value=None,
+    )
+
+
+def create_alarm_pheromone(microenv: Microenvironment) -> SubstrateField:
+    """Create alarm pheromone for marking dangerous/toxic zones.
+
+    Higher diffusion (spreads fast to warn neighbors) and faster decay
+    (danger signals should be transient, half-life ~3 min).
+
+    Nanobots secrete alarm pheromone when:
+    - Drug delivery fails (resistant cell)
+    - Navigation error (stuck)
+    - Entering necrotic core
+    """
+    return microenv.add_substrate(
+        name="alarm_pheromone",
+        diffusion_coefficient=5e-6,  # cm²/s — fast spread (5x trail)
+        decay_rate=0.23,  # 1/min — half-life ~3 min
+        initial_value=0.0,
+        dirichlet_boundary_value=None,
+    )
+
+
+def create_recruitment_pheromone(microenv: Microenvironment) -> SubstrateField:
+    """Create recruitment pheromone for attracting bots to unexplored zones.
+
+    Moderate diffusion, moderate decay (half-life ~7 min).
+    Secreted by nanobots that discover high-value targets (stem cells,
+    resistant cells) but can't handle them alone.
+    """
+    return microenv.add_substrate(
+        name="recruitment_pheromone",
+        diffusion_coefficient=2e-6,  # cm²/s — moderate spread
+        decay_rate=0.1,  # 1/min — half-life ~7 min
+        initial_value=0.0,
+        dirichlet_boundary_value=None,
     )
 

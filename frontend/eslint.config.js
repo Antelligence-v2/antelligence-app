@@ -24,6 +24,12 @@ export default tseslint.config(
         { allowConstantExport: true },
       ],
       "@typescript-eslint/no-unused-vars": "off",
+      // The legacy UI intentionally carries broad JSON/visualization shapes
+      // and CommonJS Tailwind config. Keep lint focused on actionable runtime
+      // issues until those APIs are typed in their own migration.
+      "@typescript-eslint/no-explicit-any": "off",
+      "@typescript-eslint/no-empty-object-type": "off",
+      "@typescript-eslint/no-require-imports": "off",
     },
   }
 );

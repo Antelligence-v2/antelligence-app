@@ -12,37 +12,66 @@ Key adaptations:
 - Alarm pheromones → Toxicity or navigation failures
 """
 
+import json
 import numpy as np
 import random
 from typing import Dict, List, Tuple, Optional
 from enum import Enum
-import openai
 import os
 from dotenv import load_dotenv
 import threading
-from biofvm import Microenvironment
-from tumor_environment import TumorGeometry, TumorCell, VesselPoint, CellPhase, CellType
+
+# Mock litellm_client for testing environments where it's not installed.
+try:
+    if __package__:
+        from .litellm_client import create_client as create_llm_client
+    else:
+        from litellm_client import create_client as create_llm_client
+except ImportError:
+    def create_llm_client(*args, **kwargs):
+        return None
+
+if __package__:
+    from .biofvm import Microenvironment
+    from .tumor_environment import TumorGeometry, TumorCell, VesselPoint, CellPhase, CellType
+    from .knowledge_graph import TumorKnowledgeGraph
+else:
+    from biofvm import Microenvironment
+    from tumor_environment import TumorGeometry, TumorCell, VesselPoint, CellPhase, CellType
+    from knowledge_graph import TumorKnowledgeGraph
 
 load_dotenv()
 IO_API_KEY = os.getenv("IO_SECRET_KEY")
 
+# Create LiteLLM client for internal API
+LITELLM_API_BASE = "http://host.orb.internal:4000/v1"
+
+
+def _env_truthy(name: str) -> bool:
+    return os.getenv(name, "").strip().lower() in {"1", "true", "yes", "on"}
+
+
 # Blockchain integration
-try:
-    # Add parent directory to path to find blockchain module
-    import sys
-    import os
-    parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    sys.path.insert(0, parent_dir)
-    
-    from blockchain.client import w3, acct, tumor_intel_contract, TUMOR_INTEL_CONTRACT_ADDRESS
-    BLOCKCHAIN_ENABLED = tumor_intel_contract is not None
-    if BLOCKCHAIN_ENABLED:
-        print("[NANOBOT] ✅ Blockchain intelligence sharing enabled")
-    else:
-        print("[NANOBOT] ⚠️ Blockchain client loaded but TumorIntel contract not available")
-except Exception as e:
-    BLOCKCHAIN_ENABLED = False
-    print(f"[NANOBOT] ⚠️ Blockchain disabled: {e}")
+BLOCKCHAIN_ENABLED = False
+w3 = acct = tumor_intel_contract = TUMOR_INTEL_CONTRACT_ADDRESS = None
+if _env_truthy("ANTELLIGENCE_ENABLE_BLOCKCHAIN_TX"):
+    try:
+        # Add parent directory to path to find blockchain module
+        import sys
+        parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        sys.path.insert(0, parent_dir)
+
+        from blockchain.client import w3, acct, tumor_intel_contract, TUMOR_INTEL_CONTRACT_ADDRESS
+        BLOCKCHAIN_ENABLED = tumor_intel_contract is not None
+        if BLOCKCHAIN_ENABLED:
+            print("[NANOBOT] Blockchain intelligence sharing enabled")
+        else:
+            print("[NANOBOT] Blockchain client loaded but TumorIntel contract not available")
+    except Exception as e:
+        BLOCKCHAIN_ENABLED = False
+        print(f"[NANOBOT] Blockchain disabled: {e}")
+else:
+    print("[NANOBOT] Blockchain transaction writes disabled; set ANTELLIGENCE_ENABLE_BLOCKCHAIN_TX=1 to enable")
 
 
 class NanobotState(Enum):
@@ -72,7 +101,6 @@ class NanobotAgent:
         self.model = model
         self.is_llm_controlled = is_llm_controlled
         
-        # Start near a random vessel
         if model.geometry.vessels:
             start_vessel = random.choice(model.geometry.vessels)
             # Add small random offset
@@ -97,14 +125,19 @@ class NanobotAgent:
         self.speed = 30.0  # µm per step (movement speed)
         
         # Chemotaxis weights (how much each gradient influences movement)
+        # Names must match substrate names in the microenvironment
         self.chemotaxis_weights = {
-            'oxygen': -1.0,           # Move TOWARD low oxygen (hypoxic tumor)
-            'trail': 0.8,             # Follow successful delivery trails
-            'alarm': -0.5,            # Avoid alarm pheromones
-            'recruitment': 0.6,       # Respond to recruitment signals
-            'chemokine_signal': 1.2,  # Strong attraction to "come here" signals
-            'toxicity_signal': -1.5,  # Strong repulsion from "stay away" signals
+            'oxygen': -1.0,                  # Move TOWARD low oxygen (hypoxic tumor)
+            'trail_pheromone': 0.8,           # Follow successful delivery trails
+            'alarm_pheromone': -0.5,          # Avoid alarm pheromones (repulsion)
+            'recruitment_pheromone': 0.6,     # Respond to recruitment signals
         }
+        if not model.pheromones_enabled:
+            self.chemotaxis_weights.update({
+                'trail_pheromone': 0.0,
+                'alarm_pheromone': 0.0,
+                'recruitment_pheromone': 0.0,
+            })
         
         # Target tracking
         self.target_cell: Optional[TumorCell] = None
@@ -194,9 +227,7 @@ class NanobotAgent:
                 self.model.log_error(f"Nanobot {self.nanobot_id} LLM call failed: {str(e)}")
                 # Deposit alarm pheromone on error
                 voxel = self.model.microenv.position_to_voxel(tuple(self.position))
-                alarm = self.model.microenv.get_substrate('alarm')
-                if alarm:
-                    alarm.add_source(voxel, 5.0)
+                self.model.deposit_pheromone('alarm_pheromone', voxel, 5.0)
         
         # Default behavior: chemotaxis-based movement with inertia and stochasticity
         direction = self._compute_chemotaxis_direction()
@@ -244,6 +275,12 @@ class NanobotAgent:
         total_direction = np.zeros(2)
         
         for substrate_name, weight in self.chemotaxis_weights.items():
+            if not self.model.pheromones_enabled and substrate_name in {
+                'trail_pheromone',
+                'alarm_pheromone',
+                'recruitment_pheromone',
+            }:
+                continue
             substrate = self.model.microenv.get_substrate(substrate_name)
             if substrate:
                 gradient = self.model.microenv.get_gradient_at(substrate_name, tuple(self.position))
@@ -253,11 +290,14 @@ class NanobotAgent:
     
     def _compute_pheromone_direction(self) -> np.ndarray:
         """Compute direction based only on pheromone trails."""
+        if not self.model.pheromones_enabled:
+            return np.zeros(2)
+
         direction = np.zeros(2)
         
-        trail = self.model.microenv.get_substrate('trail')
+        trail = self.model.microenv.get_substrate('trail_pheromone')
         if trail:
-            gradient = self.model.microenv.get_gradient_at('trail', tuple(self.position))
+            gradient = self.model.microenv.get_gradient_at('trail_pheromone', tuple(self.position))
             direction = gradient[:2]
         
         return direction
@@ -373,6 +413,9 @@ class NanobotAgent:
             direction = direction / distance
             self.position[:2] += direction * self.speed
             self._clamp_position()
+            # Deposit trail pheromone while moving toward target (breadcrumb)
+            voxel = self.model.microenv.position_to_voxel(tuple(self.position))
+            self.model.deposit_pheromone('trail_pheromone', voxel, 1.0)
     
     def _report_intel_to_blockchain(self, pin_type: int, x: float, y: float, priority: int):
         """
@@ -384,12 +427,10 @@ class NanobotAgent:
             priority: Priority level (1-10)
         """
         if not BLOCKCHAIN_ENABLED:
-            print(f"[NANOBOT {self.nanobot_id}] ⚠️ Blockchain not enabled globally")
-            return
-            
+            return  # Blockchain disabled globally; silent skip
+
         if not self.model.blockchain_enabled:
-            print(f"[NANOBOT {self.nanobot_id}] ⚠️ Blockchain not enabled in model")
-            return
+            return  # Blockchain disabled in model; silent skip
         
         pin_type_names = {
             0: "HYPOXIC_CLUSTER",
@@ -427,7 +468,8 @@ class NanobotAgent:
             
             # Sign and send
             signed = acct.sign_transaction(txn)
-            tx_hash = w3.eth.send_raw_transaction(signed.rawTransaction)
+            raw_tx = getattr(signed, 'raw_transaction', None) or getattr(signed, 'rawTransaction', None)
+            tx_hash = w3.eth.send_raw_transaction(raw_tx)
             
             print(f"[NANOBOT {self.nanobot_id}] ✅ Intel reported to blockchain!")
             print(f"[NANOBOT {self.nanobot_id}]   Transaction: https://sepolia.basescan.org/tx/{tx_hash.hex()}")
@@ -479,14 +521,15 @@ class NanobotAgent:
                 self._report_intel_to_blockchain(pin_type, self.position[0], self.position[1], priority)
             
             # Deposit trail pheromone (mark successful delivery path)
-            trail = self.model.microenv.get_substrate('trail')
-            if trail:
-                trail.add_source(voxel, 3.0)
-            
-            # Emit chemokine signal to attract other nanobots to this successful delivery site
-            chemokine = self.model.microenv.get_substrate('chemokine_signal')
-            if chemokine:
-                chemokine.add_source(voxel, 4.0)  # Strong "come here" signal
+            self.model.deposit_pheromone('trail_pheromone', voxel, 3.0)
+
+            # If cell killed, deposit recruitment pheromone (more targets likely nearby)
+            if cell_killed:
+                self.model.deposit_pheromone('recruitment_pheromone', voxel, 5.0)
+
+            # If target is resistant (high accumulated drug but alive), deposit alarm
+            if not cell_killed and self.target_cell.resistance_level > 0.5:
+                self.model.deposit_pheromone('alarm_pheromone', voxel, 5.0)
         
         # If payload depleted, return to vessel
         if self.drug_payload < 2.0:  # Return when < 2 μg remaining
@@ -666,7 +709,16 @@ class NanobotAgent:
         nearest_vessel = self.model.geometry.find_nearest_vessel(tuple(self.position))
         bbb_permeability = nearest_vessel.bbb_permeability if nearest_vessel else 0.1
         
-        prompt = f"""You are an intelligent nanobot carrying anti-cancer drugs through a complex tumor microenvironment.
+        # Inject grounded knowledge-graph context at the start of the prompt
+        try:
+            kg_context = self.model.knowledge_graph.get_nanobot_context(
+                self.nanobot_id, tuple(self.position), search_radius=100.0
+            )
+            kg_block = "GROUNDED CONTEXT FROM KNOWLEDGE GRAPH:\n" + json.dumps(kg_context, indent=2) + "\n\n"
+        except Exception:
+            kg_block = ""
+
+        prompt = kg_block + f"""You are an intelligent nanobot carrying anti-cancer drugs through a complex tumor microenvironment.
 
 CURRENT STATUS:
 - Position: ({self.position[0]:.1f}, {self.position[1]:.1f}) µm
@@ -756,10 +808,215 @@ class QueenNanobot:
     (every K steps) to adjust swarm parameters.
     """
     
-    def __init__(self, model: 'TumorNanobotModel', use_llm: bool = False):
+    def __init__(
+        self,
+        model: 'TumorNanobotModel',
+        use_llm: bool = False,
+        episode_length: int = 10,
+        experience_consumer=None,
+    ):
         self.model = model
         self.use_llm = use_llm
-        
+        self.episode_length = episode_length  # Adjust parameters every K steps
+        self.step_counter = 0
+        self.episode_counter = 0
+        self.experience_consumer = experience_consumer
+        self.selected_chain_strategy = None
+
+        # Configurable worker parameters (adjusted by Queen each episode)
+        self.worker_params = {
+            "exploration_bias": 0.3,       # 0-1: higher = more random exploration
+            "trail_secretion_rate": 1.0,   # Pheromone deposit rate per delivery
+            "alarm_secretion_rate": 5.0,   # Alarm deposit rate on failure
+            "recruitment_threshold": 0.5,  # Confidence threshold to recruit
+            "oxygen_weight": -1.0,         # Chemotaxis weight for oxygen
+            "trail_weight": 0.8,           # Chemotaxis weight for trail pheromone
+            "alarm_weight": -0.5,          # Chemotaxis weight for alarm pheromone
+            "speed_multiplier": 1.0,       # Movement speed scaling
+        }
+
+        self._apply_chain_strategy_if_enabled()
+
+        # Episode history for tracking improvement
+        self.episode_history: List[Dict] = []
+
+    def _apply_chain_strategy_if_enabled(self):
+        """Adopt the top promoted strategy when chain reads are explicitly enabled."""
+        if not _env_truthy("CHAIN_READ_ENABLED"):
+            return
+        if self.experience_consumer is None:
+            try:
+                if __package__:
+                    from .chain.experience_consumer import ChainExperienceConsumer
+                else:
+                    from chain.experience_consumer import ChainExperienceConsumer
+                self.experience_consumer = ChainExperienceConsumer()
+            except Exception as exc:
+                self.model.log_error(f"Chain strategy consumer unavailable: {exc}")
+                return
+        try:
+            strategies = self.experience_consumer.get_top_strategies(1)
+        except Exception as exc:
+            self.model.log_error(f"Chain strategy read failed: {exc}")
+            return
+        if not strategies:
+            return
+        strategy = strategies[0]
+        updates = getattr(strategy, "worker_params", {}) or {}
+        for key, value in updates.items():
+            if key in self.worker_params and isinstance(value, (int, float)):
+                self.worker_params[key] = float(value)
+        self.selected_chain_strategy = getattr(strategy, "run_hash", None)
+
+    def step(self):
+        """Called every simulation step. Triggers episodic replanning at interval K."""
+        self.step_counter += 1
+        if self.step_counter >= self.episode_length:
+            self._end_episode()
+            self.step_counter = 0
+
+    def _end_episode(self):
+        """Evaluate episode and adjust worker parameters."""
+        self.episode_counter += 1
+
+        # Capture current state
+        stats = self.model.geometry.get_tumor_statistics()
+        total_deliveries = sum(bot.deliveries_made for bot in self.model.nanobots)
+        total_drug = sum(bot.total_drug_delivered for bot in self.model.nanobots)
+        kill_rate = (stats["total_cells"] - stats["living_cells"]) / max(1, stats["total_cells"]) * 100
+
+        episode_record = {
+            "episode": self.episode_counter,
+            "kill_rate": round(kill_rate, 2),
+            "living_cells": stats["living_cells"],
+            "total_deliveries": total_deliveries,
+            "total_drug": round(total_drug, 2),
+        }
+        self.episode_history.append(episode_record)
+
+        # Adjust parameters based on performance trends
+        self._adjust_params()
+
+        # Apply updated params to workers
+        self._apply_params_to_workers()
+
+    def _adjust_params(self):
+        """Adjust worker parameters — uses LLM if available, else heuristic."""
+        if len(self.episode_history) < 2:
+            return
+
+        if self.use_llm and self.model.io_client and self.model.api_enabled:
+            self._adjust_params_llm()
+        else:
+            self._adjust_params_heuristic()
+
+    def _adjust_params_heuristic(self):
+        """Heuristic parameter adjustment based on episode performance.
+
+        Rules:
+        - Low kill rate → increase exploration, widen search
+        - High kill rate → decrease exploration, focus on exploitation
+        - Low deliveries → increase speed, reduce alarm sensitivity
+        - Many deliveries → increase trail secretion to share paths
+        """
+        current = self.episode_history[-1]
+        previous = self.episode_history[-2]
+
+        kill_delta = current["kill_rate"] - previous["kill_rate"]
+        delivery_delta = current["total_deliveries"] - previous["total_deliveries"]
+
+        p = self.worker_params
+
+        if kill_delta <= 0:
+            p["exploration_bias"] = min(0.8, p["exploration_bias"] + 0.1)
+            p["speed_multiplier"] = min(2.0, p["speed_multiplier"] + 0.1)
+        else:
+            p["exploration_bias"] = max(0.1, p["exploration_bias"] - 0.05)
+            p["trail_secretion_rate"] = min(5.0, p["trail_secretion_rate"] + 0.5)
+
+        if delivery_delta <= 0:
+            p["alarm_weight"] = max(-1.0, p["alarm_weight"] + 0.1)
+        else:
+            p["trail_weight"] = min(2.0, p["trail_weight"] + 0.1)
+
+    def _adjust_params_llm(self):
+        """LLM-based parameter adjustment using LiteLLM.
+
+        Sends episode history + current tumor state to LLM and parses
+        recommended parameter adjustments. Falls back to heuristic on error.
+        """
+        try:
+            current = self.episode_history[-1]
+            previous = self.episode_history[-2]
+            stats = self.model.geometry.get_tumor_statistics()
+
+            prompt = (
+                f"You are controlling a nanobot swarm treating a tumor. "
+                f"Episode {self.episode_counter}: kill_rate={current['kill_rate']}% "
+                f"(prev={previous['kill_rate']}%), deliveries={current['total_deliveries']}, "
+                f"living_cells={current['living_cells']}. "
+                f"Tumor stats: {json.dumps({k: v for k, v in stats.items() if isinstance(v, (int, float))})}. "
+                f"Current params: {json.dumps(self.worker_params)}. "
+                f"Respond with ONLY a JSON object of updated parameter values. "
+                f"Keys: exploration_bias (0-1), trail_weight (0-2), alarm_weight (-1 to 0), "
+                f"speed_multiplier (0.5-2). Example: {{\"exploration_bias\": 0.4, \"trail_weight\": 1.2}}"
+            )
+
+            response = self.model.io_client.chat.completions.create(
+                model=self.model.selected_model,
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=200,
+            )
+
+            # Parse LLM response
+            text = response.choices[0].message.content
+            # Extract JSON from response
+            import re
+            json_match = re.search(r'\{[^}]+\}', text)
+            if json_match:
+                updates = json.loads(json_match.group())
+                # Apply valid updates
+                valid_keys = set(self.worker_params.keys())
+                for key, value in updates.items():
+                    if key in valid_keys and isinstance(value, (int, float)):
+                        self.worker_params[key] = float(value)
+                return
+        except Exception:
+            pass
+
+        # Fallback to heuristic
+        self._adjust_params_heuristic()
+
+    def _apply_params_to_workers(self):
+        """Push current parameters to all worker nanobots."""
+        for bot in self.model.nanobots:
+            if hasattr(bot, 'chemotaxis_weights'):
+                bot.chemotaxis_weights['oxygen'] = self.worker_params['oxygen_weight']
+                if 'trail_pheromone' in bot.chemotaxis_weights:
+                    bot.chemotaxis_weights['trail_pheromone'] = (
+                        self.worker_params['trail_weight']
+                        if self.model.pheromones_enabled else 0.0
+                    )
+                if 'alarm_pheromone' in bot.chemotaxis_weights:
+                    bot.chemotaxis_weights['alarm_pheromone'] = (
+                        self.worker_params['alarm_weight']
+                        if self.model.pheromones_enabled else 0.0
+                    )
+                if 'recruitment_pheromone' in bot.chemotaxis_weights:
+                    bot.chemotaxis_weights['recruitment_pheromone'] = (
+                        self.worker_params.get('recruitment_weight', 0.6)
+                        if self.model.pheromones_enabled else 0.0
+                    )
+            bot.speed = 30.0 * self.worker_params['speed_multiplier']
+
+    def get_episode_summary(self) -> Dict:
+        """Return episode history and current parameters."""
+        return {
+            "episodes": len(self.episode_history),
+            "current_params": self.worker_params.copy(),
+            "history": self.episode_history[-5:],  # Last 5 episodes
+        }
+
     def guide(self) -> Dict[int, np.ndarray]:
         """
         Provide strategic guidance to nanobots.
@@ -784,7 +1041,7 @@ class QueenNanobot:
         
         # Direct nanobots toward hypoxic regions
         for nanobot in self.model.nanobots:
-            if nanobot.state == NanobotState.SEARCHING and nanobot.drug_payload > 20.0:
+            if nanobot.state == NanobotState.SEARCHING and nanobot.drug_payload > nanobot.max_payload * 0.5:
                 # Find nearest hypoxic cell
                 distances = [
                     np.linalg.norm(np.array(cell.position[:2]) - nanobot.position[:2])
@@ -869,19 +1126,49 @@ Provide guidance for nanobot positioning and targeting priorities."""
             response = self.model.io_client.chat.completions.create(
                 model=self.model.selected_model,
                 messages=[
-                    {"role": "system", "content": "You are a strategic Queen nanobot. Provide high-level coordination guidance."},
+                    {"role": "system", "content": "You are a strategic Queen nanobot. Respond only with valid JSON in the format: {\"guidance\": {\"nanobot_id\": [dx, dy]}, \"report\": \"str\"}"},
                     {"role": "user", "content": prompt}
                 ],
                 temperature=0.2,
-                max_completion_tokens=200,
+                max_completion_tokens=300,
                 timeout=15
             )
-            
-            # Parse response and convert to guidance vectors
-            # For now, use enhanced heuristic based on the analysis
-            print(f"[TUMOR MODEL] ✅ Queen LLM guidance successful")
+
+            response_text = response.choices[0].message.content.strip()
+
+            # Try to parse LLM JSON output: {"guidance": {"nanobot_id": [dx, dy]}, "report": "str"}
+            try:
+                if '{' in response_text and '}' in response_text:
+                    start = response_text.find('{')
+                    end = response_text.rfind('}') + 1
+                    json_str = response_text[start:end]
+                    parsed = json.loads(json_str)
+
+                    raw_guidance = parsed.get("guidance", {})
+                    report = parsed.get("report", "Queen LLM guidance provided")
+
+                    for nanobot_id_str, direction_list in raw_guidance.items():
+                        try:
+                            nanobot_id = int(nanobot_id_str)
+                            if isinstance(direction_list, list) and len(direction_list) == 2:
+                                direction = np.array([float(direction_list[0]), float(direction_list[1])])
+                                norm = np.linalg.norm(direction)
+                                if norm > 0:
+                                    direction = direction / norm
+                                guidance[nanobot_id] = direction
+                        except (ValueError, TypeError, IndexError):
+                            continue
+
+                    print(f"[TUMOR MODEL] ✅ Queen LLM guidance successful: {report} (guided {len(guidance)} nanobots)")
+                    if guidance:
+                        return guidance
+            except (json.JSONDecodeError, KeyError):
+                pass
+
+            # Fall back to enhanced heuristic on JSON parse failure
+            print(f"[TUMOR MODEL] Queen LLM: JSON parse failed or empty, using enhanced heuristic")
             return self._guide_with_enhanced_heuristic(stem_cell_regions, high_resistance_regions, immune_active_regions)
-            
+
         except Exception as e:
             print(f"[TUMOR MODEL] Queen LLM guidance failed: {e}")
             self.model.log_error(f"Queen LLM guidance failed: {str(e)}")
@@ -892,7 +1179,7 @@ Provide guidance for nanobot positioning and targeting priorities."""
         guidance = {}
         
         for nanobot in self.model.nanobots:
-            if nanobot.state == NanobotState.SEARCHING and nanobot.drug_payload > 20.0:
+            if nanobot.state == NanobotState.SEARCHING and nanobot.drug_payload > nanobot.max_payload * 0.5:
                 best_direction = None
                 best_priority = 0
                 
@@ -942,22 +1229,41 @@ class TumorNanobotModel:
     
     def __init__(
         self,
-        domain_size: float = 600.0,  # µm
-        voxel_size: float = 10.0,    # µm
         n_nanobots: int = 10,
+        domain_size: float = 600.0,
+        voxel_size: float = 10.0,
         tumor_radius: float = 200.0,
         agent_type: str = "LLM-Powered",
         with_queen: bool = False,
         use_llm_queen: bool = False,
-        selected_model: str = "meta-llama/Llama-3.3-70B-Instruct"
+        selected_model: str = "meta-llama/Llama-3.3-70B-Instruct",
+        pheromone_params: Optional[Dict[str, float]] = None,
+        seed: Optional[int] = None,
+        chain_intel_reader=None,
+        pheromones_enabled: bool = True,
+        cell_density: float = 0.001,
+        vessel_density: float = 0.01,
     ):
+
         self.domain_size = domain_size
         self.voxel_size = voxel_size
+        self.seed = seed
         self.selected_model = selected_model
         self.with_queen = with_queen
         self.use_llm_queen = use_llm_queen
+        self.pheromones_enabled = bool(pheromones_enabled)
+        self.pheromone_params = {
+            'trail_diffusion': 1e-6,
+            'alarm_diffusion': 5e-6,
+            'recruitment_diffusion': 2e-6,
+            'trail_decay': 0.0693,
+            'alarm_decay': 0.231,
+            'recruitment_decay': 0.099,
+        }
+        if pheromone_params:
+            self.pheromone_params.update(pheromone_params)
         
-        # List of known supported chat models
+        # List of known supported chat models (LiteLLM unified format)
         SUPPORTED_CHAT_MODELS = [
             'meta-llama/Llama-3.3-70B-Instruct',
             'mistralai/Mistral-Large-Instruct-2411',
@@ -990,13 +1296,39 @@ class TumorNanobotModel:
         )
         
         # Add substrates
-        from biofvm import create_oxygen_substrate, create_drug_substrate, create_pheromone_substrate
+        if __package__:
+            from .biofvm import create_oxygen_substrate, create_drug_substrate, create_pheromone_substrate
+        else:
+            from biofvm import create_oxygen_substrate, create_drug_substrate, create_pheromone_substrate
         
         create_oxygen_substrate(self.microenv, boundary_value=38.0)
         create_drug_substrate(self.microenv, diffusion_coeff=1e-7)
-        create_pheromone_substrate(self.microenv, 'trail', decay_rate=0.1)
-        create_pheromone_substrate(self.microenv, 'alarm', decay_rate=0.15)
-        create_pheromone_substrate(self.microenv, 'recruitment', decay_rate=0.12)
+        if self.pheromones_enabled:
+            self.microenv.add_substrate(
+                'trail_pheromone',
+                diffusion_coefficient=self.pheromone_params['trail_diffusion'],
+                decay_rate=self.pheromone_params['trail_decay'],
+                initial_value=0.0,
+                dirichlet_boundary_value=None,
+            )
+            self.microenv.add_substrate(
+                'alarm_pheromone',
+                diffusion_coefficient=self.pheromone_params['alarm_diffusion'],
+                decay_rate=self.pheromone_params['alarm_decay'],
+                initial_value=0.0,
+                dirichlet_boundary_value=None,
+            )
+            self.microenv.add_substrate(
+                'recruitment_pheromone',
+                diffusion_coefficient=self.pheromone_params['recruitment_diffusion'],
+                decay_rate=self.pheromone_params['recruitment_decay'],
+                initial_value=0.0,
+                dirichlet_boundary_value=None,
+            )
+            # Backward-compatible aliases must point at the canonical fields.
+            self.microenv.substrates['trail'] = self.microenv.substrates['trail_pheromone']
+            self.microenv.substrates['alarm'] = self.microenv.substrates['alarm_pheromone']
+            self.microenv.substrates['recruitment'] = self.microenv.substrates['recruitment_pheromone']
         
         # Add new chemokine and toxicity signal substrates
         create_pheromone_substrate(self.microenv, 'chemokine_signal', decay_rate=0.08)  # Attractant - slower decay
@@ -1012,15 +1344,59 @@ class TumorNanobotModel:
         self.microenv.add_substrate('drug_b', diffusion_coefficient=1e-7, decay_rate=0.05)  # Secondary drug
         
         # Generate tumor geometry
-        from tumor_environment import create_simple_tumor_environment
+        if __package__:
+            from .tumor_environment import create_simple_tumor_environment
+        else:
+            from tumor_environment import create_simple_tumor_environment
+
+        if getattr(self, 'use_brats_geometry', False) or (hasattr(self, 'config') and getattr(self.config, 'use_brats_geometry', False)):
+            try:
+                if __package__:
+                    from .brats_loader import load_brats_patient, brats_volume_to_tumor_geometry
+                else:
+                    from brats_loader import load_brats_patient, brats_volume_to_tumor_geometry
+                vol = load_brats_patient(patient_id=getattr(self.config, 'brats_patient_id', None) if hasattr(self, 'config') else None)
+                if vol:
+                    self.geometry = brats_volume_to_tumor_geometry(vol, domain_size=domain_size)
+                else:
+                    self.geometry = create_simple_tumor_environment(domain_size=domain_size, tumor_radius=tumor_radius)
+            except Exception as e:
+                print(f"[BraTS] Failed to load BraTS geometry: {e}, falling back to synthetic")
+                self.geometry = create_simple_tumor_environment(domain_size=domain_size, tumor_radius=tumor_radius)
+        else:
+            self.geometry = create_simple_tumor_environment(
+                domain_size=domain_size,
+                tumor_radius=tumor_radius,
+                cell_density=cell_density,
+                dimensionality=2,
+                vessel_density=vessel_density
+            )
         
-        self.geometry = create_simple_tumor_environment(
-            domain_size=domain_size,
-            tumor_radius=tumor_radius,
-            cell_density=0.001,
-            dimensionality=2
-        )
-        
+        # Initialize Knowledge Graph
+        self.knowledge_graph = TumorKnowledgeGraph(domain_size=domain_size)
+        self.chain_sync_summary = {"imported_intel_pins": 0}
+        if _env_truthy("CHAIN_READ_ENABLED"):
+            try:
+                if chain_intel_reader is None:
+                    if __package__:
+                        from .chain.intel_reader import ChainIntelReader
+                    else:
+                        from chain.intel_reader import ChainIntelReader
+                    chain_intel_reader = ChainIntelReader()
+                imported = self.knowledge_graph.sync_from_chain(chain_intel_reader)
+                self.chain_sync_summary = {"imported_intel_pins": imported}
+            except Exception as exc:
+                self.chain_sync_summary = {"imported_intel_pins": 0, "error": str(exc)}
+
+        # Pre-populate vessels into the knowledge graph
+        for vessel in self.geometry.vessels:
+            self.knowledge_graph.add_vessel(
+                vessel_id=str(id(vessel)),
+                position=vessel.position,
+                oxygen_supply=vessel.oxygen_supply,
+                bbb_permeability=vessel.bbb_permeability,
+            )
+
         # Initialize nanobots
         self.nanobots: List[NanobotAgent] = []
         is_llm = agent_type == "LLM-Powered"
@@ -1037,21 +1413,24 @@ class TumorNanobotModel:
         
         # Blockchain integration for decentralized swarm intelligence
         self.blockchain_enabled = BLOCKCHAIN_ENABLED
+        self.blockchain_logs: List[str] = []
         self.nonce_lock = threading.Lock()
         if self.blockchain_enabled:
             self.current_nonce = w3.eth.get_transaction_count(acct.address)
+        else:
+            self.current_nonce = 0
 
         self.nonce = 0
         # Initialize Queen
         self.queen = QueenNanobot(self, use_llm=use_llm_queen) if with_queen else None
         
-        # Initialize IO client
+        # Initialize IO client via LiteLLM
         self.api_enabled = False
         if IO_API_KEY:
             try:
-                self.io_client = openai.OpenAI(
+                self.io_client = create_llm_client(
                     api_key=IO_API_KEY,
-                    base_url="https://api.intelligence.io.solutions/api/v1/"
+                    api_base=LITELLM_API_BASE
                 )
                 self.api_enabled = True
                 print("[TUMOR MODEL] LLM API initialized successfully")
@@ -1095,7 +1474,19 @@ class TumorNanobotModel:
         
         # Update tumor cells (oxygen consumption, drug absorption)
         self._update_tumor_cells()
-        
+
+        # Knowledge graph zone aggregation after cell updates
+        try:
+            living_cells = self.geometry.get_living_cells()
+            hypoxic_cells = [c for c in living_cells if c.phase == CellPhase.HYPOXIC]
+            stem_cells = [c for c in living_cells if c.cell_type == CellType.STEM_CELL]
+            resistant_cells = [c for c in living_cells if c.cell_type == CellType.RESISTANT]
+            self.knowledge_graph.update_hypoxic_zones(hypoxic_cells)
+            self.knowledge_graph.update_stem_clusters(stem_cells)
+            self.knowledge_graph.update_resistant_regions(resistant_cells)
+        except Exception as _kg_err:
+            self.log_error(f"Knowledge graph zone update failed: {_kg_err}")
+
         # Update immune cells and their interactions
         self._update_immune_cells()
         
@@ -1140,6 +1531,16 @@ class TumorNanobotModel:
             # Update cell state
             cell.update_oxygen_status(oxygen, self.microenv.dt)
             cell.absorb_drug(drug, self.microenv.dt)
+
+            # Knowledge graph: record living cell observations
+            self.knowledge_graph.add_tumor_cell(
+                cell_id=cell.cell_id,
+                position=cell.position,
+                phase=cell.phase.value,
+                cell_type=cell.cell_type.value,
+                resistance_level=cell.resistance_level,
+                accumulated_drug=cell.accumulated_drug,
+            )
             
             # Update cell growth and check for division
             if cell.update_growth(self.microenv.dt, oxygen):
@@ -1275,9 +1676,22 @@ class TumorNanobotModel:
         # Map deliveries to food collection for frontend compatibility
         self.metrics['food_collected_by_llm'] = self.metrics['deliveries_by_llm']
         self.metrics['food_collected_by_rule'] = self.metrics['deliveries_by_rule']
+
+    def deposit_pheromone(self, p_type: str, position: Tuple[int, ...], amount: float):
+        """Deposit a communication signal when pheromone signaling is enabled."""
+        if not self.pheromones_enabled:
+            return
+
+        canonical_names = {
+            'trail': 'trail_pheromone',
+            'alarm': 'alarm_pheromone',
+            'recruitment': 'recruitment_pheromone',
+        }
+        substrate = self.microenv.get_substrate(canonical_names.get(p_type, p_type))
+        if substrate is not None:
+            substrate.add_source(position, amount)
     
     def log_error(self, message: str):
         """Log an error message."""
         self.errors.append(message)
         print(f"[TUMOR MODEL] {message}")
-

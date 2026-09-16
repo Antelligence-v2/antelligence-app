@@ -4,11 +4,13 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --port 8081",
+    "dev:preview": "vite --port 8081 --mode preview",
     "build": "vite build",
     "build:dev": "vite build --mode development",
+    "build:preview": "vite build --mode preview",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview --port 8081"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",
@@ -78,7 +80,7 @@
     "postcss": "^8.4.47",
     "tailwindcss": "^3.4.11",
     "typescript": "^5.5.3",
-    "typescript-eslint": "^8.0.1",
+    "typescript-eslint": "8.68.0",
     "vite": "^5.4.1"
   }
 }

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useNavigate } from 'react-router-dom';
-import { Brain } from 'lucide-react';
+import { Brain, FlaskConical, Search } from 'lucide-react';
 import antFrontpageImage from '/ant-frontpage.jpg';
 
 interface IntroPageProps {
@@ -22,6 +22,18 @@ export const IntroPage: React.FC<IntroPageProps> = ({ onEnter }) => {
 
   const handleTumorSimulation = () => {
     navigate('/tumor');
+  };
+
+  const handleTumorHunt = () => {
+    navigate('/tumor-hunt');
+  };
+
+  const handleExperimentLab = () => {
+    navigate('/experiments');
+  };
+
+  const handleResearchWorkbench = () => {
+    navigate('/research');
   };
 
   // Handle keyboard enter
@@ -71,6 +83,32 @@ export const IntroPage: React.FC<IntroPageProps> = ({ onEnter }) => {
               className="w-80 h-14 text-lg font-semibold border-2 border-slate-300 hover:border-slate-400 bg-slate-100 text-slate-800 hover:bg-slate-200 hover:text-slate-800"
             >
               Tumor Nanobot Simulation
+            </Button>
+            <Button
+              onClick={handleExperimentLab}
+              size="lg"
+              variant="outline"
+              className="w-80 h-14 text-lg font-semibold border-2 border-purple-300 hover:border-purple-400 bg-purple-50 text-purple-900 hover:bg-purple-100 hover:text-purple-950"
+            >
+              <FlaskConical className="mr-2 h-5 w-5" />
+              Experiment Lab
+            </Button>
+            <Button
+              onClick={handleResearchWorkbench}
+              size="lg"
+              variant="outline"
+              className="w-80 h-14 text-lg font-semibold border-2 border-indigo-300 hover:border-indigo-400 bg-indigo-50 text-indigo-900 hover:bg-indigo-100 hover:text-indigo-950"
+            >
+              <Search className="mr-2 h-5 w-5" />
+              Swarm Research Workbench
+            </Button>
+            <Button 
+              onClick={handleTumorHunt}
+              size="lg"
+              variant="outline"
+              className="w-80 h-14 text-lg font-semibold border-2 border-red-300 hover:border-red-400 bg-red-50 text-red-800 hover:bg-red-100 hover:text-red-900"
+            >
+              🧬 Tumor Hunt v2
             </Button>
           </div>
           <p className="text-gray-800 mt-4 text-lg drop-shadow-md font-medium">

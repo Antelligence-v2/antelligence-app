@@ -1,0 +1,25 @@
+{
+  "description": "Field specification, NOT a completed run or synthetic success receipt. Populate from actual execution.",
+  "required_fields": {
+    "feature_id": "C0 or F1..F6",
+    "outcome_id": "stable ID from FEATURES.json",
+    "status": "FEATURE_READY_FOR_INTEGRATION | CODE_TESTED | CHECKPOINTED | BLOCKED | REJECTED",
+    "lead": "actual provider/model/session ID",
+    "workers": "actual delegation IDs, roles, served model IDs and artifact paths",
+    "worktree": "absolute path plus branch",
+    "base_commit": "full exact Git commit",
+    "contract_commit": "full exact accepted C0 commit; C0 names its own candidate",
+    "dependency_commits": "map of required accepted dependency IDs to exact commits",
+    "candidate_commit": "full exact Git commit or explicit null when no candidate exists",
+    "requirements": "every brief requirement ID with passed/failed/not_run and evidence paths",
+    "tests": "full command, cwd, interpreter, exit code, test totals, stdout artifact path",
+    "behaviour": "actual inputs/condition, observations, outcome, trace paths and known limits",
+    "review": "non-author identity, exact candidate, verdict/findings, complete plain-source visibility and report path; explicit null if missing",
+    "resources": "actual usage/cost or explicit unknown; no invented zero",
+    "artifacts": "absolute paths with SHA-256 and source/input identity",
+    "remaining": "explicit unfinished requirements/blocker/next bounded action",
+    "changed_paths": "exact owned source changes",
+    "integration": "not_performed_by_feature_lead"
+  },
+  "ready_gate": "All declared feature requirements are passed with existing actual evidence; real dependency path exercised; source committed; fresh complete-source non-author review accepted; Sol first-hand checks done. Otherwise use non-ready status. Model-study completion requires its separate admission and actual data."
+}

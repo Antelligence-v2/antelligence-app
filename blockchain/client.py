@@ -4,42 +4,58 @@ from web3 import Web3
 from eth_account import Account
 import json
 
+from backend.chain.config import (
+    get_base_sepolia_rpc_url,
+    get_food_address,
+    get_memory_address,
+    get_private_key,
+    get_tumor_intel_address,
+    resolve_rpc_url,
+)
+
 # Load environment variables from .env file
 load_dotenv()
 
 # Helper function to load contract ABI
 def load_contract_abi(contract_name):
-    """Load ABI from compiled Hardhat artifacts"""
-    try:
-        artifact_path = os.path.join(
+    """Load ABI from compiled artifacts.
+
+    Prefers legacy Hardhat-style artifacts for compatibility, but falls back to
+    Foundry `out/` artifacts when contracts are compiled/deployed with forge.
+    """
+    candidate_paths = [
+        os.path.join(
             os.path.dirname(__file__),
             'artifacts', 'contracts', f'{contract_name}.sol', f'{contract_name}.json'
-        )
-        with open(artifact_path, 'r') as f:
-            artifact = json.load(f)
-            return artifact['abi']
-    except Exception as e:
-        print(f"Warning: Could not load ABI for {contract_name}: {e}")
-        return None
+        ),
+        os.path.join(
+            os.path.dirname(os.path.dirname(__file__)),
+            'out', f'{contract_name}.sol', f'{contract_name}.json'
+        ),
+    ]
+    last_error = None
+    for artifact_path in candidate_paths:
+        try:
+            with open(artifact_path, 'r') as f:
+                artifact = json.load(f)
+                return artifact['abi']
+        except Exception as e:
+            last_error = e
+    print(f"Warning: Could not load ABI for {contract_name}: {last_error}")
+    return None
 
 # Get RPC URL and Private Key from environment variables
-# Prioritize local chain RPC if available, otherwise fall back to Base Sepolia
-_CHAIN_RPC = os.getenv("CHAIN_RPC")
-_BASE_SEPOLIA_RPC_URL = os.getenv("BASE_SEPOLIA_RPC_URL")
-
-# Choose which RPC URL to use
-RPC_URL = None
-if _CHAIN_RPC and _CHAIN_RPC != "http://127.0.0.1:8545": # Check if local RPC is set and not just default placeholder
-    RPC_URL = _CHAIN_RPC
-    print(f"Using local RPC: {RPC_URL}")
-elif _BASE_SEPOLIA_RPC_URL:
-    RPC_URL = _BASE_SEPOLIA_RPC_URL
-    print(f"Using Base Sepolia RPC: {RPC_URL}")
-else:
+RPC_URL = resolve_rpc_url(prefer_local=True)
+if not RPC_URL:
     raise ValueError("Neither CHAIN_RPC nor BASE_SEPOLIA_RPC_URL is set in .env. Please configure at least one.")
 
+if RPC_URL == os.getenv("CHAIN_RPC") and RPC_URL != "http://127.0.0.1:8545":
+    print(f"Using local RPC: {RPC_URL}")
+else:
+    print(f"Using Base Sepolia RPC: {RPC_URL}")
 
-_PRIV_KEY = os.getenv("PRIVATE_KEY")
+
+_PRIV_KEY = get_private_key()
 
 # Check if private key is loaded and not empty
 if not _PRIV_KEY:
@@ -68,10 +84,10 @@ try:
 except Exception as e:
     raise ValueError(f"Failed to load account from private key: {e}. Ensure PRIVATE_KEY is a valid hex string (e.g., '0x...' or without '0x' prefix if it's just the hex string).")
 
-# Load contract addresses from environment variables
-FOOD_CONTRACT_ADDRESS = os.getenv("FOOD_ADDR")
-MEMORY_CONTRACT_ADDRESS = os.getenv("MEMORY_ADDR")
-TUMOR_INTEL_CONTRACT_ADDRESS = os.getenv("TUMOR_INTEL_ADDR")
+# Load contract addresses from canonical chain config
+FOOD_CONTRACT_ADDRESS = get_food_address()
+MEMORY_CONTRACT_ADDRESS = get_memory_address()
+TUMOR_INTEL_CONTRACT_ADDRESS = get_tumor_intel_address()
 
 if not FOOD_CONTRACT_ADDRESS:
     print("WARNING: FOOD_ADDR not set in .env. Food contract interactions may fail.")

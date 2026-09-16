@@ -453,6 +453,18 @@ class ImmuneCell:
             
             if distance < 20.0:  # Within attack range
                 self._attack_tumor_cell(self.target_cell, dt)
+            else:
+                # Move toward target at migration_speed micrometers/step
+                direction = np.array(self.target_cell.position[:2]) - np.array(self.position[:2])
+                norm = np.linalg.norm(direction)
+                if norm > 0:
+                    direction = direction / norm
+                    step = direction * self.migration_speed * dt
+                    self.position = (
+                        self.position[0] + step[0],
+                        self.position[1] + step[1],
+                        self.position[2]
+                    )
     
     def _find_nearest_tumor_cell(self, tumor_cells: List[TumorCell]) -> Optional[TumorCell]:
         """Find nearest living tumor cell."""
@@ -718,7 +730,7 @@ class TumorGeometry:
             bbb_permeability = 0.1
             
             # Vessels closer to brain tissue have BBB properties
-            if r > 1.2 * self.tumor_radius:  # Outside tumor boundary
+            if r > self.tumor_radius:  # Outside tumor boundary
                 vessel_type = "bbb"
                 bbb_permeability = 0.05  # Very low permeability
             
@@ -851,7 +863,7 @@ class TumorGeometry:
         distance = np.sqrt(
             (position[0] - self.center[0])**2 +
             (position[1] - self.center[1])**2 +
-            (position[2] - self.center[2] if len(position) > 2 else 0)**2
+            ((position[2] - self.center[2]) if len(position) > 2 else 0.0)**2
         )
         return distance <= self.tumor_radius
     
@@ -860,7 +872,7 @@ class TumorGeometry:
         distance = np.sqrt(
             (position[0] - self.center[0])**2 +
             (position[1] - self.center[1])**2 +
-            (position[2] - self.center[2] if len(position) > 2 else 0)**2
+            ((position[2] - self.center[2]) if len(position) > 2 else 0.0)**2
         )
         return distance <= self.necrotic_core_radius
     
@@ -882,7 +894,8 @@ def create_simple_tumor_environment(
     domain_size: float = 600.0,  # µm
     tumor_radius: float = 200.0,
     cell_density: float = 0.001,
-    dimensionality: int = 2
+    dimensionality: int = 2,
+    vessel_density: float = 0.01,
 ) -> TumorGeometry:
     """
     Create a simple tumor geometry for testing.
@@ -902,7 +915,7 @@ def create_simple_tumor_environment(
         center=center,
         tumor_radius=tumor_radius,
         necrotic_core_radius=tumor_radius * 0.25,  # 25% necrotic core
-        vessel_density=0.01
+        vessel_density=vessel_density
     )
     
     geometry.generate_circular_tumor(
@@ -914,24 +927,59 @@ def create_simple_tumor_environment(
 
 
 def create_brats_tumor_geometry(
-    segmentation_array: np.ndarray,
-    voxel_spacing: Tuple[float, float, float],
-    cell_density: float = 0.001
-) -> TumorGeometry:
+    segmentation_array=None,
+    voxel_spacing=None,
+    cell_density: float = 0.001,
+    domain_size: float = 600.0,
+    patient_id=None,
+    max_cells: int = 500
+) -> 'TumorGeometry':
     """
-    Create tumor geometry from BraTS segmentation data.
-    
-    This function will be used when integrating real MRI data.
-    For now, it's a placeholder for future implementation.
-    
+    Create TumorGeometry from BraTS MRI segmentation data.
+
+    If segmentation_array is provided, uses it directly.
+    Otherwise loads from the BraTS data directory automatically.
+    Falls back to synthetic geometry if no data available.
+
     Args:
-        segmentation_array: 3D array with tumor labels (1=necrosis, 2=edema, 4=enhancing)
-        voxel_spacing: (dx, dy, dz) in mm
-        cell_density: Cells per µm³
-        
+        segmentation_array: optional 3D array with tumor labels (1=necrosis, 2=edema, 4=enhancing)
+        voxel_spacing: (dx, dy, dz) in mm (used when segmentation_array is provided)
+        cell_density: cells per µm³ (legacy param, kept for compatibility)
+        domain_size: simulation domain size in µm
+        patient_id: optional BraTS patient ID string to load specific patient
+        max_cells: maximum number of cells to place (performance limit)
+
     Returns:
-        TumorGeometry with cells placed according to segmentation
+        TumorGeometry with cells placed according to BraTS segmentation
     """
-    # TODO: Implement BraTS data loading in future phase
-    raise NotImplementedError("BraTS geometry generation will be implemented in Phase 6")
+    try:
+        import sys
+        from pathlib import Path
+        sys.path.insert(0, str(Path(__file__).parent))
+        from brats_loader import load_brats_patient, brats_volume_to_tumor_geometry
+
+        if segmentation_array is not None:
+            # Direct array path: wrap in a minimal BraTSVolume-like object
+            import numpy as np
+            import nibabel as nib
+            from brats_loader import BraTSVolume
+            import tempfile
+
+            # Save to temp file and load back through standard pipeline
+            with tempfile.TemporaryDirectory() as tmpdir:
+                tmp_path = Path(tmpdir) / 'seg.nii.gz'
+                affine = np.diag(list(voxel_spacing or [1.0, 1.0, 1.0]) + [1.0])
+                nib.save(nib.Nifti1Image(segmentation_array.astype(np.uint8), affine), str(tmp_path))
+                vol = BraTSVolume(Path(tmpdir))
+                return brats_volume_to_tumor_geometry(vol, domain_size=domain_size, max_cells=max_cells)
+        else:
+            vol = load_brats_patient(patient_id=patient_id)
+            if vol is None:
+                print("[BraTS] Falling back to synthetic geometry")
+                return create_simple_tumor_environment(domain_size=domain_size)
+            return brats_volume_to_tumor_geometry(vol, domain_size=domain_size, max_cells=max_cells)
+
+    except Exception as e:
+        print(f"[BraTS] Error in create_brats_tumor_geometry: {e}, falling back to synthetic")
+        return create_simple_tumor_environment(domain_size=domain_size)
 

@@ -16,10 +16,8 @@ import { toast } from "sonner";
 import { SimulationLoading } from "@/components/SimulationLoading";
 import { IntroPage } from "@/components/IntroPage";
 import { saveSimulationResult } from "@/lib/simulationHistory";
+import { BUILD_INFO, IS_PREVIEW_MODE, API_BASE_URL } from "@/lib/runtime";
 import { BarChart3 } from "lucide-react";
-
-// The URL of your running FastAPI backend
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8001";
 
 interface SimulationConfig {
   grid_width: number;
@@ -109,6 +107,11 @@ const Index = () => {
   // --- API & SIMULATION LOGIC ---
 
   const runSimulation = useCallback(async () => {
+    if (IS_PREVIEW_MODE) {
+      toast.info("Preview mode is frontend-only. Local backend execution remains private.");
+      return;
+    }
+
     setIsLoading(true);
     setLoadingProgress(0);
     setLoadingStep(0);
@@ -430,6 +433,21 @@ const Index = () => {
 
         <div className="flex-1 overflow-auto">
           <div className="p-4 space-y-6">
+            {IS_PREVIEW_MODE && (
+                  <Card className="border-amber-300 bg-amber-50/90 shadow-md dark:border-amber-700 dark:bg-amber-950/30">
+                    <CardHeader>
+                      <CardTitle className="text-amber-900 dark:text-amber-100">Frontend monitoring checkpoint</CardTitle>
+                      <CardDescription className="text-amber-800 dark:text-amber-200">
+                        Use this public preview to verify UI changes after merges. Simulation execution, blockchain actions, and proofs stay local only.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="grid gap-3 text-sm md:grid-cols-3">
+                      <div><strong>Mode:</strong> {BUILD_INFO.mode}</div>
+                      <div><strong>Build:</strong> {BUILD_INFO.buildLabel}</div>
+                      <div><strong>Chain:</strong> Local</div>
+                    </CardContent>
+                  </Card>
+            )}
             {/* Simulation Grid */}
             <Card className="shadow-xl border-2 border-amber-200 dark:border-amber-700 transition-all duration-300 hover:shadow-2xl hover:border-amber-300 dark:hover:border-amber-600">
               <CardHeader className="bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20">

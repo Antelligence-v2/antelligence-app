@@ -1,0 +1,791 @@
+{
+  "analysis_kind": "post_hoc_oracle_diagnostic_not_new_evaluation",
+  "analyzer_sha256": "2cd8dad807649a32acb220dc9cc60ef5153f94176b2cf8b2bbd544393b8cc3fa",
+  "arms": {
+    "evidence_exchange": {
+      "final_groups": {
+        "blocked_invalid": 5,
+        "majority_reference": 12,
+        "no_reference_proposal": 3
+      },
+      "official_statuses": {
+        "completed": 11,
+        "invalid": 9
+      },
+      "official_successes": 8,
+      "transitions": {
+        "blocked_invalid": 9,
+        "majority_lost": 1,
+        "majority_retained": 1,
+        "minority_rescued": 7,
+        "no_initial_match_unresolved": 2
+      }
+    },
+    "evidence_isolated": {
+      "final_groups": {
+        "blocked_invalid": 8,
+        "majority_reference": 1,
+        "minority_reference": 10,
+        "no_reference_proposal": 1
+      },
+      "official_statuses": {
+        "completed": 7,
+        "invalid": 13
+      },
+      "official_successes": 1,
+      "transitions": {
+        "blocked_invalid": 13,
+        "majority_retained": 1,
+        "minority_unresolved": 6
+      }
+    },
+    "evidence_sources": {
+      "final_groups": {
+        "blocked_invalid": 3,
+        "majority_reference": 12,
+        "minority_reference": 3,
+        "no_reference_proposal": 2
+      },
+      "official_statuses": {
+        "completed": 9,
+        "invalid": 11
+      },
+      "official_successes": 7,
+      "transitions": {
+        "blocked_invalid": 11,
+        "majority_lost": 1,
+        "majority_retained": 1,
+        "minority_rescued": 6,
+        "no_initial_match_unresolved": 1
+      }
+    },
+    "independent_vote": {
+      "final_groups": {
+        "blocked_invalid": 1,
+        "majority_reference": 16,
+        "no_reference_proposal": 3
+      },
+      "official_statuses": {
+        "completed": 19,
+        "invalid": 1
+      },
+      "official_successes": 16,
+      "transitions": {}
+    },
+    "solo_refine": {
+      "final_groups": {},
+      "official_statuses": {
+        "completed": 14,
+        "invalid": 6
+      },
+      "official_successes": 12,
+      "transitions": {}
+    }
+  },
+  "independent_vote_groups": {
+    "blocked_invalid": 1,
+    "majority_reference": 16,
+    "no_reference_proposal": 3
+  },
+  "initial_groups": {
+    "blocked_invalid": 9,
+    "majority_reference": 2,
+    "minority_reference": 7,
+    "no_reference_proposal": 2
+  },
+  "limitations": [
+    "Uses benchmark references after execution; not a deployable router or learned policy.",
+    "Only validated payloads are inspected; raw rejected answers are never recovered.",
+    "Any invalid group member blocks group classification; every selected question stays counted.",
+    "Minority reference means oracle selection opportunity, not achievable improvement.",
+    "No reference proposal does not rule out synthesis of complementary partial evidence.",
+    "Final-message groups are diagnostic; official invalid cells remain invalid.",
+    "Single hosted model, selected public tasks, one draw; not heterogeneous model diversity.",
+    "Consumed evaluation data; cannot be reused to claim a fresh replication."
+  ],
+  "questions": 20,
+  "rows": [
+    {
+      "arms": {
+        "evidence_exchange": {
+          "final_group": "majority_reference",
+          "official_correct": true,
+          "official_status": "completed",
+          "transition": "minority_rescued"
+        },
+        "evidence_isolated": {
+          "final_group": "minority_reference",
+          "official_correct": false,
+          "official_status": "completed",
+          "transition": "minority_unresolved"
+        },
+        "evidence_sources": {
+          "final_group": "majority_reference",
+          "official_correct": true,
+          "official_status": "completed",
+          "transition": "minority_rescued"
+        },
+        "independent_vote": {
+          "final_group": "majority_reference",
+          "official_correct": true,
+          "official_status": "completed"
+        },
+        "solo_refine": {
+          "official_correct": true,
+          "official_status": "completed"
+        }
+      },
+      "initial_group": "minority_reference",
+      "reference": "no",
+      "task_id": "pubmedqa:17032327"
+    },
+    {
+      "arms": {
+        "evidence_exchange": {
+          "final_group": "no_reference_proposal",
+          "official_correct": false,
+          "official_status": "completed",
+          "transition": "no_initial_match_unresolved"
+        },
+        "evidence_isolated": {
+          "final_group": "blocked_invalid",
+          "official_correct": null,
+          "official_status": "invalid",
+          "transition": "blocked_invalid"
+        },
+        "evidence_sources": {
+          "final_group": "minority_reference",
+          "official_correct": false,
+          "official_status": "completed",
+          "transition": "no_initial_match_unresolved"
+        },
+        "independent_vote": {
+          "final_group": "no_reference_proposal",
+          "official_correct": false,
+          "official_status": "completed"
+        },
+        "solo_refine": {
+          "official_correct": null,
+          "official_status": "invalid"
+        }
+      },
+      "initial_group": "no_reference_proposal",
+      "reference": "no",
+      "task_id": "pubmedqa:22534881"
+    },
+    {
+      "arms": {
+        "evidence_exchange": {
+          "final_group": "majority_reference",
+          "official_correct": null,
+          "official_status": "invalid",
+          "transition": "blocked_invalid"
+        },
+        "evidence_isolated": {
+          "final_group": "blocked_invalid",
+          "official_correct": null,
+          "official_status": "invalid",
+          "transition": "blocked_invalid"
+        },
+        "evidence_sources": {
+          "final_group": "majority_reference",
+          "official_correct": null,
+          "official_status": "invalid",
+          "transition": "blocked_invalid"
+        },
+        "independent_vote": {
+          "final_group": "majority_reference",
+          "official_correct": true,
+          "official_status": "completed"
+        },
+        "solo_refine": {
+          "official_correct": true,
+          "official_status": "completed"
+        }
+      },
+      "initial_group": "blocked_invalid",
+      "reference": "yes",
+      "task_id": "pubmedqa:25986020"
+    },
+    {
+      "arms": {
+        "evidence_exchange": {
+          "final_group": "majority_reference",
+          "official_correct": null,
+          "official_status": "invalid",
+          "transition": "blocked_invalid"
+        },
+        "evidence_isolated": {
+          "final_group": "minority_reference",
+          "official_correct": null,
+          "official_status": "invalid",
+          "transition": "blocked_invalid"
+        },
+        "evidence_sources": {
+          "final_group": "majority_reference",
+          "official_correct": null,
+          "official_status": "invalid",
+          "transition": "blocked_invalid"
+        },
+        "independent_vote": {
+          "final_group": "majority_reference",
+          "official_correct": true,
+          "official_status": "completed"
+        },
+        "solo_refine": {
+          "official_correct": null,
+          "official_status": "invalid"
+        }
+      },
+      "initial_group": "blocked_invalid",
+      "reference": "yes",
+      "task_id": "pubmedqa:29112560"
+    },
+    {
+      "arms": {
+        "evidence_exchange": {
+          "final_group": "majority_reference",
+          "official_correct": null,
+          "official_status": "invalid",
+          "transition": "blocked_invalid"
+        },
+        "evidence_isolated": {
+          "final_group": "blocked_invalid",
+          "official_correct": null,
+          "official_status": "invalid",
+          "transition": "blocked_invalid"
+        },
+        "evidence_sources": {
+          "final_group": "majority_reference",
+          "official_correct": null,
+          "official_status": "invalid",
+          "transition": "blocked_invalid"
+        },
+        "independent_vote": {
+          "final_group": "majority_reference",
+          "official_correct": true,
+          "official_status": "completed"
+        },
+        "solo_refine": {
+          "official_correct": true,
+          "official_status": "completed"
+        }
+      },
+      "initial_group": "blocked_invalid",
+      "reference": "yes",
+      "task_id": "pubmedqa:9199905"
+    },
+    {
+      "arms": {
+        "evidence_exchange": {
+          "final_group": "majority_reference",
+          "official_correct": true,
+          "official_status": "completed",
+          "transition": "minority_rescued"
+        },
+        "evidence_isolated": {
+          "final_group": "blocked_invalid",
+          "official_correct": null,
+          "official_status": "invalid",
+          "transition": "blocked_invalid"
+        },
+        "evidence_sources": {
+          "final_group": "majority_reference",
+          "official_correct": true,
+          "official_status": "completed",
+          "transition": "minority_rescued"
+        },
+        "independent_vote": {
+          "final_group": "blocked_invalid",
+          "official_correct": null,
+          "official_status": "invalid"
+        },
+        "solo_refine": {
+          "official_correct": null,
+          "official_status": "invalid"
+        }
+      },
+      "initial_group": "minority_reference",
+      "reference": "no",
+      "task_id": "pubmedqa:24799031"
+    },
+    {
+      "arms": {
+        "evidence_exchange": {
+          "final_group": "majority_reference",
+          "official_correct": true,
+          "official_status": "completed",
+          "transition": "minority_rescued"
+        },
+        "evidence_isolated": {
+          "final_group": "minority_reference",
+          "official_correct": false,
+          "official_status": "completed",
+          "transition": "minority_unresolved"
+        },
+        "evidence_sources": {
+          "final_group": "majority_reference",
+          "official_correct": true,
+          "official_status": "completed",
+          "transition": "minority_rescued"
+        },
+        "independent_vote": {
+          "final_group": "majority_reference",
+          "official_correct": true,
+          "official_status": "completed"
+        },
+        "solo_refine": {
+          "official_correct": true,
+          "official_status": "completed"
+        }
+      },
+      "initial_group": "minority_reference",
+      "reference": "yes",
+      "task_id": "pubmedqa:20121683"
+    },
+    {
+      "arms": {
+        "evidence_exchange": {
+          "final_group": "majority_reference",
+          "official_correct": true,
+          "official_status": "completed",
+          "transition": "minority_rescued"
+        },
+        "evidence_isolated": {
+          "final_group": "minority_reference",
+          "official_correct": false,
+          "official_status": "completed",
+          "transition": "minority_unresolved"
+        },
+        "evidence_sources": {
+          "final_group": "blocked_invalid",
+          "official_correct": null,
+          "official_status": "invalid",
+          "transition": "blocked_invalid"
+        },
+        "independent_vote": {
+          "final_group": "majority_reference",
+          "official_correct": true,
+          "official_status": "completed"
+        },
+        "solo_refine": {
+          "official_correct": true,
+          "official_status": "completed"
+        }
+      },
+      "initial_group": "minority_reference",
+      "reference": "yes",
+      "task_id": "pubmedqa:21726930"
+    },
+    {
+      "arms": {
+        "evidence_exchange": {
+          "final_group": "no_reference_proposal",
+          "official_correct": false,
+          "official_status": "completed",
+          "transition": "majority_lost"
+        },
+        "evidence_isolated": {
+          "final_group": "majority_reference",
+          "official_correct": true,
+          "official_status": "completed",
+          "transition": "majority_retained"
+        },
+        "evidence_sources": {
+          "final_group": "no_reference_proposal",
+          "official_correct": false,
+          "official_status": "completed",
+          "transition": "majority_lost"
+        },
+        "independent_vote": {
+          "final_group": "no_reference_proposal",
+          "official_correct": false,
+          "official_status": "completed"
+        },
+        "solo_refine": {
+          "official_correct": false,
+          "official_status": "completed"
+        }
+      },
+      "initial_group": "majority_reference",
+      "reference": "maybe",
+      "task_id": "pubmedqa:25007420"
+    },
+    {
+      "arms": {
+        "evidence_exchange": {
+          "final_group": "majority_reference",
+          "official_correct": true,
+          "official_status": "completed",
+          "transition": "minority_rescued"
+        },
+        "evidence_isolated": {
+          "final_group": "minority_reference",
+          "official_correct": false,
+          "official_status": "completed",
+          "transition": "minority_unresolved"
+        },
+        "evidence_sources": {
+          "final_group": "majority_reference",
+          "official_correct": true,
+          "official_status": "completed",
+          "transition": "minority_rescued"
+        },
+        "independent_vote": {
+          "final_group": "majority_reference",
+          "official_correct": true,
+          "official_status": "completed"
+        },
+        "solo_refine": {
+          "official_correct": true,
+          "official_status": "completed"
+        }
+      },
+      "initial_group": "minority_reference",
+      "reference": "yes",
+      "task_id": "pubmedqa:9142039"
+    },
+    {
+      "arms": {
+        "evidence_exchange": {
+          "final_group": "majority_reference",
+          "official_correct": true,
+          "official_status": "completed",
+          "transition": "majority_retained"
+        },
+        "evidence_isolated": {
+          "final_group": "blocked_invalid",
+          "official_correct": null,
+          "official_status": "invalid",
+          "transition": "blocked_invalid"
+        },
+        "evidence_sources": {
+          "final_group": "majority_reference",
+          "official_correct": true,
+          "official_status": "completed",
+          "transition": "majority_retained"
+        },
+        "independent_vote": {
+          "final_group": "majority_reference",
+          "official_correct": true,
+          "official_status": "completed"
+        },
+        "solo_refine": {
+          "official_correct": true,
+          "official_status": "completed"
+        }
+      },
+      "initial_group": "majority_reference",
+      "reference": "yes",
+      "task_id": "pubmedqa:21228436"
+    },
+    {
+      "arms": {
+        "evidence_exchange": {
+          "final_group": "majority_reference",
+          "official_correct": true,
+          "official_status": "completed",
+          "transition": "minority_rescued"
+        },
+        "evidence_isolated": {
+          "final_group": "minority_reference",
+          "official_correct": false,
+          "official_status": "completed",
+          "transition": "minority_unresolved"
+        },
+        "evidence_sources": {
+          "final_group": "majority_reference",
+          "official_correct": true,
+          "official_status": "completed",
+          "transition": "minority_rescued"
+        },
+        "independent_vote": {
+          "final_group": "majority_reference",
+          "official_correct": true,
+          "official_status": "completed"
+        },
+        "solo_refine": {
+          "official_correct": true,
+          "official_status": "completed"
+        }
+      },
+      "initial_group": "minority_reference",
+      "reference": "no",
+      "task_id": "pubmedqa:27040842"
+    },
+    {
+      "arms": {
+        "evidence_exchange": {
+          "final_group": "majority_reference",
+          "official_correct": null,
+          "official_status": "invalid",
+          "transition": "blocked_invalid"
+        },
+        "evidence_isolated": {
+          "final_group": "minority_reference",
+          "official_correct": null,
+          "official_status": "invalid",
+          "transition": "blocked_invalid"
+        },
+        "evidence_sources": {
+          "final_group": "majority_reference",
+          "official_correct": null,
+          "official_status": "invalid",
+          "transition": "blocked_invalid"
+        },
+        "independent_vote": {
+          "final_group": "majority_reference",
+          "official_correct": true,
+          "official_status": "completed"
+        },
+        "solo_refine": {
+          "official_correct": true,
+          "official_status": "completed"
+        }
+      },
+      "initial_group": "blocked_invalid",
+      "reference": "yes",
+      "task_id": "pubmedqa:26578404"
+    },
+    {
+      "arms": {
+        "evidence_exchange": {
+          "final_group": "no_reference_proposal",
+          "official_correct": false,
+          "official_status": "completed",
+          "transition": "no_initial_match_unresolved"
+        },
+        "evidence_isolated": {
+          "final_group": "blocked_invalid",
+          "official_correct": null,
+          "official_status": "invalid",
+          "transition": "blocked_invalid"
+        },
+        "evidence_sources": {
+          "final_group": "blocked_invalid",
+          "official_correct": null,
+          "official_status": "invalid",
+          "transition": "blocked_invalid"
+        },
+        "independent_vote": {
+          "final_group": "majority_reference",
+          "official_correct": true,
+          "official_status": "completed"
+        },
+        "solo_refine": {
+          "official_correct": true,
+          "official_status": "completed"
+        }
+      },
+      "initial_group": "no_reference_proposal",
+      "reference": "yes",
+      "task_id": "pubmedqa:8910148"
+    },
+    {
+      "arms": {
+        "evidence_exchange": {
+          "final_group": "blocked_invalid",
+          "official_correct": null,
+          "official_status": "invalid",
+          "transition": "blocked_invalid"
+        },
+        "evidence_isolated": {
+          "final_group": "blocked_invalid",
+          "official_correct": null,
+          "official_status": "invalid",
+          "transition": "blocked_invalid"
+        },
+        "evidence_sources": {
+          "final_group": "majority_reference",
+          "official_correct": null,
+          "official_status": "invalid",
+          "transition": "blocked_invalid"
+        },
+        "independent_vote": {
+          "final_group": "majority_reference",
+          "official_correct": true,
+          "official_status": "completed"
+        },
+        "solo_refine": {
+          "official_correct": true,
+          "official_status": "completed"
+        }
+      },
+      "initial_group": "blocked_invalid",
+      "reference": "yes",
+      "task_id": "pubmedqa:18041059"
+    },
+    {
+      "arms": {
+        "evidence_exchange": {
+          "final_group": "blocked_invalid",
+          "official_correct": null,
+          "official_status": "invalid",
+          "transition": "blocked_invalid"
+        },
+        "evidence_isolated": {
+          "final_group": "blocked_invalid",
+          "official_correct": null,
+          "official_status": "invalid",
+          "transition": "blocked_invalid"
+        },
+        "evidence_sources": {
+          "final_group": "minority_reference",
+          "official_correct": null,
+          "official_status": "invalid",
+          "transition": "blocked_invalid"
+        },
+        "independent_vote": {
+          "final_group": "majority_reference",
+          "official_correct": true,
+          "official_status": "completed"
+        },
+        "solo_refine": {
+          "official_correct": null,
+          "official_status": "invalid"
+        }
+      },
+      "initial_group": "blocked_invalid",
+      "reference": "yes",
+      "task_id": "pubmedqa:20306735"
+    },
+    {
+      "arms": {
+        "evidence_exchange": {
+          "final_group": "blocked_invalid",
+          "official_correct": null,
+          "official_status": "invalid",
+          "transition": "blocked_invalid"
+        },
+        "evidence_isolated": {
+          "final_group": "minority_reference",
+          "official_correct": null,
+          "official_status": "invalid",
+          "transition": "blocked_invalid"
+        },
+        "evidence_sources": {
+          "final_group": "blocked_invalid",
+          "official_correct": null,
+          "official_status": "invalid",
+          "transition": "blocked_invalid"
+        },
+        "independent_vote": {
+          "final_group": "majority_reference",
+          "official_correct": true,
+          "official_status": "completed"
+        },
+        "solo_refine": {
+          "official_correct": null,
+          "official_status": "invalid"
+        }
+      },
+      "initial_group": "blocked_invalid",
+      "reference": "yes",
+      "task_id": "pubmedqa:24270957"
+    },
+    {
+      "arms": {
+        "evidence_exchange": {
+          "final_group": "blocked_invalid",
+          "official_correct": null,
+          "official_status": "invalid",
+          "transition": "blocked_invalid"
+        },
+        "evidence_isolated": {
+          "final_group": "minority_reference",
+          "official_correct": null,
+          "official_status": "invalid",
+          "transition": "blocked_invalid"
+        },
+        "evidence_sources": {
+          "final_group": "minority_reference",
+          "official_correct": null,
+          "official_status": "invalid",
+          "transition": "blocked_invalid"
+        },
+        "independent_vote": {
+          "final_group": "majority_reference",
+          "official_correct": true,
+          "official_status": "completed"
+        },
+        "solo_refine": {
+          "official_correct": null,
+          "official_status": "invalid"
+        }
+      },
+      "initial_group": "blocked_invalid",
+      "reference": "no",
+      "task_id": "pubmedqa:15052394"
+    },
+    {
+      "arms": {
+        "evidence_exchange": {
+          "final_group": "majority_reference",
+          "official_correct": true,
+          "official_status": "completed",
+          "transition": "minority_rescued"
+        },
+        "evidence_isolated": {
+          "final_group": "minority_reference",
+          "official_correct": false,
+          "official_status": "completed",
+          "transition": "minority_unresolved"
+        },
+        "evidence_sources": {
+          "final_group": "majority_reference",
+          "official_correct": true,
+          "official_status": "completed",
+          "transition": "minority_rescued"
+        },
+        "independent_vote": {
+          "final_group": "majority_reference",
+          "official_correct": true,
+          "official_status": "completed"
+        },
+        "solo_refine": {
+          "official_correct": true,
+          "official_status": "completed"
+        }
+      },
+      "initial_group": "minority_reference",
+      "reference": "yes",
+      "task_id": "pubmedqa:26304701"
+    },
+    {
+      "arms": {
+        "evidence_exchange": {
+          "final_group": "blocked_invalid",
+          "official_correct": null,
+          "official_status": "invalid",
+          "transition": "blocked_invalid"
+        },
+        "evidence_isolated": {
+          "final_group": "no_reference_proposal",
+          "official_correct": null,
+          "official_status": "invalid",
+          "transition": "blocked_invalid"
+        },
+        "evidence_sources": {
+          "final_group": "no_reference_proposal",
+          "official_correct": null,
+          "official_status": "invalid",
+          "transition": "blocked_invalid"
+        },
+        "independent_vote": {
+          "final_group": "no_reference_proposal",
+          "official_correct": false,
+          "official_status": "completed"
+        },
+        "solo_refine": {
+          "official_correct": false,
+          "official_status": "completed"
+        }
+      },
+      "initial_group": "blocked_invalid",
+      "reference": "yes",
+      "task_id": "pubmedqa:27050489"
+    }
+  ],
+  "run_id": "28b93b4f-5dc1-4ff7-a58c-19d54d507582",
+  "source_report_sha256": "53dd046ee42f27c99e996dc4258f94494e24991348415fce4dd2005b64d4447d"
+}

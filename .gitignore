@@ -27,8 +27,13 @@ wheels/
 .installed.cfg
 *.egg
 
-# Node.js
-node_modules/
+# Node.js (match directories and local dependency symlinks)
+node_modules
+
+# Preserved local agent context and recovery archives; not application source
+/.codex-work/
+/.serena/
+/backups/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
@@ -74,3 +79,23 @@ logs/
 *.temp
 tmp/
 temp/
+cache/
+out/
+.hermes/
+
+# Local preview/runtime state
+frontend/.env.preview
+data/*.sqlite3
+data/*.sqlite3-*
+
+# Medical imaging data — large raw files, download via scripts/download_brats.py
+data/brats/dataset/
+data/brats/BraTS2024-GLI/
+data/brats/brain_tumor_custom/
+data/brats/samples/
+data/brats/BraTS2021/
+data/brats/*.tar
+data/brats/*.zip
+# Keep data directory structure and manifest
+!data/brats/.gitkeep
+!data/README.md

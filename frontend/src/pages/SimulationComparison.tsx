@@ -6,11 +6,10 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { ArrowLeft, Play, Download } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8001";
+import { BUILD_INFO, IS_PREVIEW_MODE, API_BASE_URL } from "@/lib/runtime";
 
 interface ComparisonConfig {
   foodCounts: number[];
@@ -46,6 +45,11 @@ export default function SimulationComparison() {
   const totalRuns = config.foodCounts.length * config.antCounts.length * config.agentTypes.length * config.iterations;
 
   const runComparison = async () => {
+    if (IS_PREVIEW_MODE) {
+      toast.info("Preview mode is frontend-only. Comparison runs stay on the local backend.");
+      return;
+    }
+
     setIsRunning(true);
     setResults([]);
     setProgress(0);
@@ -76,7 +80,7 @@ export default function SimulationComparison() {
                   trail_deposit: 2.0,
                   alarm_deposit: 2.0,
                   recruitment_deposit: 2.0,
-                  max_pheromone_value: antCount * 2.0,
+                  max_pheromone_value: Math.min(antCount * 2.0, 20.0),
                   enable_predators: false,
                   n_predators: 0,
                   predator_type: "Rule-Based",
@@ -172,9 +176,16 @@ export default function SimulationComparison() {
             <ArrowLeft className="h-4 w-4" />
             Back to Simulation
           </Button>
-          <h1 className="text-2xl font-bold text-amber-900 dark:text-amber-100">
-            🔬 Simulation Comparison Lab
-          </h1>
+          <div className="text-center">
+            <h1 className="text-2xl font-bold text-amber-900 dark:text-amber-100">
+              🔬 Simulation Comparison Lab
+            </h1>
+            {IS_PREVIEW_MODE && (
+              <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">
+                Preview build: {BUILD_INFO.buildLabel}. Batch comparisons are disabled on the public frontend.
+              </p>
+            )}
+          </div>
           <div className="w-32" />
         </div>
       </div>
@@ -324,7 +335,11 @@ export default function SimulationComparison() {
                         <YAxis label={{ value: 'Food Collected', angle: -90, position: 'insideLeft' }} />
                         <Tooltip />
                         <Legend />
-                        <Bar dataKey="collected" fill="#f59e0b" name="Food Collected" />
+                        <Bar dataKey="collected" fill="#f59e0b" name="Food Collected">
+                          {foodCollectionChart.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill="#f59e0b" />
+                          ))}
+                        </Bar>
                       </BarChart>
                     </ResponsiveContainer>
                   </CardContent>
@@ -344,8 +359,16 @@ export default function SimulationComparison() {
                         <YAxis yAxisId="right" orientation="right" label={{ value: 'Latency (ms)', angle: 90, position: 'insideRight' }} />
                         <Tooltip />
                         <Legend />
-                        <Bar yAxisId="left" dataKey="steps" fill="#3b82f6" name="Steps to Complete" />
-                        <Bar yAxisId="right" dataKey="latency" fill="#8b5cf6" name="Avg Blockchain Latency" />
+                        <Bar yAxisId="left" dataKey="steps" fill="#3b82f6" name="Steps to Complete">
+                          {performanceChart.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill="#3b82f6" />
+                          ))}
+                        </Bar>
+                        <Bar yAxisId="right" dataKey="latency" fill="#8b5cf6" name="Avg Blockchain Latency">
+                          {performanceChart.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill="#8b5cf6" />
+                          ))}
+                        </Bar>
                       </BarChart>
                     </ResponsiveContainer>
                   </CardContent>

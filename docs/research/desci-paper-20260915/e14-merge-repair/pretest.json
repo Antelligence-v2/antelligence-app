@@ -1,0 +1,36 @@
+{
+  "cost": 0.0006500000000000002,
+  "experiment": "e14-merge-repair",
+  "gate": "pretest",
+  "merged_admission_count": 3,
+  "model": "z-ai/glm-5.3-flash",
+  "parseable_count": 9,
+  "pass": true,
+  "rows": [
+    {
+      "calls": 5,
+      "merged_admitted": 4,
+      "merged_success": false,
+      "parse_errors": 2,
+      "parseable": 3,
+      "seed": 101
+    },
+    {
+      "calls": 4,
+      "merged_admitted": 3,
+      "merged_success": false,
+      "parse_errors": 1,
+      "parseable": 3,
+      "seed": 102
+    },
+    {
+      "calls": 4,
+      "merged_admitted": 5,
+      "merged_success": false,
+      "parse_errors": 1,
+      "parseable": 3,
+      "seed": 103
+    }
+  ],
+  "tokens": 18203
+}

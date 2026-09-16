@@ -1,0 +1,418 @@
+{
+  "artifacts": {
+    "memory_db": "/Volumes/WD_BLACK/antelligence-collective-20260908/hive-research-20260910/coldroom-probe-1/prototype-memory.sqlite3",
+    "report": "/Volumes/WD_BLACK/antelligence-collective-20260908/hive-research-20260910/coldroom-probe-1/report.json"
+  },
+  "code_hashes": {
+    "backend/research_coldroom.py": "67f399b2ad4524e6436f759a5348c3eb9edfb6b5a82e941278e81c04336d143a",
+    "scripts/probe_hive_coldroom.py": "bfb3939165815b6c91b7e383595a9a8b00a0af79f74b270702df57afd936a0e5"
+  },
+  "cross_process_recall": true,
+  "kind": "scripted_testbed_demonstration_not_model_evaluation",
+  "limitations": [
+    "Handwritten join policy; no LLM, learned Queen or emergent cooperation.",
+    "Same-rule transfer across randomized identifiers is not structural generalization.",
+    "Independent full-information solo can also solve this small task.",
+    "Role views are data projection, not a security boundary for same-process agents.",
+    "Scratch DB insertion/evaluator task state are trusted; hashes are not signatures.",
+    "No live API/workbench integration or model-pilot admission."
+  ],
+  "memory": {
+    "episode_id": "050dc155e540238987ce914aa101ea48f12550ce92c72ced7e5ab5a0c9b95a82",
+    "protocol": "inert-coldroom-v1",
+    "revision": 0,
+    "rules": {
+      "amber": 0,
+      "teal": 1,
+      "violet": 2
+    },
+    "source_task_id": "coldroom-development-11-r0"
+  },
+  "model_requests": 0,
+  "scenarios": {
+    "current_evidence": {
+      "attempted_actions": 6,
+      "complete": true,
+      "events": [
+        {
+          "accepted": true,
+          "action": {
+            "op": "reserve",
+            "revision": 0,
+            "sample": "vial-29-80",
+            "slot": "locker-29-2"
+          },
+          "placed": {},
+          "reason": null,
+          "reserved": {
+            "locker-29-2": "vial-29-80"
+          }
+        },
+        {
+          "accepted": true,
+          "action": {
+            "op": "place",
+            "revision": 0,
+            "sample": "vial-29-80",
+            "slot": "locker-29-2"
+          },
+          "placed": {
+            "vial-29-80": "locker-29-2"
+          },
+          "reason": null,
+          "reserved": {}
+        },
+        {
+          "accepted": true,
+          "action": {
+            "op": "reserve",
+            "revision": 0,
+            "sample": "vial-29-19",
+            "slot": "locker-29-1"
+          },
+          "placed": {
+            "vial-29-80": "locker-29-2"
+          },
+          "reason": null,
+          "reserved": {
+            "locker-29-1": "vial-29-19"
+          }
+        },
+        {
+          "accepted": true,
+          "action": {
+            "op": "place",
+            "revision": 0,
+            "sample": "vial-29-19",
+            "slot": "locker-29-1"
+          },
+          "placed": {
+            "vial-29-19": "locker-29-1",
+            "vial-29-80": "locker-29-2"
+          },
+          "reason": null,
+          "reserved": {}
+        },
+        {
+          "accepted": true,
+          "action": {
+            "op": "reserve",
+            "revision": 0,
+            "sample": "vial-29-54",
+            "slot": "locker-29-0"
+          },
+          "placed": {
+            "vial-29-19": "locker-29-1",
+            "vial-29-80": "locker-29-2"
+          },
+          "reason": null,
+          "reserved": {
+            "locker-29-0": "vial-29-54"
+          }
+        },
+        {
+          "accepted": true,
+          "action": {
+            "op": "place",
+            "revision": 0,
+            "sample": "vial-29-54",
+            "slot": "locker-29-0"
+          },
+          "placed": {
+            "vial-29-19": "locker-29-1",
+            "vial-29-54": "locker-29-0",
+            "vial-29-80": "locker-29-2"
+          },
+          "reason": null,
+          "reserved": {}
+        }
+      ],
+      "placed": {
+        "vial-29-19": "locker-29-1",
+        "vial-29-54": "locker-29-0",
+        "vial-29-80": "locker-29-2"
+      },
+      "safe_success": true,
+      "stop_reason": null,
+      "submitted_actions": 6
+    },
+    "current_evidence_after_change": {
+      "attempted_actions": 6,
+      "complete": true,
+      "events": [
+        {
+          "accepted": true,
+          "action": {
+            "op": "reserve",
+            "revision": 1,
+            "sample": "vial-29-80",
+            "slot": "locker-29-1"
+          },
+          "placed": {},
+          "reason": null,
+          "reserved": {
+            "locker-29-1": "vial-29-80"
+          }
+        },
+        {
+          "accepted": true,
+          "action": {
+            "op": "place",
+            "revision": 1,
+            "sample": "vial-29-80",
+            "slot": "locker-29-1"
+          },
+          "placed": {
+            "vial-29-80": "locker-29-1"
+          },
+          "reason": null,
+          "reserved": {}
+        },
+        {
+          "accepted": true,
+          "action": {
+            "op": "reserve",
+            "revision": 1,
+            "sample": "vial-29-19",
+            "slot": "locker-29-0"
+          },
+          "placed": {
+            "vial-29-80": "locker-29-1"
+          },
+          "reason": null,
+          "reserved": {
+            "locker-29-0": "vial-29-19"
+          }
+        },
+        {
+          "accepted": true,
+          "action": {
+            "op": "place",
+            "revision": 1,
+            "sample": "vial-29-19",
+            "slot": "locker-29-0"
+          },
+          "placed": {
+            "vial-29-19": "locker-29-0",
+            "vial-29-80": "locker-29-1"
+          },
+          "reason": null,
+          "reserved": {}
+        },
+        {
+          "accepted": true,
+          "action": {
+            "op": "reserve",
+            "revision": 1,
+            "sample": "vial-29-54",
+            "slot": "locker-29-2"
+          },
+          "placed": {
+            "vial-29-19": "locker-29-0",
+            "vial-29-80": "locker-29-1"
+          },
+          "reason": null,
+          "reserved": {
+            "locker-29-2": "vial-29-54"
+          }
+        },
+        {
+          "accepted": true,
+          "action": {
+            "op": "place",
+            "revision": 1,
+            "sample": "vial-29-54",
+            "slot": "locker-29-2"
+          },
+          "placed": {
+            "vial-29-19": "locker-29-0",
+            "vial-29-54": "locker-29-2",
+            "vial-29-80": "locker-29-1"
+          },
+          "reason": null,
+          "reserved": {}
+        }
+      ],
+      "placed": {
+        "vial-29-19": "locker-29-0",
+        "vial-29-54": "locker-29-2",
+        "vial-29-80": "locker-29-1"
+      },
+      "safe_success": true,
+      "stop_reason": null,
+      "submitted_actions": 6
+    },
+    "restarted_memory": {
+      "attempted_actions": 6,
+      "complete": true,
+      "events": [
+        {
+          "accepted": true,
+          "action": {
+            "op": "reserve",
+            "revision": 0,
+            "sample": "vial-29-80",
+            "slot": "locker-29-2"
+          },
+          "placed": {},
+          "reason": null,
+          "reserved": {
+            "locker-29-2": "vial-29-80"
+          }
+        },
+        {
+          "accepted": true,
+          "action": {
+            "op": "place",
+            "revision": 0,
+            "sample": "vial-29-80",
+            "slot": "locker-29-2"
+          },
+          "placed": {
+            "vial-29-80": "locker-29-2"
+          },
+          "reason": null,
+          "reserved": {}
+        },
+        {
+          "accepted": true,
+          "action": {
+            "op": "reserve",
+            "revision": 0,
+            "sample": "vial-29-19",
+            "slot": "locker-29-1"
+          },
+          "placed": {
+            "vial-29-80": "locker-29-2"
+          },
+          "reason": null,
+          "reserved": {
+            "locker-29-1": "vial-29-19"
+          }
+        },
+        {
+          "accepted": true,
+          "action": {
+            "op": "place",
+            "revision": 0,
+            "sample": "vial-29-19",
+            "slot": "locker-29-1"
+          },
+          "placed": {
+            "vial-29-19": "locker-29-1",
+            "vial-29-80": "locker-29-2"
+          },
+          "reason": null,
+          "reserved": {}
+        },
+        {
+          "accepted": true,
+          "action": {
+            "op": "reserve",
+            "revision": 0,
+            "sample": "vial-29-54",
+            "slot": "locker-29-0"
+          },
+          "placed": {
+            "vial-29-19": "locker-29-1",
+            "vial-29-80": "locker-29-2"
+          },
+          "reason": null,
+          "reserved": {
+            "locker-29-0": "vial-29-54"
+          }
+        },
+        {
+          "accepted": true,
+          "action": {
+            "op": "place",
+            "revision": 0,
+            "sample": "vial-29-54",
+            "slot": "locker-29-0"
+          },
+          "placed": {
+            "vial-29-19": "locker-29-1",
+            "vial-29-54": "locker-29-0",
+            "vial-29-80": "locker-29-2"
+          },
+          "reason": null,
+          "reserved": {}
+        }
+      ],
+      "placed": {
+        "vial-29-19": "locker-29-1",
+        "vial-29-54": "locker-29-0",
+        "vial-29-80": "locker-29-2"
+      },
+      "safe_success": true,
+      "stop_reason": null,
+      "submitted_actions": 6
+    },
+    "self_claimed_success": {
+      "attempted_actions": 1,
+      "complete": false,
+      "events": [
+        {
+          "accepted": false,
+          "action": {
+            "op": "claim_success",
+            "safe_success": true
+          },
+          "placed": {},
+          "reason": "invalid_action",
+          "reserved": {}
+        }
+      ],
+      "placed": {},
+      "safe_success": false,
+      "stop_reason": "invalid_action",
+      "submitted_actions": 1
+    },
+    "stale_memory_scoped": {
+      "attempted_actions": 0,
+      "complete": false,
+      "events": [],
+      "safe_success": false,
+      "status": "abstained_scope_miss"
+    },
+    "stale_memory_unchecked": {
+      "attempted_actions": 2,
+      "complete": false,
+      "events": [
+        {
+          "accepted": true,
+          "action": {
+            "op": "reserve",
+            "revision": 1,
+            "sample": "vial-29-80",
+            "slot": "locker-29-2"
+          },
+          "placed": {},
+          "reason": null,
+          "reserved": {
+            "locker-29-2": "vial-29-80"
+          }
+        },
+        {
+          "accepted": false,
+          "action": {
+            "op": "place",
+            "revision": 1,
+            "sample": "vial-29-80",
+            "slot": "locker-29-2"
+          },
+          "placed": {},
+          "reason": "incompatible_zone",
+          "reserved": {
+            "locker-29-2": "vial-29-80"
+          }
+        }
+      ],
+      "placed": {},
+      "safe_success": false,
+      "stop_reason": "incompatible_zone",
+      "submitted_actions": 6
+    }
+  },
+  "scope": "inert symbolic vials; public development fixtures; no physical/clinical validity"
+}

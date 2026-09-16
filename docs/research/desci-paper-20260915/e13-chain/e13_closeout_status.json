@@ -1,0 +1,40 @@
+{
+  "experiment": "e13-chain",
+  "status": "complete",
+  "model": "z-ai/glm-5.3-flash",
+  "provider": "nousresearch",
+  "cache_version": "v14",
+  "api": "https://inference-api.nousresearch.com/v1/chat/completions",
+  "requested_missing": {
+    "baseline": [],
+    "hive_memory": [],
+    "hive_memory_comm": []
+  },
+  "authoritative_results_files": [
+    "out/results_baseline.json",
+    "out/results_hive_memory.json",
+    "out/results_hive_memory_comm.json"
+  ],
+  "authoritative_runs_per_arm": 20,
+  "authoritative_seed_range": [101, 120],
+  "trajectory_pairs_are_authoritative": false,
+  "trajectory_note": "Trajectory action tallies include retries and are not the preregistered sweep_moves metric.",
+  "oracle_solvable": "20/20",
+  "pretest_pass": true,
+  "cache_cost_usd": {
+    "prior_mixed_v13": 1.143507140000008,
+    "prior_pretest_probe": 0.0001164,
+    "v14_pretest_all_attempts": 0.002870371,
+    "v14_full_matrix": 0.541859579089967,
+    "total_known_e13_spend": 1.688353490089975
+  },
+  "budget_cap_usd": 2.5,
+  "budget_headroom_usd": 0.811646509910025,
+  "per_arm_hard_stop_usd": 0.8,
+  "verdict": "generality_supported_within_second_task_family",
+  "cross_model_caveat": "E13 uses z-ai/glm-5.3-flash via Nous; E7v6/E9 anchors use different model/route conditions.",
+  "report": "REPORT.md",
+  "summary": "out/e13_summary.json",
+  "historical_crosscheck": "out/historical_e13_hermes_101_112.json",
+  "failed_attempt_history": "out/pilot_error.json"
+}

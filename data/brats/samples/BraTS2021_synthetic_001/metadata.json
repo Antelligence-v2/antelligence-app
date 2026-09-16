@@ -1,0 +1,25 @@
+{
+  "patient_id": "BraTS2021_synthetic_001",
+  "type": "synthetic",
+  "shape": [
+    240,
+    240,
+    155
+  ],
+  "voxel_spacing_mm": [
+    1.0,
+    1.0,
+    1.0
+  ],
+  "tumor_center_voxel": [
+    120,
+    120,
+    77
+  ],
+  "labels": {
+    "0": "background",
+    "1": "necrotic_core",
+    "2": "edema",
+    "4": "enhancing_tumor"
+  }
+}

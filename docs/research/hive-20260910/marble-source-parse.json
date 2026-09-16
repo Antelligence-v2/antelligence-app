@@ -1,0 +1,16 @@
+{
+  "parsed": false,
+  "exception": "SyntaxError",
+  "line": 324,
+  "message": "invalid syntax",
+  "source_line": "except json.JSONDecodeError:",
+  "method": "stdlib ast.parse; remote code was NOT imported or executed",
+  "source": {
+    "repo": "ulab-uiuc/MARBLE",
+    "commit": "8d60fa17b5596b44458a52d4296061b9fc13d6f2",
+    "url": "https://raw.githubusercontent.com/ulab-uiuc/MARBLE/8d60fa17b5596b44458a52d4296061b9fc13d6f2/marble/evaluator/evaluator.py",
+    "path": "/Volumes/WD_BLACK/antelligence-collective-20260908/hive-research-20260910/sources/marble-evaluator.py",
+    "sha256": "cc9234a9003792538acc5e01579f484d16446da696319cb0c34a7f3466990ad8"
+  },
+  "python_parser": "3.11"
+}

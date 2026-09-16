@@ -1,61 +1,84 @@
 # main.py
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
-import uvicorn
 import os
-import sys
-import numpy as np
+import uvicorn
 import random
+import sys
 import traceback
-import openai
+import uuid
+from pathlib import Path
+
+import numpy as np
 from dotenv import load_dotenv
 
-# Add the current directory to Python path for local development
-current_dir = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, current_dir)
 
-# Import modules directly from current directory
+def _env_truthy(name: str) -> bool:
+    return os.getenv(name, "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+# An offline process must remain offline even when a developer's .env contains
+# credentials or chain flags. Set the deny values before importing simulation
+# modules, because those modules read their feature gates at import time.
+OFFLINE_MODE = _env_truthy("ANTELLIGENCE_OFFLINE")
+if OFFLINE_MODE:
+    os.environ.update(
+        {
+            "ANTELLIGENCE_ENABLE_BLOCKCHAIN_TX": "0",
+            "CHAIN_READ_ENABLED": "0",
+            "CHAIN_WRITE_ENABLED": "0",
+            "IO_SECRET_KEY": "",
+            "OPENAI_API_KEY": "",
+            "GEMINI_API_KEY": "",
+            "MISTRAL_API_KEY": "",
+        }
+    )
+
+# Resolve local imports before importing any backend module. ``backend.main``
+# is the supported fresh-process entry point; direct imports inside the legacy
+# simulation code still expect the backend directory on sys.path.
+current_dir = Path(__file__).resolve().parent
+project_root = current_dir.parent
+for import_path in (str(project_root), str(current_dir)):
+    if import_path not in sys.path:
+        sys.path.insert(0, import_path)
+
+# Import modules directly from the backend directory for compatibility with
+# both ``uvicorn backend.main:app`` and the historical ``main:app`` command.
 from simulation import SimpleForagingModel
 from nanobot_simulation import TumorNanobotModel
 from tumor_environment import CellPhase
+from backend.tumor_runs import TumorRunStore, build_tumor_provenance, initial_geometry_hash
 from schemas import (
-    SimulationConfig, SimulationResult, StepState, AntState, 
+    SimulationConfig, SimulationResult, StepState, AntState,
     PheromoneMapData, ForagingEfficiencyData, FoodDepletionPoint,
     ComparisonConfig, ComparisonResult, PerformanceData,
     PheromoneConfigUpdate, PredatorState,
     # Tumor simulation schemas
     TumorSimulationConfig, TumorSimulationResult, TumorStepState,
     NanobotState, TumorCellState, VesselState, SubstrateMapData,
-    TumorComparisonConfig, TumorComparisonResult, TumorPerformanceData
+    TumorComparisonConfig, TumorComparisonResult, TumorPerformanceData,
+    TumorHuntConfig
+)
+from backend.experiments import (
+    ExperimentCaseNotFound,
+    ExperimentFailure,
+    ExperimentNotFound,
+    ExperimentRequest,
+    ExperimentStore,
+    execute_experiment,
+    replay_experiment_case,
 )
 
 # Load environment variables
 load_dotenv()
 
-# Get API key from environment
-IO_API_KEY = os.getenv("IO_SECRET_KEY")
-
-# --- Blockchain Integration ---
-BLOCKCHAIN_ENABLED = False
-try:
-    # Add parent directory to path to find blockchain module
-    import sys
-    import os
-    parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    sys.path.insert(0, parent_dir)
-    
-    from blockchain.client import w3, acct, MEMORY_CONTRACT_ADDRESS
-    BLOCKCHAIN_ENABLED = True
-    print("✅ Blockchain client loaded successfully!")
-except ImportError as e:
-    print(f"⚠️ Blockchain client import failed: {e}. Blockchain features will use simulated transactions.")
-    BLOCKCHAIN_ENABLED = False
-except Exception as e:
-    print(f"⚠️ Blockchain client could not be loaded: {e}. Blockchain features will use simulated transactions.")
-    BLOCKCHAIN_ENABLED = False
+# This is only a configuration signal. Do not import blockchain.client at API
+# startup; transaction-capable code is loaded only behind this explicit gate.
+BLOCKCHAIN_TX_ENABLED = _env_truthy("ANTELLIGENCE_ENABLE_BLOCKCHAIN_TX")
 
 app = FastAPI(
     title="Antelligence API",
@@ -63,9 +86,22 @@ app = FastAPI(
     version="1.0.0"
 )
 
+_DEFAULT_DB_PATH = Path(
+    os.environ.get("ANTELLIGENCE_RUN_DB", project_root / "data" / "api_runs.sqlite3")
+)
+TUMOR_RUN_STORE = TumorRunStore(_DEFAULT_DB_PATH)
+EXPERIMENT_STORE = ExperimentStore(_DEFAULT_DB_PATH)
+_TUMOR_RUNS = {}
+
+# Research is a separate, local-only job surface. It neither enables the old
+# simulation LLM switches nor changes chain/proof trust.
+from backend.research_api import ResearchService, make_router
+RESEARCH_SERVICE = ResearchService(Path(os.environ.get("ANTELLIGENCE_RESEARCH_DB", _DEFAULT_DB_PATH)))
+app.include_router(make_router(RESEARCH_SERVICE))
+
 # Mount static files (frontend build)
 try:
-    app.mount("/static", StaticFiles(directory="static"), name="static")
+    app.mount("/static", StaticFiles(directory=str(project_root / "static")), name="static")
 except Exception as e:
     print(f"Warning: Could not mount static files: {e}")
 
@@ -73,7 +109,7 @@ except Exception as e:
 @app.get("/")
 async def read_root():
     try:
-        return FileResponse("static/index.html")
+        return FileResponse(str(project_root / "static" / "index.html"))
     except Exception as e:
         return {"message": "Frontend not built. Please build the frontend first.", "error": str(e)}
 
@@ -82,23 +118,26 @@ async def read_root():
 async def health_check():
     return {"status": "healthy", "service": "antelligence-api"}
 
-# Define the list of allowed origins for CORS
-# Production-ready CORS configuration
+# Define the list of allowed origins for local frontend development.
 origins = [
     "http://localhost",
-    "http://localhost:3000",  # Default React port
-    "http://localhost:5173",  # Default Vite port
-    "http://localhost:8080",  # Your current frontend port
-    "http://127.0.0.1:5173",  # Vite sometimes uses 127.0.0.1 instead of localhost
-    "http://127.0.0.1:8080",  # Your current frontend port (127.0.0.1 variant)
-    "https://yourdomain.com",  # Replace with your production domain
-    "https://antelligence.yourdomain.com",  # Replace with your production subdomain
+    "http://localhost:3000",
+    "http://localhost:4173",
+    "http://localhost:5173",
+    "http://localhost:8080",
+    "http://localhost:8081",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:4173",
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:8080",
+    "http://127.0.0.1:8081",
 ]
 
 # Add the CORS middleware to the application
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
+    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$",
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],  # Explicitly allow OPTIONS
     allow_headers=["*"],  # Allow all headers to prevent CORS preflight issues
@@ -194,7 +233,7 @@ async def run_simulation(config: SimulationConfig):
     """
     try:
         print(f"[SIMULATION] Starting simulation with config: {config.dict()}")
-        print(f"[BLOCKCHAIN] Backend blockchain enabled: {BLOCKCHAIN_ENABLED}")
+        print(f"[BLOCKCHAIN] Transaction writes enabled: {BLOCKCHAIN_TX_ENABLED}")
         np.random.seed(42)
         random.seed(42)
 
@@ -560,7 +599,7 @@ def convert_substrate_maps(model: TumorNanobotModel) -> SubstrateMapData:
             mean_values[name] = float(np.mean(substrate.concentration))
         else:
             # Create empty grid if substrate doesn't exist
-            grid_size = model.microenv.dims[0]
+            grid_size = model.microenv.shape[0]
             substrate_data[name] = [[0.0] * grid_size for _ in range(grid_size)]
             max_values[name] = 0.0
             mean_values[name] = 0.0
@@ -583,132 +622,177 @@ def convert_substrate_maps(model: TumorNanobotModel) -> SubstrateMapData:
     )
 
 
+
+def _model_dump(value):
+    """Return a JSON-ready Pydantic model dump across pydantic versions."""
+    if hasattr(value, "model_dump"):
+        return value.model_dump(mode="json")
+    return value.dict()
+
+
+def _offline_calls(config: TumorSimulationConfig) -> list[str]:
+    calls: list[str] = []
+    if config.agent_type != "Rule-Based" or config.use_llm_queen:
+        calls.append("llm")
+    if (
+        _env_truthy("ANTELLIGENCE_ENABLE_BLOCKCHAIN_TX")
+        or _env_truthy("CHAIN_READ_ENABLED")
+        or _env_truthy("CHAIN_WRITE_ENABLED")
+    ):
+        calls.append("chain")
+    return calls
+
+
+def _validate_tumor_execution(config: TumorSimulationConfig):
+    if config.use_brats_geometry or config.brats_patient_id is not None:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "type": "unsupported_patient_geometry",
+                "message": "Patient-specific geometry is not supported by this API runtime.",
+            },
+        )
+
+    if OFFLINE_MODE or config.offline:
+        calls = _offline_calls(config)
+        if calls:
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "type": "offline_mode_rejected",
+                    "calls": calls,
+                    "message": "Offline mode rejects LLM and chain calls.",
+                },
+            )
+
+def _new_tumor_model(config: TumorSimulationConfig, *, pheromones_enabled: bool | None = None):
+    # Geometry still consumes module-global RNGs; model.rng alone is insufficient.
+    if config.seed is not None:
+        np.random.seed(config.seed)
+        random.seed(config.seed)
+    if pheromones_enabled is None:
+        pheromones_enabled = config.pheromones_enabled
+    return TumorNanobotModel(
+        domain_size=config.domain_size,
+        voxel_size=config.voxel_size,
+        n_nanobots=config.n_nanobots,
+        tumor_radius=config.tumor_radius,
+        agent_type=config.agent_type,
+        with_queen=config.use_queen,
+        use_llm_queen=config.use_llm_queen,
+        selected_model=config.selected_model,
+        seed=config.seed,
+        cell_density=config.cell_density,
+        vessel_density=config.vessel_density,
+        pheromones_enabled=pheromones_enabled,
+    )
+
+
 @app.post("/simulation/tumor/run", response_model=TumorSimulationResult)
 async def run_tumor_simulation(config: TumorSimulationConfig):
-    """
-    Run a tumor nanobot simulation with PhysiCell-inspired dynamics.
-    
-    This endpoint runs the core PhysiCell-based glioblastoma nanobot simulation
-    with pheromone-guided drug delivery.
-    """
+    """Run a tumor simulation and persist its staged proof provenance."""
+    _validate_tumor_execution(config)
+
+    run_id = str(uuid.uuid4())
     try:
-        print(f"[TUMOR SIM] Starting tumor simulation with config: {config.dict()}")
-        
-        # Set random seeds for reproducibility
-        np.random.seed(42)
-        random.seed(42)
-        
-        # Initialize the tumor nanobot model
-        model = TumorNanobotModel(
-            domain_size=config.domain_size,
-            voxel_size=config.voxel_size,
-            n_nanobots=config.n_nanobots,
-            tumor_radius=config.tumor_radius,
-            agent_type=config.agent_type,
-            with_queen=config.use_queen,
-            use_llm_queen=config.use_llm_queen,
-            selected_model=config.selected_model
-        )
-        
+        actual_config = _model_dump(config)
+        print(f"[TUMOR SIM] Starting tumor simulation with config: {actual_config}")
+
+        model = _new_tumor_model(config)
+
         print(f"[TUMOR SIM] Model initialized. Starting {config.max_steps} steps...")
-        
-        # Track initial tumor stats
         initial_stats = model.geometry.get_tumor_statistics()
-        
+        initial_geometry = initial_geometry_hash(model)
         history = []
-        detail_interval = max(1, config.max_steps // 20)  # Capture ~20 snapshots
-        
-        # Store initial vessel positions (static, only need once)
+        detail_interval = max(1, config.max_steps // 20)
         vessels_state = [
             VesselState(
                 position=v.position,
                 oxygen_supply=v.oxygen_supply,
                 drug_supply=v.drug_supply,
-                supply_radius=v.supply_radius
+                supply_radius=v.supply_radius,
             )
             for v in model.geometry.vessels
         ]
-        
+
         for step_num in range(config.max_steps):
-            print(f"[TUMOR SIM] Step {step_num + 1}/{config.max_steps}")
             model.step()
-            
-            # Create nanobot states
-            nanobots_state = [nanobot.to_dict() for nanobot in model.nanobots]
-            nanobots_state = [
-                NanobotState(**nb) for nb in nanobots_state
-            ]
-            
-            # Capture detailed state periodically
+            nanobots_state = [NanobotState(**nanobot.to_dict()) for nanobot in model.nanobots]
             capture_detail = (step_num % detail_interval == 0) or (step_num == config.max_steps - 1)
-            substrate_data = None
-            
-            if capture_detail:
-                substrate_data = convert_substrate_maps(model)
-                
-            # Include all living tumor cell states at every step
+            substrate_data = convert_substrate_maps(model) if capture_detail else None
             tumor_cells_state = [
-                TumorCellState(**cell.to_dict())
-                for cell in model.geometry.get_living_cells()
+                TumorCellState(**cell.to_dict()) for cell in model.geometry.get_living_cells()
             ]
-            
-            # Create step state
-            current_state = TumorStepState(
-                step=model.step_count,
-                time=model.microenv.time,
-                nanobots=nanobots_state,
-                tumor_cells=tumor_cells_state,
-                vessels=vessels_state if step_num == 0 else [],  # Only include vessels in first step
-                metrics=model.metrics.copy(),
-                queen_report=model.queen_report,
-                errors=model.errors.copy(),
-                substrate_data=substrate_data
+            history.append(
+                TumorStepState(
+                    step=model.step_count,
+                    time=model.microenv.time,
+                    nanobots=nanobots_state,
+                    tumor_cells=tumor_cells_state,
+                    vessels=vessels_state if step_num == 0 else [],
+                    metrics=model.metrics.copy(),
+                    queen_report=model.queen_report,
+                    errors=model.errors.copy(),
+                    substrate_data=substrate_data,
+                )
             )
-            
-            history.append(current_state)
             model.errors.clear()
-        
-        print(f"[TUMOR SIM] Simulation completed after {model.step_count} steps")
-        
-        # Get final tumor statistics
+
         final_stats = model.geometry.get_tumor_statistics()
-        
-        # Calculate treatment effectiveness
-        initial_living = initial_stats['living_cells']
-        final_living = final_stats['living_cells']
+        initial_living = initial_stats["living_cells"]
+        final_living = final_stats["living_cells"]
         cells_killed = initial_living - final_living
-        
         tumor_statistics = {
-            'initial_living_cells': initial_living,
-            'final_living_cells': final_living,
-            'cells_killed': cells_killed,
-            'kill_rate': cells_killed / initial_living if initial_living > 0 else 0,
-            'initial_hypoxic': len([c for c in model.geometry.tumor_cells if c.phase.value == 'hypoxic']),
-            'final_hypoxic': final_stats['phase_distribution'].get('hypoxic', 0),
-            'apoptotic_cells': final_stats['phase_distribution'].get('apoptotic', 0),
-            'necrotic_cells': final_stats['phase_distribution'].get('necrotic', 0)
+            "initial_living_cells": initial_living,
+            "final_living_cells": final_living,
+            "cells_killed": cells_killed,
+            "kill_rate": cells_killed / initial_living if initial_living > 0 else 0,
+            "initial_hypoxic": initial_stats["phase_distribution"].get("hypoxic", 0),
+            "final_hypoxic": final_stats["phase_distribution"].get("hypoxic", 0),
+            "apoptotic_cells": final_stats["phase_distribution"].get("apoptotic", 0),
+            "necrotic_cells": final_stats["phase_distribution"].get("necrotic", 0),
         }
-        
-        # Get final substrate data
+        final_metrics = dict(model.metrics)
         final_substrate_data = convert_substrate_maps(model)
-        
-        # Blockchain logs (placeholder for now)
-        blockchain_logs = [
-            f"Simulation initialized: {model.step_count} steps, {len(model.nanobots)} nanobots",
-            f"Treatment outcome: {cells_killed} cells killed, {model.metrics['total_deliveries']} drug deliveries"
-        ]
-        
-        return TumorSimulationResult(
+        blockchain_logs = list(getattr(model, "blockchain_logs", []) or [])
+        provenance = build_tumor_provenance(
+            run_id=run_id,
+            config=actual_config,
+            tumor_statistics=tumor_statistics,
+            metrics=final_metrics,
+        )
+        result = TumorSimulationResult(
             config=config,
             total_steps_run=model.step_count,
             total_time=model.microenv.time,
-            final_metrics=model.metrics,
+            final_metrics=final_metrics,
             history=history,
             tumor_statistics=tumor_statistics,
+            initial_geometry_hash=initial_geometry,
             final_substrate_data=final_substrate_data,
-            blockchain_logs=blockchain_logs
+            blockchain_logs=blockchain_logs,
+            run_id=run_id,
+            config_hash=provenance["config_hash"],
+            proof_staged=provenance["proof_staged"],
+            proof_ok=provenance["proof_ok"],
+            public_values=provenance["public_values"],
+            proof_bundle=provenance["proof_bundle"],
+            mock_bundle=provenance["mock_bundle"],
+            provenance=provenance,
         )
-        
+        result_data = _model_dump(result)
+        TUMOR_RUN_STORE.save(
+            run_id=run_id,
+            status="completed",
+            config=actual_config,
+            metrics=final_metrics,
+            provenance=provenance,
+            result=result_data,
+        )
+        _TUMOR_RUNS[run_id] = result_data
+        return result
+    except HTTPException:
+        raise
     except Exception as e:
         print("--- ERROR IN /simulation/tumor/run ---")
         traceback.print_exc()
@@ -716,28 +800,92 @@ async def run_tumor_simulation(config: TumorSimulationConfig):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.get("/simulation/tumor/runs/{run_id}", response_model=TumorSimulationResult)
+def get_tumor_run(run_id: str):
+    """Retrieve a persisted tumor run by its UUID."""
+    result = _TUMOR_RUNS.get(run_id)
+    if result is None:
+        persisted = TUMOR_RUN_STORE.get(run_id)
+        if persisted is not None:
+            result = persisted.get("result")
+            if result is not None:
+                _TUMOR_RUNS[run_id] = result
+    if result is None:
+        raise HTTPException(
+            status_code=404,
+            detail={"type": "run_not_found", "run_id": run_id, "message": f"Run '{run_id}' not found."},
+        )
+    return JSONResponse(content=result)
+
+
+async def _run_experiment_case(config: TumorSimulationConfig):
+    result = await run_tumor_simulation(config)
+    # The runner has already persisted this snapshot. Batch history must not
+    # accumulate in the interactive single-run cache; playback reads SQLite.
+    _TUMOR_RUNS.pop(result.run_id, None)
+    return result
+
+
+@app.post("/experiments")
+async def create_experiment(request: ExperimentRequest):
+    """Run the bounded no-bot/fixed/pheromone batch sequentially."""
+    try:
+        return await execute_experiment(
+            request,
+            runner=_run_experiment_case,
+            store=EXPERIMENT_STORE,
+        )
+    except ExperimentFailure as failure:
+        raise HTTPException(status_code=failure.status_code, detail=failure.detail) from failure
+
+
+@app.get("/experiments")
+def list_experiments(
+    limit: int = Query(50, ge=1, le=50),
+    offset: int = Query(0, ge=0),
+):
+    experiments, has_more = EXPERIMENT_STORE.list(limit=limit, offset=offset)
+    return {"experiments": experiments, "has_more": has_more}
+
+
+@app.get("/experiments/{experiment_id}")
+def get_experiment(experiment_id: str):
+    document = EXPERIMENT_STORE.get(experiment_id)
+    if document is None:
+        raise HTTPException(
+            status_code=404,
+            detail={"type": "experiment_not_found", "experiment_id": experiment_id},
+        )
+    return document
+
+
+@app.post("/experiments/{experiment_id}/replay/{case_id}")
+async def replay_experiment(experiment_id: str, case_id: str):
+    try:
+        return await replay_experiment_case(
+            experiment_id,
+            case_id,
+            runner=_run_experiment_case,
+            store=EXPERIMENT_STORE,
+            tumor_store=TUMOR_RUN_STORE,
+        )
+    except (ExperimentNotFound, ExperimentCaseNotFound) as missing:
+        status = 404
+        detail_type = "experiment_not_found" if isinstance(missing, ExperimentNotFound) else "experiment_case_not_found"
+        raise HTTPException(status_code=status, detail={"type": detail_type, "id": str(missing)}) from missing
+
+
 @app.post("/simulation/tumor/performance", response_model=TumorPerformanceData)
 async def get_tumor_performance(config: TumorSimulationConfig):
     """
     Run tumor simulation and return focused performance metrics.
     """
+    _validate_tumor_execution(config)
     try:
         print(f"[TUMOR PERF] Running performance analysis...")
         
-        np.random.seed(42)
-        random.seed(42)
-        
-        model = TumorNanobotModel(
-            domain_size=config.domain_size,
-            voxel_size=config.voxel_size,
-            n_nanobots=config.n_nanobots,
-            tumor_radius=config.tumor_radius,
-            agent_type=config.agent_type,
-            with_queen=config.use_queen,
-            use_llm_queen=config.use_llm_queen,
-            selected_model=config.selected_model
-        )
-        
+        model = _new_tumor_model(config)
+
         initial_hypoxic = len(model.geometry.get_cells_in_phase(CellPhase.HYPOXIC))
         initial_living = len(model.geometry.get_living_cells())
         
@@ -776,33 +924,22 @@ async def compare_tumor_strategies(config: TumorComparisonConfig):
     """
     Compare pheromone-guided vs. non-pheromone nanobot strategies.
     """
+    _validate_tumor_execution(config)
+    if config.agent_type != "Rule-Based" or config.use_queen or config.use_llm_queen:
+        raise HTTPException(status_code=422, detail={
+            "type": "unsupported_comparison_policy",
+            "message": "Pheromone ablation requires Rule-Based workers without a Queen.",
+        })
+    if config.seed is None:
+        config = config.model_copy(update={"seed": 0})
     try:
         print(f"[TUMOR COMPARE] Starting strategy comparison...")
         
         # Helper function to run one simulation
         def run_one(use_pheromones: bool, steps: int):
-            np.random.seed(42)
-            random.seed(42)
-            
-            model = TumorNanobotModel(
-                domain_size=config.domain_size,
-                voxel_size=config.voxel_size,
-                n_nanobots=config.n_nanobots,
-                tumor_radius=config.tumor_radius,
-                agent_type="Rule-Based",  # Use rule-based for fair comparison
-                with_queen=False,
-                use_llm_queen=False,
-                selected_model=config.selected_model
-            )
-            
+            model = _new_tumor_model(config, pheromones_enabled=use_pheromones)
+
             initial_living = len(model.geometry.get_living_cells())
-            
-            # If not using pheromones, disable chemotaxis to pheromones
-            if not use_pheromones:
-                for nanobot in model.nanobots:
-                    nanobot.chemotaxis_weights['trail'] = 0.0
-                    nanobot.chemotaxis_weights['alarm'] = 0.0
-                    nanobot.chemotaxis_weights['recruitment'] = 0.0
             
             for _ in range(steps):
                 model.step()
@@ -875,6 +1012,162 @@ async def test_tumor_simulation():
         print(f"[TUMOR TEST] Error: {str(e)}")
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/simulation/tumor/hunt")
+async def run_tumor_hunt(config: TumorHuntConfig):
+    """Tumor Hunt v2: dynamic wave-based tumor cell spawning with nanobot hunters."""
+    try:
+        from tumor_hunt import TumorHuntModel
+    except ImportError:
+        try:
+            from backend.tumor_hunt import TumorHuntModel
+        except ImportError as e:
+            raise HTTPException(status_code=500, detail=f"Could not import TumorHuntModel: {e}")
+
+    try:
+        print(f"[TUMOR HUNT] Starting hunt simulation: {config.n_nanobots} nanobots, "
+              f"{config.initial_cells} initial cells, {config.max_waves} waves")
+
+        model = TumorHuntModel(config)
+        history = []
+        detail_interval = max(1, config.max_steps // 30)  # pheromone data every ~30 steps
+
+        for step in range(config.max_steps):
+            model.step()
+            include_phero = (step % detail_interval == 0) or (step == config.max_steps - 1)
+            history.append(model.get_step_state(include_pheromones=include_phero))
+
+            # Stop early if all cells dead and no more waves coming
+            if (model.metrics["cells_alive"] == 0
+                    and model.waves_spawned >= config.max_waves
+                    and step > config.wave_interval):
+                print(f"[TUMOR HUNT] All cells eliminated at step {step + 1}. Early stop.")
+                break
+
+        final_metrics = model.metrics.copy()
+        cells_killed = final_metrics["cells_killed"]
+        cells_spawned = model.cells_spawned
+
+        print(f"[TUMOR HUNT] Done. Steps: {model.step_count}, "
+              f"Killed: {cells_killed}/{cells_spawned}, "
+              f"Kill rate: {round(cells_killed / max(1, cells_spawned), 4)}")
+
+        return {
+            "config": config.dict(),
+            "total_steps_run": model.step_count,
+            "history": history,
+            "final_metrics": final_metrics,
+            "waves_spawned": model.waves_spawned,
+            "cells_spawned": cells_spawned,
+            "cells_killed": cells_killed,
+            "kill_rate": round(cells_killed / max(1, cells_spawned), 4)
+        }
+
+    except Exception as e:
+        print(f"[TUMOR HUNT] Error: {str(e)}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/simulation/tumor/compare-ced")
+async def compare_nanobot_vs_ced(config: TumorSimulationConfig):
+    """
+    Run nanobot simulation and CED baseline on the same tumor geometry.
+    Returns side-by-side comparison metrics.
+    """
+    _validate_tumor_execution(config)
+    try:
+        from ced_baseline import CEDSimulation, CEDParams
+        from tumor_environment import create_simple_tumor_environment
+    except ImportError:
+        try:
+            from backend.ced_baseline import CEDSimulation, CEDParams
+            from backend.tumor_environment import create_simple_tumor_environment
+        except ImportError:
+            raise HTTPException(status_code=500, detail="Could not import CED or tumor environment modules")
+
+    import copy
+
+    # Shared tumor geometry
+    geometry = create_simple_tumor_environment(
+        domain_size=config.domain_size,
+        tumor_radius=config.tumor_radius
+    )
+
+    # --- Run CED baseline ---
+    ced_cells = copy.deepcopy(geometry.tumor_cells)
+    ced = CEDSimulation(
+        domain_size=config.domain_size,
+        voxel_size=config.voxel_size,
+        tumor_cells=ced_cells,
+        catheter_position=(config.domain_size / 2, config.domain_size / 2)
+    )
+    ced_history = ced.run(
+        total_steps=config.max_steps,
+        record_interval=max(1, config.max_steps // 20)
+    )
+    ced_report = ced.get_comparison_report()
+
+    # --- Run nanobot simulation ---
+    nano_model = TumorNanobotModel(
+        domain_size=config.domain_size,
+        voxel_size=config.voxel_size,
+        n_nanobots=config.n_nanobots,
+        tumor_radius=config.tumor_radius,
+        agent_type=config.agent_type,
+        with_queen=config.use_queen,
+        use_llm_queen=config.use_llm_queen,
+        selected_model=config.selected_model,
+    )
+    # Override geometry with same cells as CED used
+    nano_model.geometry = geometry
+
+    for _ in range(config.max_steps):
+        nano_model.step()
+
+    nano_report = {
+        "method": "Antelligence Nanobot Swarm",
+        "cells_killed": nano_model.metrics.get("cells_killed", 0),
+        "initial_cells": len(geometry.tumor_cells),
+        "kill_rate": round(
+            nano_model.metrics.get("cells_killed", 0) / max(1, len(geometry.tumor_cells)), 4
+        ),
+        "total_drug_delivered": round(nano_model.metrics.get("total_drug_delivered", 0), 4),
+        "drug_efficiency_kills_per_unit": round(
+            nano_model.metrics.get("cells_killed", 0) /
+            max(0.001, nano_model.metrics.get("total_drug_delivered", 0.001)), 4
+        ),
+        "total_deliveries": nano_model.metrics.get("total_deliveries", 0),
+        "advantages": [
+            "Cell-type-aware targeting (prioritizes stem cells)",
+            "Pheromone-guided swarm coordination",
+            "Real-time adaptation based on tumor response",
+            "LLM-driven strategic decisions",
+            "No surgery required for delivery",
+            "Can reach infiltrating margin cells",
+        ]
+    }
+
+    # Compute advantage metrics
+    nano_kill = nano_report["kill_rate"]
+    ced_kill = ced_report["kill_rate"]
+    nano_eff = nano_report["drug_efficiency_kills_per_unit"]
+    ced_eff = ced_report["drug_efficiency_kills_per_unit"]
+
+    return {
+        "ced": ced_report,
+        "nanobot": nano_report,
+        "comparison": {
+            "kill_rate_advantage": round(nano_kill - ced_kill, 4),
+            "kill_rate_ratio": round(nano_kill / max(0.001, ced_kill), 3),
+            "drug_efficiency_advantage": round(nano_eff - ced_eff, 4),
+            "nanobot_wins_kill_rate": nano_kill > ced_kill,
+            "nanobot_wins_efficiency": nano_eff > ced_eff,
+            "shared_tumor_geometry": True,
+            "steps_run": config.max_steps,
+        }
+    }
 
 
 # --- Simulation Caching and Comparison Endpoints ---

@@ -12,3 +12,4 @@ scipy
 nibabel
 scikit-image
 pydantic
+matplotlib

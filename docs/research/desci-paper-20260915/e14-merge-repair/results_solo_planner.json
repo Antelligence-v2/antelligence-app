@@ -1,0 +1,2823 @@
+{
+  "api": "https://inference-api.nousresearch.com/v1/chat/completions",
+  "api_key_env": "~/.hermes/auth.json:providers.nous.access_token|agent_key",
+  "arm": "solo_planner",
+  "budget_stopped": false,
+  "config": {
+    "max_arm_cost": 0.07,
+    "max_tokens": 2200,
+    "rules": [
+      "acyclicity",
+      "reachability",
+      "contradiction_cascade",
+      "resource_consistency",
+      "verifier_feasibility"
+    ],
+    "seeds": [
+      101,
+      102,
+      103,
+      104,
+      105,
+      106,
+      107,
+      108,
+      109,
+      110,
+      111,
+      112,
+      113,
+      114,
+      115,
+      116,
+      117,
+      118,
+      119,
+      120
+    ],
+    "temperature": 0.0
+  },
+  "experiment": "e14-merge-repair",
+  "model": "z-ai/glm-5.3-flash",
+  "provider": "nousresearch",
+  "runs": [
+    {
+      "admission": {
+        "accepted_count": 8,
+        "accepted_dag": {
+          "goal_sink": "__goal_sink__",
+          "nodes": [
+            {
+              "action": {
+                "op": "reserve",
+                "revision": 0,
+                "sample": "sample-0",
+                "slot": "slot-0"
+              },
+              "evidence": [
+                {
+                  "revision": 0,
+                  "source_id": "fixture"
+                }
+              ],
+              "id": "node-39c2796602476429",
+              "parents": [
+                "__source__"
+              ],
+              "resource": "bench"
+            },
+            {
+              "action": {
+                "op": "place",
+                "revision": 0,
+                "sample": "sample-0",
+                "slot": "slot-0"
+              },
+              "evidence": [
+                {
+                  "revision": 0,
+                  "source_id": "fixture"
+                }
+              ],
+              "id": "node-aba6c494ab82b015",
+              "parents": [
+                "node-39c2796602476429"
+              ],
+              "resource": "bench"
+            },
+            {
+              "action": {
+                "op": "reserve",
+                "revision": 0,
+                "sample": "sample-1",
+                "slot": "slot-1"
+              },
+              "evidence": [
+                {
+                  "revision": 0,
+                  "source_id": "fixture"
+                }
+              ],
+              "id": "node-28ad731a0c64eb39",
+              "parents": [
+                "node-aba6c494ab82b015"
+              ],
+              "resource": "bench"
+            },
+            {
+              "action": {
+                "op": "place",
+                "revision": 0,
+                "sample": "sample-1",
+                "slot": "slot-1"
+              },
+              "evidence": [
+                {
+                  "revision": 0,
+                  "source_id": "fixture"
+                }
+              ],
+              "id": "node-e5da660cd8d7df1b",
+              "parents": [
+                "node-28ad731a0c64eb39"
+              ],
+              "resource": "bench"
+            },
+            {
+              "action": {
+                "op": "reserve",
+                "revision": 0,
+                "sample": "sample-2",
+                "slot": "slot-3"
+              },
+              "evidence": [
+                {
+                  "revision": 0,
+                  "source_id": "fixture"
+                }
+              ],
+              "id": "node-30c08db81edafe7f",
+              "parents": [
+                "node-e5da660cd8d7df1b"
+              ],
+              "resource": "bench"
+            },
+            {
+              "action": {
+                "op": "place",
+                "revision": 0,
+                "sample": "sample-2",
+                "slot": "slot-3"
+              },
+              "evidence": [
+                {
+                  "revision": 0,
+                  "source_id": "fixture"
+                }
+              ],
+              "id": "node-d738ed5db75f4b5a",
+              "parents": [
+                "node-30c08db81edafe7f"
+              ],
+              "resource": "bench"
+            },
+            {
+              "action": {
+                "op": "reserve",
+                "revision": 0,
+                "sample": "sample-3",
+                "slot": "slot-2"
+              },
+              "evidence": [
+                {
+                  "revision": 0,
+                  "source_id": "fixture"
+                }
+              ],
+              "id": "node-41bcf8b6fb830500",
+              "parents": [
+                "node-d738ed5db75f4b5a"
+              ],
+              "resource": "bench"
+            },
+            {
+              "action": {
+                "op": "place",
+                "revision": 0,
+                "sample": "sample-3",
+                "slot": "slot-2"
+              },
+              "evidence": [
+                {
+                  "revision": 0,
+                  "source_id": "fixture"
+                }
+              ],
+              "id": "node-dc07c4fa432717e1",
+              "parents": [
+                "node-41bcf8b6fb830500"
+              ],
+              "resource": "bench"
+            }
+          ],
+          "sink_parents": [
+            "node-dc07c4fa432717e1"
+          ],
+          "source": "__source__",
+          "version": "e14-merge-repair-v5"
+        },
+        "accepted_node_keys": [
+          "node-39c2796602476429",
+          "node-aba6c494ab82b015",
+          "node-28ad731a0c64eb39",
+          "node-e5da660cd8d7df1b",
+          "node-30c08db81edafe7f",
+          "node-d738ed5db75f4b5a",
+          "node-41bcf8b6fb830500",
+          "node-dc07c4fa432717e1"
+        ],
+        "proposed_node_count": 8,
+        "rejected": [],
+        "rejection_breakdown": {
+          "acyclicity": 0,
+          "contradiction_cascade": 0,
+          "reachability": 0,
+          "resource_consistency": 0,
+          "verifier_feasibility": 0
+        },
+        "unique_node_count": 8,
+        "version": "e14-merge-repair-v5"
+      },
+      "api_calls": 1,
+      "composition": "chain",
+      "deterministic": true,
+      "execution": {
+        "classification": "success",
+        "submitted_actions": 8,
+        "success": true,
+        "unsafe_act_count": 0,
+        "verifier_calls": 0
+      },
+      "parse_errors": 0,
+      "proposals": 1,
+      "seed": 101
+    },
+    {
+      "admission": {
+        "accepted_count": 8,
+        "accepted_dag": {
+          "goal_sink": "__goal_sink__",
+          "nodes": [
+            {
+              "action": {
+                "op": "reserve",
+                "revision": 0,
+                "sample": "sample-0",
+                "slot": "slot-0"
+              },
+              "evidence": [
+                {
+                  "revision": 0,
+                  "source_id": "fixture"
+                }
+              ],
+              "id": "node-39c2796602476429",
+              "parents": [
+                "__source__"
+              ],
+              "resource": "bench"
+            },
+            {
+              "action": {
+                "op": "place",
+                "revision": 0,
+                "sample": "sample-0",
+                "slot": "slot-0"
+              },
+              "evidence": [
+                {
+                  "revision": 0,
+                  "source_id": "fixture"
+                }
+              ],
+              "id": "node-aba6c494ab82b015",
+              "parents": [
+                "node-39c2796602476429"
+              ],
+              "resource": "bench"
+            },
+            {
+              "action": {
+                "op": "reserve",
+                "revision": 0,
+                "sample": "sample-1",
+                "slot": "slot-2"
+              },
+              "evidence": [
+                {
+                  "revision": 0,
+                  "source_id": "fixture"
+                }
+              ],
+              "id": "node-580732a62a9de339",
+              "parents": [
+                "node-aba6c494ab82b015"
+              ],
+              "resource": "sealed-tray"
+            },
+            {
+              "action": {
+                "op": "place",
+                "revision": 0,
+                "sample": "sample-1",
+                "slot": "slot-2"
+              },
+              "evidence": [
+                {
+                  "revision": 0,
+                  "source_id": "fixture"
+                }
+              ],
+              "id": "node-d0bee98cd867288c",
+              "parents": [
+                "node-580732a62a9de339"
+              ],
+              "resource": "sealed-tray"
+            },
+            {
+              "action": {
+                "op": "reserve",
+                "revision": 0,
+                "sample": "sample-2",
+                "slot": "slot-3"
+              },
+              "evidence": [
+                {
+                  "revision": 0,
+                  "source_id": "fixture"
+                }
+              ],
+              "id": "node-21859c277dfbb2ea",
+              "parents": [
+                "node-aba6c494ab82b015",
+                "node-d0bee98cd867288c"
+              ],
+              "resource": "sealed-tray"
+            },
+            {
+              "action": {
+                "op": "place",
+                "revision": 0,
+                "sample": "sample-2",
+                "slot": "slot-3"
+              },
+              "evidence": [
+                {
+                  "revision": 0,
+                  "source_id": "fixture"
+                }
+              ],
+              "id": "node-9b84a5e65dcf6d1a",
+              "parents": [
+                "node-21859c277dfbb2ea"
+              ],
+              "resource": "sealed-tray"
+            },
+            {
+              "action": {
+                "op": "reserve",
+                "revision": 0,
+                "sample": "sample-3",
+                "slot": "slot-1"
+              },
+              "evidence": [
+                {
+                  "revision": 0,
+                  "source_id": "fixture"
+                }
+              ],
+              "id": "node-971f35398b799c2c",
+              "parents": [
+                "node-9b84a5e65dcf6d1a",
+                "node-d0bee98cd867288c"
+              ],
+              "resource": "bench"
+            },
+            {
+              "action": {
+                "op": "place",
+                "revision": 0,
+                "sample": "sample-3",
+                "slot": "slot-1"
+              },
+              "evidence": [
+                {
+                  "revision": 0,
+                  "source_id": "fixture"
+                }
+              ],
+              "id": "node-938c19c715c17abd",
+              "parents": [
+                "node-971f35398b799c2c"
+              ],
+              "resource": "bench"
+            }
+          ],
+          "sink_parents": [
+            "node-938c19c715c17abd"
+          ],
+          "source": "__source__",
+          "version": "e14-merge-repair-v5"
+        },
+        "accepted_node_keys": [
+          "node-39c2796602476429",
+          "node-aba6c494ab82b015",
+          "node-580732a62a9de339",
+          "node-d0bee98cd867288c",
+          "node-21859c277dfbb2ea",
+          "node-9b84a5e65dcf6d1a",
+          "node-971f35398b799c2c",
+          "node-938c19c715c17abd"
+        ],
+        "proposed_node_count": 8,
+        "rejected": [],
+        "rejection_breakdown": {
+          "acyclicity": 0,
+          "contradiction_cascade": 0,
+          "reachability": 0,
+          "resource_consistency": 0,
+          "verifier_feasibility": 0
+        },
+        "unique_node_count": 8,
+        "version": "e14-merge-repair-v5"
+      },
+      "api_calls": 1,
+      "composition": "fork",
+      "deterministic": true,
+      "execution": {
+        "classification": "success",
+        "submitted_actions": 8,
+        "success": true,
+        "unsafe_act_count": 0,
+        "verifier_calls": 0
+      },
+      "parse_errors": 0,
+      "proposals": 1,
+      "seed": 102
+    },
+    {
+      "admission": {
+        "accepted_count": 8,
+        "accepted_dag": {
+          "goal_sink": "__goal_sink__",
+          "nodes": [
+            {
+              "action": {
+                "op": "reserve",
+                "revision": 0,
+                "sample": "sample-0",
+                "slot": "slot-1"
+              },
+              "evidence": [
+                {
+                  "revision": 0,
+                  "source_id": "fixture"
+                }
+              ],
+              "id": "node-e3a9d96f4c9974ee",
+              "parents": [
+                "__source__"
+              ],
+              "resource": "bench"
+            },
+            {
+              "action": {
+                "op": "place",
+                "revision": 0,
+                "sample": "sample-0",
+                "slot": "slot-1"
+              },
+              "evidence": [
+                {
+                  "revision": 0,
+                  "source_id": "fixture"
+                }
+              ],
+              "id": "node-6fdaef9dec8c16b3",
+              "parents": [
+                "node-e3a9d96f4c9974ee"
+              ],
+              "resource": "bench"
+            },
+            {
+              "action": {
+                "op": "reserve",
+                "revision": 0,
+                "sample": "sample-1",
+                "slot": "slot-0"
+              },
+              "evidence": [
+                {
+                  "revision": 0,
+                  "source_id": "fixture"
+                }
+              ],
+              "id": "node-9b9b5028b37a544a",
+              "parents": [
+                "node-6fdaef9dec8c16b3"
+              ],
+              "resource": "bench"
+            },
+            {
+              "action": {
+                "op": "place",
+                "revision": 0,
+                "sample": "sample-1",
+                "slot": "slot-0"
+              },
+              "evidence": [
+                {
+                  "revision": 0,
+                  "source_id": "fixture"
+                }
+              ],
+              "id": "node-f3152fce0ab4e976",
+              "parents": [
+                "node-9b9b5028b37a544a"
+              ],
+              "resource": "bench"
+            },
+            {
+              "action": {
+                "op": "reserve",
+                "revision": 0,
+                "sample": "sample-2",
+                "slot": "slot-3"
+              },
+              "evidence": [
+                {
+                  "revision": 0,
+                  "source_id": "fixture"
+                }
+              ],
+              "id": "node-30c08db81edafe7f",
+              "parents": [
+                "node-f3152fce0ab4e976"
+              ],
+              "resource": "bench"
+            },
+            {
+              "action": {
+                "op": "place",
+                "revision": 0,
+                "sample": "sample-2",
+                "slot": "slot-3"
+              },
+              "evidence": [
+                {
+                  "revision": 0,
+                  "source_id": "fixture"
+                }
+              ],
+              "id": "node-d738ed5db75f4b5a",
+              "parents": [
+                "node-30c08db81edafe7f"
+              ],
+              "resource": "bench"
+            },
+            {
+              "action": {
+                "op": "reserve",
+                "revision": 0,
+                "sample": "sample-3",
+                "slot": "slot-2"
+              },
+              "evidence": [
+                {
+                  "revision": 0,
+                  "source_id": "fixture"
+                }
+              ],
+              "id": "node-41bcf8b6fb830500",
+              "parents": [
+                "node-d738ed5db75f4b5a"
+              ],
+              "resource": "bench"
+            },
+            {
+              "action": {
+                "op": "place",
+                "revision": 0,
+                "sample": "sample-3",
+                "slot": "slot-2"
+              },
+              "evidence": [
+                {
+                  "revision": 0,
+                  "source_id": "fixture"
+                }
+              ],
+              "id": "node-dc07c4fa432717e1",
+              "parents": [
+                "node-41bcf8b6fb830500"
+              ],
+              "resource": "bench"
+            }
+          ],
+          "sink_parents": [
+            "node-dc07c4fa432717e1"
+          ],
+          "source": "__source__",
+          "version": "e14-merge-repair-v5"
+        },
+        "accepted_node_keys": [
+          "node-e3a9d96f4c9974ee",
+          "node-6fdaef9dec8c16b3",
+          "node-9b9b5028b37a544a",
+          "node-f3152fce0ab4e976",
+          "node-30c08db81edafe7f",
+          "node-d738ed5db75f4b5a",
+          "node-41bcf8b6fb830500",
+          "node-dc07c4fa432717e1"
+        ],
+        "proposed_node_count": 8,
+        "rejected": [],
+        "rejection_breakdown": {
+          "acyclicity": 0,
+          "contradiction_cascade": 0,
+          "reachability": 0,
+          "resource_consistency": 0,
+          "verifier_feasibility": 0
+        },
+        "unique_node_count": 8,
+        "version": "e14-merge-repair-v5"
+      },
+      "api_calls": 2,
+      "composition": "chain",
+      "deterministic": true,
+      "execution": {
+        "classification": "success",
+        "submitted_actions": 8,
+        "success": true,
+        "unsafe_act_count": 0,
+        "verifier_calls": 0
+      },
+      "parse_errors": 1,
+      "proposals": 1,
+      "seed": 103
+    },
+    {
+      "admission": {
+        "accepted_count": 8,
+        "accepted_dag": {
+          "goal_sink": "__goal_sink__",
+          "nodes": [
+            {
+              "action": {
+                "op": "reserve",
+                "revision": 0,
+                "sample": "sample-0",
+                "slot": "slot-0"
+              },
+              "evidence": [
+                {
+                  "revision": 0,
+                  "source_id": "fixture"
+                }
+              ],
+              "id": "node-39c2796602476429",
+              "parents": [
+                "__source__"
+              ],
+              "resource": "bench"
+            },
+            {
+              "action": {
+                "op": "place",
+                "revision": 0,
+                "sample": "sample-0",
+                "slot": "slot-0"
+              },
+              "evidence": [
+                {
+                  "revision": 0,
+                  "source_id": "fixture"
+                }
+              ],
+              "id": "node-aba6c494ab82b015",
+              "parents": [
+                "node-39c2796602476429"
+              ],
+              "resource": "bench"
+            },
+            {
+              "action": {
+                "op": "reserve",
+                "revision": 0,
+                "sample": "sample-1",
+                "slot": "slot-1"
+              },
+              "evidence": [
+                {
+                  "revision": 0,
+                  "source_id": "fixture"
+                }
+              ],
+              "id": "node-671d4f9fbaf04fe5",
+              "parents": [
+                "node-aba6c494ab82b015"
+              ],
+              "resource": "sealed-tray"
+            },
+            {
+              "action": {
+                "op": "place",
+                "revision": 0,
+                "sample": "sample-1",
+                "slot": "slot-1"
+              },
+              "evidence": [
+                {
+                  "revision": 0,
+                  "source_id": "fixture"
+                }
+              ],
+              "id": "node-5b6c7468ddc26ff7",
+              "parents": [
+                "node-671d4f9fbaf04fe5"
+              ],
+              "resource": "sealed-tray"
+            },
+            {
+              "action": {
+                "op": "reserve",
+                "revision": 0,
+                "sample": "sample-2",
+                "slot": "slot-3"
+              },
+              "evidence": [
+                {
+                  "revision": 0,
+                  "source_id": "fixture"
+                }
+              ],
+              "id": "node-21859c277dfbb2ea",
+              "parents": [
+                "node-5b6c7468ddc26ff7",
+                "node-aba6c494ab82b015"
+              ],
+              "resource": "sealed-tray"
+            },
+            {
+              "action": {
+                "op": "place",
+                "revision": 0,
+                "sample": "sample-2",
+                "slot": "slot-3"
+              },
+              "evidence": [
+                {
+                  "revision": 0,
+                  "source_id": "fixture"
+                }
+              ],
+              "id": "node-9b84a5e65dcf6d1a",
+              "parents": [
+                "node-21859c277dfbb2ea"
+              ],
+              "resource": "sealed-tray"
+            },
+            {
+              "action": {
+                "op": "reserve",
+                "revision": 0,
+                "sample": "sample-3",
+                "slot": "slot-2"
+              },
+              "evidence": [
+                {
+                  "revision": 0,
+                  "source_id": "fixture"
+                }
+              ],
+              "id": "node-41bcf8b6fb830500",
+              "parents": [
+                "node-5b6c7468ddc26ff7",
+                "node-9b84a5e65dcf6d1a"
+              ],
+              "resource": "bench"
+            },
+            {
+              "action": {
+                "op": "place",
+                "revision": 0,
+                "sample": "sample-3",
+                "slot": "slot-2"
+              },
+              "evidence": [
+                {
+                  "revision": 0,
+                  "source_id": "fixture"
+                }
+              ],
+              "id": "node-dc07c4fa432717e1",
+              "parents": [
+                "node-41bcf8b6fb830500"
+              ],
+              "resource": "bench"
+            }
+          ],
+          "sink_parents": [
+            "node-dc07c4fa432717e1"
+          ],
+          "source": "__source__",
+          "version": "e14-merge-repair-v5"
+        },
+        "accepted_node_keys": [
+          "node-39c2796602476429",
+          "node-aba6c494ab82b015",
+          "node-671d4f9fbaf04fe5",
+          "node-5b6c7468ddc26ff7",
+          "node-21859c277dfbb2ea",
+          "node-9b84a5e65dcf6d1a",
+          "node-41bcf8b6fb830500",
+          "node-dc07c4fa432717e1"
+        ],
+        "proposed_node_count": 8,
+        "rejected": [],
+        "rejection_breakdown": {
+          "acyclicity": 0,
+          "contradiction_cascade": 0,
+          "reachability": 0,
+          "resource_consistency": 0,
+          "verifier_feasibility": 0
+        },
+        "unique_node_count": 8,
+        "version": "e14-merge-repair-v5"
+      },
+      "api_calls": 1,
+      "composition": "fork",
+      "deterministic": true,
+      "execution": {
+        "classification": "success",
+        "submitted_actions": 8,
+        "success": true,
+        "unsafe_act_count": 0,
+        "verifier_calls": 0
+      },
+      "parse_errors": 0,
+      "proposals": 1,
+      "seed": 104
+    },
+    {
+      "admission": {
+        "accepted_count": 0,
+        "accepted_dag": {
+          "goal_sink": "__goal_sink__",
+          "nodes": [],
+          "sink_parents": [],
+          "source": "__source__",
+          "version": "e14-merge-repair-v5"
+        },
+        "accepted_node_keys": [],
+        "proposed_node_count": 8,
+        "rejected": [
+          {
+            "detail": "fixture resource or action mismatch",
+            "node_id": "node-207b3d62711eccad",
+            "rule": "resource_consistency"
+          },
+          {
+            "detail": "fixture resource or action mismatch",
+            "node_id": "node-21859c277dfbb2ea",
+            "rule": "resource_consistency"
+          },
+          {
+            "detail": "fixture resource or action mismatch",
+            "node_id": "node-671d4f9fbaf04fe5",
+            "rule": "resource_consistency"
+          },
+          {
+            "detail": "fixture resource or action mismatch",
+            "node_id": "node-72ec72ad04058428",
+            "rule": "resource_consistency"
+          },
+          {
+            "detail": "fixture resource or action mismatch",
+            "node_id": "node-aba6c494ab82b015",
+            "rule": "resource_consistency"
+          },
+          {
+            "detail": "fixture resource or action mismatch",
+            "node_id": "node-d738ed5db75f4b5a",
+            "rule": "resource_consistency"
+          },
+          {
+            "detail": "fixture resource or action mismatch",
+            "node_id": "node-dc07c4fa432717e1",
+            "rule": "resource_consistency"
+          },
+          {
+            "detail": "fixture resource or action mismatch",
+            "node_id": "node-e5da660cd8d7df1b",
+            "rule": "resource_consistency"
+          }
+        ],
+        "rejection_breakdown": {
+          "acyclicity": 0,
+          "contradiction_cascade": 0,
+          "reachability": 0,
+          "resource_consistency": 8,
+          "verifier_feasibility": 0
+        },
+        "unique_node_count": 8,
+        "version": "e14-merge-repair-v5"
+      },
+      "api_calls": 1,
+      "composition": "impossible",
+      "deterministic": true,
+      "execution": {
+        "classification": "safe incomplete",
+        "submitted_actions": 0,
+        "success": false,
+        "unsafe_act_count": 0,
+        "verifier_calls": 0
+      },
+      "parse_errors": 0,
+      "proposals": 1,
+      "seed": 105
+    },
+    {
+      "admission": {
+        "accepted_count": 8,
+        "accepted_dag": {
+          "goal_sink": "__goal_sink__",
+          "nodes": [
+            {
+              "action": {
+                "op": "reserve",
+                "revision": 0,
+                "sample": "sample-0",
+                "slot": "slot-0"
+              },
+              "evidence": [
+                {
+                  "revision": 0,
+                  "source_id": "fixture"
+                }
+              ],
+              "id": "node-39c2796602476429",
+              "parents": [
+                "__source__"
+              ],
+              "resource": "bench"
+            },
+            {
+              "action": {
+                "op": "place",
+                "revision": 0,
+                "sample": "sample-0",
+                "slot": "slot-0"
+              },
+              "evidence": [
+                {
+                  "revision": 0,
+                  "source_id": "fixture"
+                }
+              ],
+              "id": "node-aba6c494ab82b015",
+              "parents": [
+                "node-39c2796602476429"
+              ],
+              "resource": "bench"
+            },
+            {
+              "action": {
+                "op": "reserve",
+                "revision": 0,
+                "sample": "sample-1",
+                "slot": "slot-2"
+              },
+              "evidence": [
+                {
+                  "revision": 0,
+                  "source_id": "fixture"
+                }
+              ],
+              "id": "node-a5d245eb31ed6a52",
+              "parents": [
+                "node-aba6c494ab82b015"
+              ],
+              "resource": "bench"
+            },
+            {
+              "action": {
+                "op": "place",
+                "revision": 0,
+                "sample": "sample-1",
+                "slot": "slot-2"
+              },
+              "evidence": [
+                {
+                  "revision": 0,
+                  "source_id": "fixture"
+                }
+              ],
+              "id": "node-3635adfc4bfe9654",
+              "parents": [
+                "node-a5d245eb31ed6a52"
+              ],
+              "resource": "bench"
+            },
+            {
+              "action": {
+                "op": "reserve",
+                "revision": 0,
+                "sample": "sample-2",
+                "slot": "slot-1"
+              },
+              "evidence": [
+                {
+                  "revision": 0,
+                  "source_id": "fixture"
+                }
+              ],
+              "id": "node-d435d229f76e8427",
+              "parents": [
+                "node-3635adfc4bfe9654"
+              ],
+              "resource": "bench"
+            },
+            {
+              "action": {
+                "op": "place",
+                "revision": 0,
+                "sample": "sample-2",
+                "slot": "slot-1"
+              },
+              "evidence": [
+                {
+                  "revision": 0,
+                  "source_id": "fixture"
+                }
+              ],
+              "id": "node-209942a4e1df78f7",
+              "parents": [
+                "node-d435d229f76e8427"
+              ],
+              "resource": "bench"
+            },
+            {
+              "action": {
+                "op": "reserve",
+                "revision": 0,
+                "sample": "sample-3",
+                "slot": "slot-3"
+              },
+              "evidence": [
+                {
+                  "revision": 0,
+                  "source_id": "fixture"
+                }
+              ],
+              "id": "node-0314558abe23ae08",
+              "parents": [
+                "node-209942a4e1df78f7"
+              ],
+              "resource": "bench"
+            },
+            {
+              "action": {
+                "op": "place",
+                "revision": 0,
+                "sample": "sample-3",
+                "slot": "slot-3"
+              },
+              "evidence": [
+                {
+                  "revision": 0,
+                  "source_id": "fixture"
+                }
+              ],
+              "id": "node-b7a6eb27e233d3a2",
+              "parents": [
+                "node-0314558abe23ae08"
+              ],
+              "resource": "bench"
+            }
+          ],
+          "sink_parents": [
+            "node-b7a6eb27e233d3a2"
+          ],
+          "source": "__source__",
+          "version": "e14-merge-repair-v5"
+        },
+        "accepted_node_keys": [
+          "node-39c2796602476429",
+          "node-aba6c494ab82b015",
+          "node-a5d245eb31ed6a52",
+          "node-3635adfc4bfe9654",
+          "node-d435d229f76e8427",
+          "node-209942a4e1df78f7",
+          "node-0314558abe23ae08",
+          "node-b7a6eb27e233d3a2"
+        ],
+        "proposed_node_count": 8,
+        "rejected": [],
+        "rejection_breakdown": {
+          "acyclicity": 0,
+          "contradiction_cascade": 0,
+          "reachability": 0,
+          "resource_consistency": 0,
+          "verifier_feasibility": 0
+        },
+        "unique_node_count": 8,
+        "version": "e14-merge-repair-v5"
+      },
+      "api_calls": 1,
+      "composition": "chain",
+      "deterministic": true,
+      "execution": {
+        "classification": "success",
+        "submitted_actions": 8,
+        "success": true,
+        "unsafe_act_count": 0,
+        "verifier_calls": 0
+      },
+      "parse_errors": 0,
+      "proposals": 1,
+      "seed": 106
+    },
+    {
+      "admission": {
+        "accepted_count": 8,
+        "accepted_dag": {
+          "goal_sink": "__goal_sink__",
+          "nodes": [
+            {
+              "action": {
+                "op": "reserve",
+                "revision": 0,
+                "sample": "sample-0",
+                "slot": "slot-1"
+              },
+              "evidence": [
+                {
+                  "revision": 0,
+                  "source_id": "fixture"
+                }
+              ],
+              "id": "node-e3a9d96f4c9974ee",
+              "parents": [
+                "__source__"
+              ],
+              "resource": "bench"
+            },
+            {
+              "action": {
+                "op": "place",
+                "revision": 0,
+                "sample": "sample-0",
+                "slot": "slot-1"
+              },
+              "evidence": [
+                {
+                  "revision": 0,
+                  "source_id": "fixture"
+                }
+              ],
+              "id": "node-6fdaef9dec8c16b3",
+              "parents": [
+                "node-e3a9d96f4c9974ee"
+              ],
+              "resource": "bench"
+            },
+            {
+              "action": {
+                "op": "reserve",
+                "revision": 0,
+                "sample": "sample-1",
+                "slot": "slot-2"
+              },
+              "evidence": [
+                {
+                  "revision": 0,
+                  "source_id": "fixture"
+                }
+              ],
+              "id": "node-580732a62a9de339",
+              "parents": [
+                "node-6fdaef9dec8c16b3"
+              ],
+              "resource": "sealed-tray"
+            },
+            {
+              "action": {
+                "op": "place",
+                "revision": 0,
+                "sample": "sample-1",
+                "slot": "slot-2"
+              },
+              "evidence": [
+                {
+                  "revision": 0,
+                  "source_id": "fixture"
+                }
+              ],
+              "id": "node-d0bee98cd867288c",
+              "parents": [
+                "node-580732a62a9de339"
+              ],
+              "resource": "sealed-tray"
+            },
+            {
+              "action": {
+                "op": "reserve",
+                "revision": 0,
+                "sample": "sample-2",
+                "slot": "slot-0"
+              },
+              "evidence": [
+                {
+                  "revision": 0,
+                  "source_id": "fixture"
+                }
+              ],
+              "id": "node-a636af56b8f54a89",
+              "parents": [
+                "node-d0bee98cd867288c"
+              ],
+              "resource": "sealed-tray"
+            },
+            {
+              "action": {
+                "op": "place",
+                "revision": 0,
+                "sample": "sample-2",
+                "slot": "slot-0"
+              },
+              "evidence": [
+                {
+                  "revision": 0,
+                  "source_id": "fixture"
+                }
+              ],
+              "id": "node-cc17486d650e4333",
+              "parents": [
+                "node-a636af56b8f54a89"
+              ],
+              "resource": "sealed-tray"
+            },
+            {
+              "action": {
+                "op": "reserve",
+                "revision": 0,
+                "sample": "sample-3",
+                "slot": "slot-3"
+              },
+              "evidence": [
+                {
+                  "revision": 0,
+                  "source_id": "fixture"
+                }
+              ],
+              "id": "node-0314558abe23ae08",
+              "parents": [
+                "node-cc17486d650e4333",
+                "node-d0bee98cd867288c"
+              ],
+              "resource": "bench"
+            },
+            {
+              "action": {
+                "op": "place",
+                "revision": 0,
+                "sample": "sample-3",
+                "slot": "slot-3"
+              },
+              "evidence": [
+                {
+                  "revision": 0,
+                  "source_id": "fixture"
+                }
+              ],
+              "id": "node-b7a6eb27e233d3a2",
+              "parents": [
+                "node-0314558abe23ae08"
+              ],
+              "resource": "bench"
+            }
+          ],
+          "sink_parents": [
+            "node-b7a6eb27e233d3a2"
+          ],
+          "source": "__source__",
+          "version": "e14-merge-repair-v5"
+        },
+        "accepted_node_keys": [
+          "node-e3a9d96f4c9974ee",
+          "node-6fdaef9dec8c16b3",
+          "node-580732a62a9de339",
+          "node-d0bee98cd867288c",
+          "node-a636af56b8f54a89",
+          "node-cc17486d650e4333",
+          "node-0314558abe23ae08",
+          "node-b7a6eb27e233d3a2"
+        ],
+        "proposed_node_count": 8,
+        "rejected": [],
+        "rejection_breakdown": {
+          "acyclicity": 0,
+          "contradiction_cascade": 0,
+          "reachability": 0,
+          "resource_consistency": 0,
+          "verifier_feasibility": 0
+        },
+        "unique_node_count": 8,
+        "version": "e14-merge-repair-v5"
+      },
+      "api_calls": 2,
+      "composition": "fork",
+      "deterministic": true,
+      "execution": {
+        "classification": "success",
+        "submitted_actions": 8,
+        "success": true,
+        "unsafe_act_count": 0,
+        "verifier_calls": 0
+      },
+      "parse_errors": 1,
+      "proposals": 1,
+      "seed": 107
+    },
+    {
+      "admission": {
+        "accepted_count": 0,
+        "accepted_dag": {
+          "goal_sink": "__goal_sink__",
+          "nodes": [],
+          "sink_parents": [],
+          "source": "__source__",
+          "version": "e14-merge-repair-v5"
+        },
+        "accepted_node_keys": [],
+        "proposed_node_count": 0,
+        "rejected": [],
+        "rejection_breakdown": {
+          "acyclicity": 0,
+          "contradiction_cascade": 0,
+          "reachability": 0,
+          "resource_consistency": 0,
+          "verifier_feasibility": 0
+        },
+        "unique_node_count": 0,
+        "version": "e14-merge-repair-v5"
+      },
+      "api_calls": 2,
+      "composition": "chain",
+      "deterministic": true,
+      "execution": {
+        "classification": "safe incomplete",
+        "submitted_actions": 0,
+        "success": false,
+        "unsafe_act_count": 0,
+        "verifier_calls": 0
+      },
+      "parse_errors": 2,
+      "proposals": 0,
+      "seed": 108
+    },
+    {
+      "admission": {
+        "accepted_count": 8,
+        "accepted_dag": {
+          "goal_sink": "__goal_sink__",
+          "nodes": [
+            {
+              "action": {
+                "op": "reserve",
+                "revision": 0,
+                "sample": "sample-0",
+                "slot": "slot-1"
+              },
+              "evidence": [
+                {
+                  "revision": 0,
+                  "source_id": "fixture"
+                }
+              ],
+              "id": "node-e3a9d96f4c9974ee",
+              "parents": [
+                "__source__"
+              ],
+              "resource": "bench"
+            },
+            {
+              "action": {
+                "op": "place",
+                "revision": 0,
+                "sample": "sample-0",
+                "slot": "slot-1"
+              },
+              "evidence": [
+                {
+                  "revision": 0,
+                  "source_id": "fixture"
+                }
+              ],
+              "id": "node-6fdaef9dec8c16b3",
+              "parents": [
+                "node-e3a9d96f4c9974ee"
+              ],
+              "resource": "bench"
+            },
+            {
+              "action": {
+                "op": "reserve",
+                "revision": 0,
+                "sample": "sample-2",
+                "slot": "slot-2"
+              },
+              "evidence": [
+                {
+                  "revision": 0,
+                  "source_id": "fixture"
+                }
+              ],
+              "id": "node-9642de0c9eec0ff9",
+              "parents": [
+                "node-6fdaef9dec8c16b3"
+              ],
+              "resource": "sealed-tray"
+            },
+            {
+              "action": {
+                "op": "place",
+                "revision": 0,
+                "sample": "sample-2",
+                "slot": "slot-2"
+              },
+              "evidence": [
+                {
+                  "revision": 0,
+                  "source_id": "fixture"
+                }
+              ],
+              "id": "node-43124553544532d1",
+              "parents": [
+                "node-9642de0c9eec0ff9"
+              ],
+              "resource": "sealed-tray"
+            },
+            {
+              "action": {
+                "op": "reserve",
+                "revision": 0,
+                "sample": "sample-1",
+                "slot": "slot-3"
+              },
+              "evidence": [
+                {
+                  "revision": 0,
+                  "source_id": "fixture"
+                }
+              ],
+              "id": "node-2c5614c158bcbffa",
+              "parents": [
+                "node-43124553544532d1",
+                "node-6fdaef9dec8c16b3"
+              ],
+              "resource": "sealed-tray"
+            },
+            {
+              "action": {
+                "op": "place",
+                "revision": 0,
+                "sample": "sample-1",
+                "slot": "slot-3"
+              },
+              "evidence": [
+                {
+                  "revision": 0,
+                  "source_id": "fixture"
+                }
+              ],
+              "id": "node-358ca6da7e7d0b14",
+              "parents": [
+                "node-2c5614c158bcbffa"
+              ],
+              "resource": "sealed-tray"
+            },
+            {
+              "action": {
+                "op": "reserve",
+                "revision": 0,
+                "sample": "sample-3",
+                "slot": "slot-0"
+              },
+              "evidence": [
+                {
+                  "revision": 0,
+                  "source_id": "fixture"
+                }
+              ],
+              "id": "node-16022d2b9f582c80",
+              "parents": [
+                "node-358ca6da7e7d0b14",
+                "node-43124553544532d1"
+              ],
+              "resource": "bench"
+            },
+            {
+              "action": {
+                "op": "place",
+                "revision": 0,
+                "sample": "sample-3",
+                "slot": "slot-0"
+              },
+              "evidence": [
+                {
+                  "revision": 0,
+                  "source_id": "fixture"
+                }
+              ],
+              "id": "node-e6673b906775cd06",
+              "parents": [
+                "node-16022d2b9f582c80"
+              ],
+              "resource": "bench"
+            }
+          ],
+          "sink_parents": [
+            "node-e6673b906775cd06"
+          ],
+          "source": "__source__",
+          "version": "e14-merge-repair-v5"
+        },
+        "accepted_node_keys": [
+          "node-e3a9d96f4c9974ee",
+          "node-6fdaef9dec8c16b3",
+          "node-9642de0c9eec0ff9",
+          "node-43124553544532d1",
+          "node-2c5614c158bcbffa",
+          "node-358ca6da7e7d0b14",
+          "node-16022d2b9f582c80",
+          "node-e6673b906775cd06"
+        ],
+        "proposed_node_count": 8,
+        "rejected": [],
+        "rejection_breakdown": {
+          "acyclicity": 0,
+          "contradiction_cascade": 0,
+          "reachability": 0,
+          "resource_consistency": 0,
+          "verifier_feasibility": 0
+        },
+        "unique_node_count": 8,
+        "version": "e14-merge-repair-v5"
+      },
+      "api_calls": 2,
+      "composition": "fork",
+      "deterministic": true,
+      "execution": {
+        "classification": "success",
+        "submitted_actions": 8,
+        "success": true,
+        "unsafe_act_count": 0,
+        "verifier_calls": 0
+      },
+      "parse_errors": 1,
+      "proposals": 1,
+      "seed": 109
+    },
+    {
+      "admission": {
+        "accepted_count": 0,
+        "accepted_dag": {
+          "goal_sink": "__goal_sink__",
+          "nodes": [],
+          "sink_parents": [],
+          "source": "__source__",
+          "version": "e14-merge-repair-v5"
+        },
+        "accepted_node_keys": [],
+        "proposed_node_count": 8,
+        "rejected": [
+          {
+            "detail": "fixture resource or action mismatch",
+            "node_id": "node-671d4f9fbaf04fe5",
+            "rule": "resource_consistency"
+          },
+          {
+            "detail": "fixture resource or action mismatch",
+            "node_id": "node-75247954bf00a9e3",
+            "rule": "resource_consistency"
+          },
+          {
+            "detail": "fixture resource or action mismatch",
+            "node_id": "node-9642de0c9eec0ff9",
+            "rule": "resource_consistency"
+          },
+          {
+            "detail": "fixture resource or action mismatch",
+            "node_id": "node-9701ad30ef606d95",
+            "rule": "resource_consistency"
+          },
+          {
+            "detail": "fixture resource or action mismatch",
+            "node_id": "node-b671234df6d20bca",
+            "rule": "resource_consistency"
+          },
+          {
+            "detail": "fixture resource or action mismatch",
+            "node_id": "node-e5da660cd8d7df1b",
+            "rule": "resource_consistency"
+          },
+          {
+            "detail": "fixture resource or action mismatch",
+            "node_id": "node-e6673b906775cd06",
+            "rule": "resource_consistency"
+          },
+          {
+            "detail": "fixture resource or action mismatch",
+            "node_id": "node-f97ce48192650f68",
+            "rule": "resource_consistency"
+          }
+        ],
+        "rejection_breakdown": {
+          "acyclicity": 0,
+          "contradiction_cascade": 0,
+          "reachability": 0,
+          "resource_consistency": 8,
+          "verifier_feasibility": 0
+        },
+        "unique_node_count": 8,
+        "version": "e14-merge-repair-v5"
+      },
+      "api_calls": 1,
+      "composition": "impossible",
+      "deterministic": true,
+      "execution": {
+        "classification": "safe incomplete",
+        "submitted_actions": 0,
+        "success": false,
+        "unsafe_act_count": 0,
+        "verifier_calls": 0
+      },
+      "parse_errors": 0,
+      "proposals": 1,
+      "seed": 110
+    },
+    {
+      "admission": {
+        "accepted_count": 8,
+        "accepted_dag": {
+          "goal_sink": "__goal_sink__",
+          "nodes": [
+            {
+              "action": {
+                "op": "reserve",
+                "revision": 0,
+                "sample": "sample-0",
+                "slot": "slot-0"
+              },
+              "evidence": [
+                {
+                  "revision": 0,
+                  "source_id": "fixture"
+                }
+              ],
+              "id": "node-39c2796602476429",
+              "parents": [
+                "__source__"
+              ],
+              "resource": "bench"
+            },
+            {
+              "action": {
+                "op": "place",
+                "revision": 0,
+                "sample": "sample-0",
+                "slot": "slot-0"
+              },
+              "evidence": [
+                {
+                  "revision": 0,
+                  "source_id": "fixture"
+                }
+              ],
+              "id": "node-aba6c494ab82b015",
+              "parents": [
+                "node-39c2796602476429"
+              ],
+              "resource": "bench"
+            },
+            {
+              "action": {
+                "op": "reserve",
+                "revision": 0,
+                "sample": "sample-1",
+                "slot": "slot-1"
+              },
+              "evidence": [
+                {
+                  "revision": 0,
+                  "source_id": "fixture"
+                }
+              ],
+              "id": "node-28ad731a0c64eb39",
+              "parents": [
+                "node-aba6c494ab82b015"
+              ],
+              "resource": "bench"
+            },
+            {
+              "action": {
+                "op": "place",
+                "revision": 0,
+                "sample": "sample-1",
+                "slot": "slot-1"
+              },
+              "evidence": [
+                {
+                  "revision": 0,
+                  "source_id": "fixture"
+                }
+              ],
+              "id": "node-e5da660cd8d7df1b",
+              "parents": [
+                "node-28ad731a0c64eb39"
+              ],
+              "resource": "bench"
+            },
+            {
+              "action": {
+                "op": "reserve",
+                "revision": 0,
+                "sample": "sample-2",
+                "slot": "slot-3"
+              },
+              "evidence": [
+                {
+                  "revision": 0,
+                  "source_id": "fixture"
+                }
+              ],
+              "id": "node-30c08db81edafe7f",
+              "parents": [
+                "node-e5da660cd8d7df1b"
+              ],
+              "resource": "bench"
+            },
+            {
+              "action": {
+                "op": "place",
+                "revision": 0,
+                "sample": "sample-2",
+                "slot": "slot-3"
+              },
+              "evidence": [
+                {
+                  "revision": 0,
+                  "source_id": "fixture"
+                }
+              ],
+              "id": "node-d738ed5db75f4b5a",
+              "parents": [
+                "node-30c08db81edafe7f"
+              ],
+              "resource": "bench"
+            },
+            {
+              "action": {
+                "op": "reserve",
+                "revision": 0,
+                "sample": "sample-3",
+                "slot": "slot-2"
+              },
+              "evidence": [
+                {
+                  "revision": 0,
+                  "source_id": "fixture"
+                }
+              ],
+              "id": "node-41bcf8b6fb830500",
+              "parents": [
+                "node-d738ed5db75f4b5a"
+              ],
+              "resource": "bench"
+            },
+            {
+              "action": {
+                "op": "place",
+                "revision": 0,
+                "sample": "sample-3",
+                "slot": "slot-2"
+              },
+              "evidence": [
+                {
+                  "revision": 0,
+                  "source_id": "fixture"
+                }
+              ],
+              "id": "node-dc07c4fa432717e1",
+              "parents": [
+                "node-41bcf8b6fb830500"
+              ],
+              "resource": "bench"
+            }
+          ],
+          "sink_parents": [
+            "node-dc07c4fa432717e1"
+          ],
+          "source": "__source__",
+          "version": "e14-merge-repair-v5"
+        },
+        "accepted_node_keys": [
+          "node-39c2796602476429",
+          "node-aba6c494ab82b015",
+          "node-28ad731a0c64eb39",
+          "node-e5da660cd8d7df1b",
+          "node-30c08db81edafe7f",
+          "node-d738ed5db75f4b5a",
+          "node-41bcf8b6fb830500",
+          "node-dc07c4fa432717e1"
+        ],
+        "proposed_node_count": 8,
+        "rejected": [],
+        "rejection_breakdown": {
+          "acyclicity": 0,
+          "contradiction_cascade": 0,
+          "reachability": 0,
+          "resource_consistency": 0,
+          "verifier_feasibility": 0
+        },
+        "unique_node_count": 8,
+        "version": "e14-merge-repair-v5"
+      },
+      "api_calls": 1,
+      "composition": "chain",
+      "deterministic": true,
+      "execution": {
+        "classification": "success",
+        "submitted_actions": 8,
+        "success": true,
+        "unsafe_act_count": 0,
+        "verifier_calls": 0
+      },
+      "parse_errors": 0,
+      "proposals": 1,
+      "seed": 111
+    },
+    {
+      "admission": {
+        "accepted_count": 4,
+        "accepted_dag": {
+          "goal_sink": "__goal_sink__",
+          "nodes": [
+            {
+              "action": {
+                "op": "reserve",
+                "revision": 0,
+                "sample": "sample-0",
+                "slot": "slot-0"
+              },
+              "evidence": [
+                {
+                  "revision": 0,
+                  "source_id": "fixture"
+                }
+              ],
+              "id": "node-39c2796602476429",
+              "parents": [
+                "__source__"
+              ],
+              "resource": "bench"
+            },
+            {
+              "action": {
+                "op": "place",
+                "revision": 0,
+                "sample": "sample-0",
+                "slot": "slot-0"
+              },
+              "evidence": [
+                {
+                  "revision": 0,
+                  "source_id": "fixture"
+                }
+              ],
+              "id": "node-aba6c494ab82b015",
+              "parents": [
+                "node-39c2796602476429"
+              ],
+              "resource": "bench"
+            },
+            {
+              "action": {
+                "op": "reserve",
+                "revision": 0,
+                "sample": "sample-1",
+                "slot": "slot-1"
+              },
+              "evidence": [
+                {
+                  "revision": 0,
+                  "source_id": "fixture"
+                }
+              ],
+              "id": "node-671d4f9fbaf04fe5",
+              "parents": [
+                "node-aba6c494ab82b015"
+              ],
+              "resource": "sealed-tray"
+            },
+            {
+              "action": {
+                "op": "place",
+                "revision": 0,
+                "sample": "sample-1",
+                "slot": "slot-1"
+              },
+              "evidence": [
+                {
+                  "revision": 0,
+                  "source_id": "fixture"
+                }
+              ],
+              "id": "node-5b6c7468ddc26ff7",
+              "parents": [
+                "node-671d4f9fbaf04fe5"
+              ],
+              "resource": "sealed-tray"
+            }
+          ],
+          "sink_parents": [],
+          "source": "__source__",
+          "version": "e14-merge-repair-v5"
+        },
+        "accepted_node_keys": [
+          "node-39c2796602476429",
+          "node-aba6c494ab82b015",
+          "node-671d4f9fbaf04fe5",
+          "node-5b6c7468ddc26ff7"
+        ],
+        "proposed_node_count": 8,
+        "rejected": [
+          {
+            "detail": "child of rejected node",
+            "node_id": "node-0314558abe23ae08",
+            "rule": "reachability"
+          },
+          {
+            "detail": "child of rejected node",
+            "node_id": "node-43124553544532d1",
+            "rule": "reachability"
+          },
+          {
+            "detail": "resource_unavailable",
+            "node_id": "node-9642de0c9eec0ff9",
+            "rule": "verifier_feasibility"
+          },
+          {
+            "detail": "child of rejected node",
+            "node_id": "node-b7a6eb27e233d3a2",
+            "rule": "reachability"
+          }
+        ],
+        "rejection_breakdown": {
+          "acyclicity": 0,
+          "contradiction_cascade": 0,
+          "reachability": 3,
+          "resource_consistency": 0,
+          "verifier_feasibility": 1
+        },
+        "unique_node_count": 8,
+        "version": "e14-merge-repair-v5"
+      },
+      "api_calls": 2,
+      "composition": "fork",
+      "deterministic": true,
+      "execution": {
+        "classification": "safe incomplete",
+        "submitted_actions": 4,
+        "success": false,
+        "unsafe_act_count": 0,
+        "verifier_calls": 0
+      },
+      "parse_errors": 1,
+      "proposals": 1,
+      "seed": 112
+    },
+    {
+      "admission": {
+        "accepted_count": 2,
+        "accepted_dag": {
+          "goal_sink": "__goal_sink__",
+          "nodes": [
+            {
+              "action": {
+                "op": "reserve",
+                "revision": 0,
+                "sample": "sample-0",
+                "slot": "slot-0"
+              },
+              "evidence": [
+                {
+                  "revision": 0,
+                  "source_id": "fixture"
+                }
+              ],
+              "id": "node-39c2796602476429",
+              "parents": [
+                "__source__"
+              ],
+              "resource": "bench"
+            },
+            {
+              "action": {
+                "op": "place",
+                "revision": 0,
+                "sample": "sample-0",
+                "slot": "slot-0"
+              },
+              "evidence": [
+                {
+                  "revision": 0,
+                  "source_id": "fixture"
+                }
+              ],
+              "id": "node-aba6c494ab82b015",
+              "parents": [
+                "node-39c2796602476429"
+              ],
+              "resource": "bench"
+            }
+          ],
+          "sink_parents": [],
+          "source": "__source__",
+          "version": "e14-merge-repair-v5"
+        },
+        "accepted_node_keys": [
+          "node-39c2796602476429",
+          "node-aba6c494ab82b015"
+        ],
+        "proposed_node_count": 8,
+        "rejected": [
+          {
+            "detail": "child of rejected node",
+            "node_id": "node-16022d2b9f582c80",
+            "rule": "reachability"
+          },
+          {
+            "detail": "child of rejected node",
+            "node_id": "node-6c1f144d6d5d1f76",
+            "rule": "reachability"
+          },
+          {
+            "detail": "slot_unavailable",
+            "node_id": "node-9b9b5028b37a544a",
+            "rule": "verifier_feasibility"
+          },
+          {
+            "detail": "child of rejected node",
+            "node_id": "node-d3ea9fd2caf7348d",
+            "rule": "reachability"
+          },
+          {
+            "detail": "child of rejected node",
+            "node_id": "node-e6673b906775cd06",
+            "rule": "reachability"
+          },
+          {
+            "detail": "child of rejected node",
+            "node_id": "node-f3152fce0ab4e976",
+            "rule": "reachability"
+          }
+        ],
+        "rejection_breakdown": {
+          "acyclicity": 0,
+          "contradiction_cascade": 0,
+          "reachability": 5,
+          "resource_consistency": 0,
+          "verifier_feasibility": 1
+        },
+        "unique_node_count": 8,
+        "version": "e14-merge-repair-v5"
+      },
+      "api_calls": 1,
+      "composition": "chain",
+      "deterministic": true,
+      "execution": {
+        "classification": "safe incomplete",
+        "submitted_actions": 2,
+        "success": false,
+        "unsafe_act_count": 0,
+        "verifier_calls": 0
+      },
+      "parse_errors": 0,
+      "proposals": 1,
+      "seed": 113
+    },
+    {
+      "admission": {
+        "accepted_count": 4,
+        "accepted_dag": {
+          "goal_sink": "__goal_sink__",
+          "nodes": [
+            {
+              "action": {
+                "op": "reserve",
+                "revision": 0,
+                "sample": "sample-0",
+                "slot": "slot-3"
+              },
+              "evidence": [
+                {
+                  "revision": 0,
+                  "source_id": "fixture"
+                }
+              ],
+              "id": "node-8534ea22de468f20",
+              "parents": [
+                "__source__"
+              ],
+              "resource": "bench"
+            },
+            {
+              "action": {
+                "op": "place",
+                "revision": 0,
+                "sample": "sample-0",
+                "slot": "slot-3"
+              },
+              "evidence": [
+                {
+                  "revision": 0,
+                  "source_id": "fixture"
+                }
+              ],
+              "id": "node-75247954bf00a9e3",
+              "parents": [
+                "node-8534ea22de468f20"
+              ],
+              "resource": "bench"
+            },
+            {
+              "action": {
+                "op": "reserve",
+                "revision": 0,
+                "sample": "sample-2",
+                "slot": "slot-2"
+              },
+              "evidence": [
+                {
+                  "revision": 0,
+                  "source_id": "fixture"
+                }
+              ],
+              "id": "node-9642de0c9eec0ff9",
+              "parents": [
+                "node-75247954bf00a9e3"
+              ],
+              "resource": "sealed-tray"
+            },
+            {
+              "action": {
+                "op": "place",
+                "revision": 0,
+                "sample": "sample-2",
+                "slot": "slot-2"
+              },
+              "evidence": [
+                {
+                  "revision": 0,
+                  "source_id": "fixture"
+                }
+              ],
+              "id": "node-43124553544532d1",
+              "parents": [
+                "node-9642de0c9eec0ff9"
+              ],
+              "resource": "sealed-tray"
+            }
+          ],
+          "sink_parents": [],
+          "source": "__source__",
+          "version": "e14-merge-repair-v5"
+        },
+        "accepted_node_keys": [
+          "node-8534ea22de468f20",
+          "node-75247954bf00a9e3",
+          "node-9642de0c9eec0ff9",
+          "node-43124553544532d1"
+        ],
+        "proposed_node_count": 8,
+        "rejected": [
+          {
+            "detail": "child of rejected node",
+            "node_id": "node-938c19c715c17abd",
+            "rule": "reachability"
+          },
+          {
+            "detail": "child of rejected node",
+            "node_id": "node-971f35398b799c2c",
+            "rule": "reachability"
+          },
+          {
+            "detail": "child of rejected node",
+            "node_id": "node-97a5e1a526a3af2c",
+            "rule": "reachability"
+          },
+          {
+            "detail": "resource_unavailable",
+            "node_id": "node-a0490c0a523e3637",
+            "rule": "verifier_feasibility"
+          }
+        ],
+        "rejection_breakdown": {
+          "acyclicity": 0,
+          "contradiction_cascade": 0,
+          "reachability": 3,
+          "resource_consistency": 0,
+          "verifier_feasibility": 1
+        },
+        "unique_node_count": 8,
+        "version": "e14-merge-repair-v5"
+      },
+      "api_calls": 2,
+      "composition": "fork",
+      "deterministic": true,
+      "execution": {
+        "classification": "safe incomplete",
+        "submitted_actions": 4,
+        "success": false,
+        "unsafe_act_count": 0,
+        "verifier_calls": 0
+      },
+      "parse_errors": 1,
+      "proposals": 1,
+      "seed": 114
+    },
+    {
+      "admission": {
+        "accepted_count": 0,
+        "accepted_dag": {
+          "goal_sink": "__goal_sink__",
+          "nodes": [],
+          "sink_parents": [],
+          "source": "__source__",
+          "version": "e14-merge-repair-v5"
+        },
+        "accepted_node_keys": [],
+        "proposed_node_count": 8,
+        "rejected": [
+          {
+            "detail": "fixture resource or action mismatch",
+            "node_id": "node-2ba9a6cc3d8e2e61",
+            "rule": "resource_consistency"
+          },
+          {
+            "detail": "fixture resource or action mismatch",
+            "node_id": "node-580732a62a9de339",
+            "rule": "resource_consistency"
+          },
+          {
+            "detail": "fixture resource or action mismatch",
+            "node_id": "node-5b8a4851167227d0",
+            "rule": "resource_consistency"
+          },
+          {
+            "detail": "fixture resource or action mismatch",
+            "node_id": "node-5d9dc1eade7337b7",
+            "rule": "resource_consistency"
+          },
+          {
+            "detail": "fixture resource or action mismatch",
+            "node_id": "node-63ea6a4aef44b767",
+            "rule": "resource_consistency"
+          },
+          {
+            "detail": "fixture resource or action mismatch",
+            "node_id": "node-a636af56b8f54a89",
+            "rule": "resource_consistency"
+          },
+          {
+            "detail": "fixture resource or action mismatch",
+            "node_id": "node-cc17486d650e4333",
+            "rule": "resource_consistency"
+          },
+          {
+            "detail": "fixture resource or action mismatch",
+            "node_id": "node-d0bee98cd867288c",
+            "rule": "resource_consistency"
+          }
+        ],
+        "rejection_breakdown": {
+          "acyclicity": 0,
+          "contradiction_cascade": 0,
+          "reachability": 0,
+          "resource_consistency": 8,
+          "verifier_feasibility": 0
+        },
+        "unique_node_count": 8,
+        "version": "e14-merge-repair-v5"
+      },
+      "api_calls": 1,
+      "composition": "impossible",
+      "deterministic": true,
+      "execution": {
+        "classification": "safe incomplete",
+        "submitted_actions": 0,
+        "success": false,
+        "unsafe_act_count": 0,
+        "verifier_calls": 0
+      },
+      "parse_errors": 0,
+      "proposals": 1,
+      "seed": 115
+    },
+    {
+      "admission": {
+        "accepted_count": 0,
+        "accepted_dag": {
+          "goal_sink": "__goal_sink__",
+          "nodes": [],
+          "sink_parents": [],
+          "source": "__source__",
+          "version": "e14-merge-repair-v5"
+        },
+        "accepted_node_keys": [],
+        "proposed_node_count": 8,
+        "rejected": [
+          {
+            "detail": "not on source-to-goal path",
+            "node_id": "node-0314558abe23ae08",
+            "rule": "reachability"
+          },
+          {
+            "detail": "not on source-to-goal path",
+            "node_id": "node-28ad731a0c64eb39",
+            "rule": "reachability"
+          },
+          {
+            "detail": "not on source-to-goal path",
+            "node_id": "node-39c2796602476429",
+            "rule": "reachability"
+          },
+          {
+            "detail": "fixture resource or action mismatch",
+            "node_id": "node-43124553544532d1",
+            "rule": "resource_consistency"
+          },
+          {
+            "detail": "fixture resource or action mismatch",
+            "node_id": "node-5b6c7468ddc26ff7",
+            "rule": "resource_consistency"
+          },
+          {
+            "detail": "fixture resource or action mismatch",
+            "node_id": "node-5b8a4851167227d0",
+            "rule": "resource_consistency"
+          },
+          {
+            "detail": "fixture resource or action mismatch",
+            "node_id": "node-6b5d4a59d62ef21b",
+            "rule": "resource_consistency"
+          },
+          {
+            "detail": "not on source-to-goal path",
+            "node_id": "node-8ad3fe7e5d2b4296",
+            "rule": "reachability"
+          }
+        ],
+        "rejection_breakdown": {
+          "acyclicity": 0,
+          "contradiction_cascade": 0,
+          "reachability": 4,
+          "resource_consistency": 4,
+          "verifier_feasibility": 0
+        },
+        "unique_node_count": 8,
+        "version": "e14-merge-repair-v5"
+      },
+      "api_calls": 1,
+      "composition": "chain",
+      "deterministic": true,
+      "execution": {
+        "classification": "safe incomplete",
+        "submitted_actions": 0,
+        "success": false,
+        "unsafe_act_count": 0,
+        "verifier_calls": 0
+      },
+      "parse_errors": 0,
+      "proposals": 1,
+      "seed": 116
+    },
+    {
+      "admission": {
+        "accepted_count": 8,
+        "accepted_dag": {
+          "goal_sink": "__goal_sink__",
+          "nodes": [
+            {
+              "action": {
+                "op": "reserve",
+                "revision": 0,
+                "sample": "sample-0",
+                "slot": "slot-1"
+              },
+              "evidence": [
+                {
+                  "revision": 0,
+                  "source_id": "fixture"
+                }
+              ],
+              "id": "node-e3a9d96f4c9974ee",
+              "parents": [
+                "__source__"
+              ],
+              "resource": "bench"
+            },
+            {
+              "action": {
+                "op": "place",
+                "revision": 0,
+                "sample": "sample-0",
+                "slot": "slot-1"
+              },
+              "evidence": [
+                {
+                  "revision": 0,
+                  "source_id": "fixture"
+                }
+              ],
+              "id": "node-6fdaef9dec8c16b3",
+              "parents": [
+                "node-e3a9d96f4c9974ee"
+              ],
+              "resource": "bench"
+            },
+            {
+              "action": {
+                "op": "reserve",
+                "revision": 0,
+                "sample": "sample-1",
+                "slot": "slot-3"
+              },
+              "evidence": [
+                {
+                  "revision": 0,
+                  "source_id": "fixture"
+                }
+              ],
+              "id": "node-2c5614c158bcbffa",
+              "parents": [
+                "node-6fdaef9dec8c16b3"
+              ],
+              "resource": "sealed-tray"
+            },
+            {
+              "action": {
+                "op": "place",
+                "revision": 0,
+                "sample": "sample-1",
+                "slot": "slot-3"
+              },
+              "evidence": [
+                {
+                  "revision": 0,
+                  "source_id": "fixture"
+                }
+              ],
+              "id": "node-358ca6da7e7d0b14",
+              "parents": [
+                "node-2c5614c158bcbffa"
+              ],
+              "resource": "sealed-tray"
+            },
+            {
+              "action": {
+                "op": "reserve",
+                "revision": 0,
+                "sample": "sample-2",
+                "slot": "slot-0"
+              },
+              "evidence": [
+                {
+                  "revision": 0,
+                  "source_id": "fixture"
+                }
+              ],
+              "id": "node-a636af56b8f54a89",
+              "parents": [
+                "node-358ca6da7e7d0b14",
+                "node-6fdaef9dec8c16b3"
+              ],
+              "resource": "sealed-tray"
+            },
+            {
+              "action": {
+                "op": "place",
+                "revision": 0,
+                "sample": "sample-2",
+                "slot": "slot-0"
+              },
+              "evidence": [
+                {
+                  "revision": 0,
+                  "source_id": "fixture"
+                }
+              ],
+              "id": "node-cc17486d650e4333",
+              "parents": [
+                "node-a636af56b8f54a89"
+              ],
+              "resource": "sealed-tray"
+            },
+            {
+              "action": {
+                "op": "reserve",
+                "revision": 0,
+                "sample": "sample-3",
+                "slot": "slot-2"
+              },
+              "evidence": [
+                {
+                  "revision": 0,
+                  "source_id": "fixture"
+                }
+              ],
+              "id": "node-41bcf8b6fb830500",
+              "parents": [
+                "node-358ca6da7e7d0b14",
+                "node-cc17486d650e4333"
+              ],
+              "resource": "bench"
+            },
+            {
+              "action": {
+                "op": "place",
+                "revision": 0,
+                "sample": "sample-3",
+                "slot": "slot-2"
+              },
+              "evidence": [
+                {
+                  "revision": 0,
+                  "source_id": "fixture"
+                }
+              ],
+              "id": "node-dc07c4fa432717e1",
+              "parents": [
+                "node-41bcf8b6fb830500"
+              ],
+              "resource": "bench"
+            }
+          ],
+          "sink_parents": [
+            "node-dc07c4fa432717e1"
+          ],
+          "source": "__source__",
+          "version": "e14-merge-repair-v5"
+        },
+        "accepted_node_keys": [
+          "node-e3a9d96f4c9974ee",
+          "node-6fdaef9dec8c16b3",
+          "node-2c5614c158bcbffa",
+          "node-358ca6da7e7d0b14",
+          "node-a636af56b8f54a89",
+          "node-cc17486d650e4333",
+          "node-41bcf8b6fb830500",
+          "node-dc07c4fa432717e1"
+        ],
+        "proposed_node_count": 8,
+        "rejected": [],
+        "rejection_breakdown": {
+          "acyclicity": 0,
+          "contradiction_cascade": 0,
+          "reachability": 0,
+          "resource_consistency": 0,
+          "verifier_feasibility": 0
+        },
+        "unique_node_count": 8,
+        "version": "e14-merge-repair-v5"
+      },
+      "api_calls": 2,
+      "composition": "fork",
+      "deterministic": true,
+      "execution": {
+        "classification": "success",
+        "submitted_actions": 8,
+        "success": true,
+        "unsafe_act_count": 0,
+        "verifier_calls": 0
+      },
+      "parse_errors": 1,
+      "proposals": 1,
+      "seed": 117
+    },
+    {
+      "admission": {
+        "accepted_count": 0,
+        "accepted_dag": {
+          "goal_sink": "__goal_sink__",
+          "nodes": [],
+          "sink_parents": [],
+          "source": "__source__",
+          "version": "e14-merge-repair-v5"
+        },
+        "accepted_node_keys": [],
+        "proposed_node_count": 0,
+        "rejected": [],
+        "rejection_breakdown": {
+          "acyclicity": 0,
+          "contradiction_cascade": 0,
+          "reachability": 0,
+          "resource_consistency": 0,
+          "verifier_feasibility": 0
+        },
+        "unique_node_count": 0,
+        "version": "e14-merge-repair-v5"
+      },
+      "api_calls": 2,
+      "composition": "chain",
+      "deterministic": true,
+      "execution": {
+        "classification": "safe incomplete",
+        "submitted_actions": 0,
+        "success": false,
+        "unsafe_act_count": 0,
+        "verifier_calls": 0
+      },
+      "parse_errors": 2,
+      "proposals": 0,
+      "seed": 118
+    },
+    {
+      "admission": {
+        "accepted_count": 4,
+        "accepted_dag": {
+          "goal_sink": "__goal_sink__",
+          "nodes": [
+            {
+              "action": {
+                "op": "reserve",
+                "revision": 0,
+                "sample": "sample-0",
+                "slot": "slot-2"
+              },
+              "evidence": [
+                {
+                  "revision": 0,
+                  "source_id": "fixture"
+                }
+              ],
+              "id": "node-974bb4d48aa02559",
+              "parents": [
+                "__source__"
+              ],
+              "resource": "bench"
+            },
+            {
+              "action": {
+                "op": "place",
+                "revision": 0,
+                "sample": "sample-0",
+                "slot": "slot-2"
+              },
+              "evidence": [
+                {
+                  "revision": 0,
+                  "source_id": "fixture"
+                }
+              ],
+              "id": "node-9111df072243c259",
+              "parents": [
+                "node-974bb4d48aa02559"
+              ],
+              "resource": "bench"
+            },
+            {
+              "action": {
+                "op": "reserve",
+                "revision": 0,
+                "sample": "sample-2",
+                "slot": "slot-3"
+              },
+              "evidence": [
+                {
+                  "revision": 0,
+                  "source_id": "fixture"
+                }
+              ],
+              "id": "node-21859c277dfbb2ea",
+              "parents": [
+                "node-9111df072243c259"
+              ],
+              "resource": "sealed-tray"
+            },
+            {
+              "action": {
+                "op": "place",
+                "revision": 0,
+                "sample": "sample-2",
+                "slot": "slot-3"
+              },
+              "evidence": [
+                {
+                  "revision": 0,
+                  "source_id": "fixture"
+                }
+              ],
+              "id": "node-9b84a5e65dcf6d1a",
+              "parents": [
+                "node-21859c277dfbb2ea"
+              ],
+              "resource": "sealed-tray"
+            }
+          ],
+          "sink_parents": [],
+          "source": "__source__",
+          "version": "e14-merge-repair-v5"
+        },
+        "accepted_node_keys": [
+          "node-974bb4d48aa02559",
+          "node-9111df072243c259",
+          "node-21859c277dfbb2ea",
+          "node-9b84a5e65dcf6d1a"
+        ],
+        "proposed_node_count": 8,
+        "rejected": [
+          {
+            "detail": "child of rejected node",
+            "node_id": "node-938c19c715c17abd",
+            "rule": "reachability"
+          },
+          {
+            "detail": "child of rejected node",
+            "node_id": "node-971f35398b799c2c",
+            "rule": "reachability"
+          },
+          {
+            "detail": "child of rejected node",
+            "node_id": "node-97a5e1a526a3af2c",
+            "rule": "reachability"
+          },
+          {
+            "detail": "resource_unavailable",
+            "node_id": "node-a0490c0a523e3637",
+            "rule": "verifier_feasibility"
+          }
+        ],
+        "rejection_breakdown": {
+          "acyclicity": 0,
+          "contradiction_cascade": 0,
+          "reachability": 3,
+          "resource_consistency": 0,
+          "verifier_feasibility": 1
+        },
+        "unique_node_count": 8,
+        "version": "e14-merge-repair-v5"
+      },
+      "api_calls": 1,
+      "composition": "fork",
+      "deterministic": true,
+      "execution": {
+        "classification": "safe incomplete",
+        "submitted_actions": 4,
+        "success": false,
+        "unsafe_act_count": 0,
+        "verifier_calls": 0
+      },
+      "parse_errors": 0,
+      "proposals": 1,
+      "seed": 119
+    },
+    {
+      "admission": {
+        "accepted_count": 0,
+        "accepted_dag": {
+          "goal_sink": "__goal_sink__",
+          "nodes": [],
+          "sink_parents": [],
+          "source": "__source__",
+          "version": "e14-merge-repair-v5"
+        },
+        "accepted_node_keys": [],
+        "proposed_node_count": 0,
+        "rejected": [],
+        "rejection_breakdown": {
+          "acyclicity": 0,
+          "contradiction_cascade": 0,
+          "reachability": 0,
+          "resource_consistency": 0,
+          "verifier_feasibility": 0
+        },
+        "unique_node_count": 0,
+        "version": "e14-merge-repair-v5"
+      },
+      "api_calls": 2,
+      "composition": "impossible",
+      "deterministic": true,
+      "execution": {
+        "classification": "safe incomplete",
+        "submitted_actions": 0,
+        "success": false,
+        "unsafe_act_count": 0,
+        "verifier_calls": 0
+      },
+      "parse_errors": 2,
+      "proposals": 0,
+      "seed": 120
+    }
+  ],
+  "totals": {
+    "cache_entries": 29,
+    "completion_tokens": 51255,
+    "estimated_cost_usd": 0.0033619500000000016,
+    "prompt_tokens": 11694,
+    "total_tokens": 62949
+  }
+}

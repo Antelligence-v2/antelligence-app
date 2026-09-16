@@ -1,0 +1,131 @@
+{
+  "project": "Antelligence",
+  "manifest_type": "pr_release_candidate",
+  "manifest_schema_version": 3,
+  "generated_at": "2026-08-27T20:23:28.258422Z",
+  "status": "local_candidate_verified_push_and_exact_review_required",
+  "base_ref": "origin/main",
+  "base_commit": "411a11d6e8e2d0349d88be77b85bad50cde9bc3f",
+  "source_commit": "3deb2fa8b4b96dc8ba469e6117f59092f14bd52f",
+  "source_commit_subject": "fix(sweep): reject invalid grid sizes",
+  "current_branch": "release/config-trace-provenance",
+  "pull_request": {
+    "number": 12,
+    "url": "https://github.com/solmonger/antelligence-app/pull/12",
+    "state_at_generation": "OPEN",
+    "review_decision_at_generation": "REVIEW_REQUIRED"
+  },
+  "operator_boundary": {
+    "pushed": false,
+    "merged": false,
+    "deployed": false,
+    "contracts_deployed": false,
+    "approval_required_before_merge": true,
+    "approval_required_before_deploy": true
+  },
+  "release_scope": {
+    "objective": "Phase-2 proof-chain provenance, fail-closed trust derivation, replay determinism, contract swarm-knowledge support, frontend runtime restoration, and their supporting tests/specifications.",
+    "changed_path_count": 97,
+    "changed_path_list_sha256": "a2b4c21e7227953644393712f8c3695b0f4cb21c78ef773bcc2881f057b40d8e",
+    "changed_path_list_command": "git diff --name-only 411a11d6e8e2d0349d88be77b85bad50cde9bc3f..3deb2fa8b4b96dc8ba469e6117f59092f14bd52f",
+    "core_areas": [
+      "backend API and persisted config provenance",
+      "proof transport, verification, trust tiers, and leaderboard derivation",
+      "deterministic replay buffer",
+      "TumorIntel and ExperienceRegistry contract extensions",
+      "frontend runtime, lint, build, and dependency security",
+      "attestation and trust-gated training-data tooling",
+      "tests, specifications, architecture, and workflow support"
+    ],
+    "core_file_sha256": {
+      "backend/api_server.py": "cb3ef803fba3faf3e0f26a43ee48e857653de2980714e69ede540373391b03e3",
+      "backend/run_store.py": "f0d99fd170638d96f79c70b4d15ea48caf28dbec93ab9dc8edaf026694ec24c5",
+      "tests/test_api_server.py": "5b8f88f3fc2ca5b6056782191ed7eeac5450c555205992ec223994780d8cd761",
+      "backend/chain/proof_spec.py": "3abcafcda4a5628cfa12ddfe6e5b5469d89e07770f5a610c9f433319a8a9ba64",
+      "backend/chain/intel_reader.py": "da07511263e648b748af46bbd5aa6ed8f674be8f09e3d631a7a5c22a3c2d00ae",
+      "backend/chain/experience_writer.py": "f83be803aa6a8acf5563edd6ef013488e52479f8561d23637869de3c997db7df",
+      "backend/chain/experience_consumer.py": "84205efdd88466925c5b1936f7b0d96eba907334fa677667607f39c3ad950604",
+      "backend/chain/leaderboard.py": "4151645a0e8f4f016f10b43016f25aa1eccc6a189806b0b36c90e6d5b68c21a7",
+      "frontend/src/lib/runtime.ts": "15359ab94fef72638279b3219ddc8d45d774bfd1879ed05b9f976c179c8e1579",
+      "frontend/src/lib/runtimeConfig.ts": "052ca53022b160c62a4ec88df21a69e713cd122d0fbe63a6c39f41bbf3ea170b",
+      "frontend/package-lock.json": "344fbf304268f63293849ab82ad7c0d3dc858391102789b1f6008477a8dbb482",
+      "blockchain/contracts/TumorIntel.sol": "1595d4050475da3145e9c3149c52875b8f4b3ded22adfc59e311ea0aeea5c737",
+      "blockchain/contracts/ExperienceRegistry.sol": "fa4f944cfb4c2b449eda10a384d8cdf077968b41386124eb0bfe51c24379cbf0",
+      "scripts/attestation_bot.py": "c3d7dba5512c4fdb95369bce018e4c3d5f06980736ebd92cabfdd463c4b0fa95",
+      "scripts/generate_queen_dpo_pairs.py": "a2f0a517de8cd4b85509a0624e23d704397270e419966ee32d4c0815b33a5bce",
+      "scripts/parameter_sweep.py": "babb2161fdcb3b63ccfbb4717e4a5cc5dd645462560981612952f90518862520",
+      "tests/test_parameter_sweep.py": "6d7d95b03f45c34a9174a2a5bfd46c6e8d052b148f16726c9925c1c793c48861"
+    }
+  },
+  "verification": [
+    {
+      "command": "uv run --extra test pytest tests/ -q",
+      "result": "260 passed, 2 skipped, 1 warning in 3.02s",
+      "skip_scope": "BraTS2024-GLI and TCGA TIFF datasets absent; unrelated to provenance or trust-tier behavior"
+    },
+    {
+      "command": "node --test frontend/tests/runtimeConfig.test.ts",
+      "result": "4 passed, 0 failed"
+    },
+    {
+      "command": "npm --prefix frontend run lint",
+      "result": "0 errors, 9 warnings, exit 0"
+    },
+    {
+      "command": "npm --prefix frontend run build && npm --prefix frontend run build:preview",
+      "result": "production build passed; preview build passed"
+    },
+    {
+      "command": "npm --prefix blockchain test -- --no-compile",
+      "result": "46 passed in 417ms"
+    },
+    {
+      "command": "python /Users/operator/openclaw-infra/scripts/antelligence_loop_runner.py sandbox",
+      "result": "SANDBOX_VERDICT: VALID"
+    },
+    {
+      "command": "npm --prefix frontend audit --omit=dev --json",
+      "result": "0 critical, 0 high, 2 moderate",
+      "residual": "Remaining advisories require the breaking React Router 7.18 migration; the reviewed frontend is client-only and does not use SSR hydration."
+    },
+    {
+      "authority": "GitHub Actions predecessor evidence",
+      "run_id": 33110441026,
+      "source_commit": "dbd23f40bfa9e3d8412398de7a666e7b3e9a9386",
+      "result": "Frontend Build SUCCESS; Python Simulation Tests SUCCESS; Smart Contract Tests SUCCESS",
+      "status": "superseded_by_local_repair_commits; fresh exact-head CI required"
+    }
+  ],
+  "review_state": {
+    "latest_valid_independent_target": "dbd23f40bfa9e3d8412398de7a666e7b3e9a9386",
+    "latest_valid_independent_result": "NO-GO: 2 P1 and 1 P2 findings",
+    "latest_valid_independent_mechanism": "codex review --base 411a11d6e8e2d0349d88be77b85bad50cde9bc3f",
+    "repairs": [
+      "b515084: scale fractional API kill rate to basis points",
+      "62188a0: preserve legacy run retrieval without trust claims",
+      "490ea37: honor documented preview mode and local API default",
+      "e872d9a: version the transport commitment preimage change",
+      "7760ee1: keep dry-run JSON output machine-parseable",
+      "78571f0: exclude unverified DPO inputs",
+      "b4ffff3: restrict stale-pin pruning to the contract owner",
+      "f6fb737: restore deterministic frontend lint compatibility",
+      "326a092: remove high-severity production dependency advisories",
+      "3361e54: keep production and preview API calls same-origin by default",
+      "db86d26: mark dry-run spot checks explicitly unverified",
+      "b9f0542: align chain reader PinType names with the Solidity enum",
+      "6d68aad: require distinct DPO configurations and evidence-neutral explanations",
+      "d0fc9a4: retain worker parameters in promoted strategy contract records",
+      "bce2d1c: submit canonical worker parameters through Web3 and cast ABIs",
+      "7ba39de: decode promoted worker parameters for Queen adoption",
+      "1370086: preserve pheromone parameters in leaderboard entries for DPO",
+      "3deb2fa: reject non-positive parameter-sweep grid sizes"
+    ],
+    "successor_exact_head_review_required": true,
+    "invalid_review_evidence": "Hermes qualityreviewer session 20260827_145200_45d062 changed scope to an unrelated six-claim audit and is not release evidence; delegation batch deleg_71d806ad ended unknown and is not release evidence."
+  },
+  "release_notes": [
+    "This manifest pins the code candidate at source_commit; the manifest-only successor commit is reviewed separately to avoid self-referential commit hashing.",
+    "No merge, deployment, contract deployment, secret change, or production authority expansion is authorized by this manifest.",
+    "Green tests and CI are evidence, not merge approval; a fresh independent exact-head zero-blocker/zero-high verdict is still required."
+  ]
+}

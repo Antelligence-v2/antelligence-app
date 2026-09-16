@@ -1,0 +1,61 @@
+{
+  "status": "ACCEPTED_FROZEN_DEPENDENCY",
+  "feature_id": "F2",
+  "outcome_id": "hive-task",
+  "observed_at": "2026-09-11T00:22:17.414205+00:00",
+  "candidate_commit": "8d9998c3c8db8936314d71e6416d1427c8710558",
+  "candidate_tree": "cc79b2f623e4de6837d62b06152cadb2bcd99782",
+  "base_commit": "c5f59de5b7359664606a211a5e98ce22ab6291af",
+  "frozen_ref": "ref/antelligence-tasks-F2-20260910",
+  "requirements": [
+    "F2-R1",
+    "F2-R2",
+    "F2-R3",
+    "F2-R4",
+    "F2-R5",
+    "F2-R6"
+  ],
+  "verification": "/Volumes/WD_BLACK/antelligence-collective-20260908/sol-luna-features-20260910/controller-20260910_154850_489cf7/accept-f2-01/verification.json",
+  "delivery": "/Volumes/WD_BLACK/antelligence-collective-20260908/sol-luna-features-20260910/F2/run-03/DELIVERY.json",
+  "review": "/Volumes/WD_BLACK/antelligence-collective-20260908/sol-luna-features-20260910/F2/run-03/REVIEW.md",
+  "reviewer_session_id": "20260910_200821_1170f7",
+  "review_verdict": "FIT",
+  "blocker_count": 0,
+  "high_count": 0,
+  "source_visibility": "All nine snapshots matched actual reviewer-received physical lines",
+  "behaviour": [
+    {
+      "root": "/Volumes/WD_BLACK/antelligence-collective-20260908/sol-luna-features-20260910/F2/run-02/scratch/sol-final/pytest",
+      "cases": 32,
+      "unknown_ordinals": [
+        0,
+        1
+      ],
+      "impossible_budgets": [
+        0,
+        1,
+        7
+      ]
+    },
+    {
+      "root": "/Volumes/WD_BLACK/antelligence-collective-20260908/sol-luna-features-20260910/controller-20260910_154850_489cf7/check-f2-02/controller-final/pytest",
+      "cases": 32,
+      "unknown_ordinals": [
+        0,
+        1
+      ],
+      "impossible_budgets": [
+        0,
+        1,
+        7
+      ]
+    }
+  ],
+  "residue_excluded": true,
+  "integration": "not_performed",
+  "limits": [
+    "inert model-free laboratory, not learned performance",
+    "projection boundary, not OS isolation",
+    "F1/F2 join and downstream features remain separate gates"
+  ]
+}

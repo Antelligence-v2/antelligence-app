@@ -1,0 +1,910 @@
+{
+  "experiment": "e13-chain",
+  "model": "z-ai/glm-5.3-flash",
+  "provider": "nousresearch",
+  "config": {
+    "agents": 3,
+    "grid": [
+      10,
+      10
+    ],
+    "view_k": 5,
+    "steps": 120,
+    "n_food": 3,
+    "seeds": [
+      101,
+      102,
+      103,
+      104,
+      105,
+      106,
+      107,
+      108,
+      109,
+      110,
+      111,
+      112,
+      113,
+      114,
+      115,
+      116,
+      117,
+      118,
+      119,
+      120
+    ],
+    "temperature": 0.0,
+    "max_tokens": 1500,
+    "auto_pick_drop": true,
+    "chain_constraint": true
+  },
+  "runs": [
+    {
+      "arm": "hive_memory",
+      "seed": 101,
+      "foods": [
+        [
+          4,
+          7
+        ],
+        [
+          3,
+          5
+        ],
+        [
+          4,
+          3
+        ]
+      ],
+      "food_index": {
+        "(4, 7)": 0,
+        "(3, 5)": 1,
+        "(4, 3)": 2
+      },
+      "nest": [
+        8,
+        3
+      ],
+      "success": true,
+      "steps_to_success": 31,
+      "deliveries": 3,
+      "llm_calls": 91,
+      "prompt_tokens": 7871,
+      "completion_tokens": 12872,
+      "transport_events": 0,
+      "memory_hits": 43,
+      "memory_misses": 7,
+      "memory_deposits": 20,
+      "memory_relevant_hits": 23,
+      "sweep_moves": 50,
+      "directed_moves": 41,
+      "parse_errors": 0,
+      "failure_reason": null,
+      "hive_records": 40
+    },
+    {
+      "arm": "hive_memory",
+      "seed": 102,
+      "foods": [
+        [
+          9,
+          0
+        ],
+        [
+          8,
+          2
+        ],
+        [
+          1,
+          0
+        ]
+      ],
+      "food_index": {
+        "(9, 0)": 0,
+        "(8, 2)": 1,
+        "(1, 0)": 2
+      },
+      "nest": [
+        2,
+        6
+      ],
+      "success": true,
+      "steps_to_success": 55,
+      "deliveries": 3,
+      "llm_calls": 164,
+      "prompt_tokens": 14664,
+      "completion_tokens": 22143,
+      "transport_events": 0,
+      "memory_hits": 105,
+      "memory_misses": 7,
+      "memory_deposits": 14,
+      "memory_relevant_hits": 40,
+      "sweep_moves": 93,
+      "directed_moves": 71,
+      "parse_errors": 0,
+      "failure_reason": null,
+      "hive_records": 28
+    },
+    {
+      "arm": "hive_memory",
+      "seed": 103,
+      "foods": [
+        [
+          1,
+          2
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          3,
+          1
+        ]
+      ],
+      "food_index": {
+        "(1, 2)": 0,
+        "(0, 0)": 1,
+        "(3, 1)": 2
+      },
+      "nest": [
+        7,
+        5
+      ],
+      "success": true,
+      "steps_to_success": 46,
+      "deliveries": 3,
+      "llm_calls": 136,
+      "prompt_tokens": 12399,
+      "completion_tokens": 16879,
+      "transport_events": 0,
+      "memory_hits": 109,
+      "memory_misses": 6,
+      "memory_deposits": 18,
+      "memory_relevant_hits": 17,
+      "sweep_moves": 98,
+      "directed_moves": 38,
+      "parse_errors": 0,
+      "failure_reason": null,
+      "hive_records": 36
+    },
+    {
+      "arm": "hive_memory",
+      "seed": 104,
+      "foods": [
+        [
+          3,
+          9
+        ],
+        [
+          5,
+          9
+        ],
+        [
+          7,
+          7
+        ]
+      ],
+      "food_index": {
+        "(3, 9)": 0,
+        "(5, 9)": 1,
+        "(7, 7)": 2
+      },
+      "nest": [
+        2,
+        0
+      ],
+      "success": true,
+      "steps_to_success": 103,
+      "deliveries": 3,
+      "llm_calls": 308,
+      "prompt_tokens": 27304,
+      "completion_tokens": 43742,
+      "transport_events": 0,
+      "memory_hits": 236,
+      "memory_misses": 19,
+      "memory_deposits": 54,
+      "memory_relevant_hits": 7,
+      "sweep_moves": 260,
+      "directed_moves": 47,
+      "parse_errors": 1,
+      "failure_reason": null,
+      "hive_records": 108
+    },
+    {
+      "arm": "hive_memory",
+      "seed": 105,
+      "foods": [
+        [
+          5,
+          4
+        ],
+        [
+          5,
+          2
+        ],
+        [
+          6,
+          9
+        ]
+      ],
+      "food_index": {
+        "(5, 4)": 0,
+        "(5, 2)": 1,
+        "(6, 9)": 2
+      },
+      "nest": [
+        8,
+        9
+      ],
+      "success": true,
+      "steps_to_success": 33,
+      "deliveries": 3,
+      "llm_calls": 97,
+      "prompt_tokens": 8573,
+      "completion_tokens": 14349,
+      "transport_events": 0,
+      "memory_hits": 55,
+      "memory_misses": 6,
+      "memory_deposits": 27,
+      "memory_relevant_hits": 18,
+      "sweep_moves": 55,
+      "directed_moves": 42,
+      "parse_errors": 0,
+      "failure_reason": null,
+      "hive_records": 54
+    },
+    {
+      "arm": "hive_memory",
+      "seed": 106,
+      "foods": [
+        [
+          3,
+          7
+        ],
+        [
+          5,
+          6
+        ],
+        [
+          7,
+          4
+        ]
+      ],
+      "food_index": {
+        "(3, 7)": 0,
+        "(5, 6)": 1,
+        "(7, 4)": 2
+      },
+      "nest": [
+        4,
+        1
+      ],
+      "success": true,
+      "steps_to_success": 28,
+      "deliveries": 3,
+      "llm_calls": 82,
+      "prompt_tokens": 7538,
+      "completion_tokens": 10949,
+      "transport_events": 0,
+      "memory_hits": 55,
+      "memory_misses": 4,
+      "memory_deposits": 18,
+      "memory_relevant_hits": 24,
+      "sweep_moves": 42,
+      "directed_moves": 40,
+      "parse_errors": 0,
+      "failure_reason": null,
+      "hive_records": 36
+    },
+    {
+      "arm": "hive_memory",
+      "seed": 107,
+      "foods": [
+        [
+          8,
+          1
+        ],
+        [
+          4,
+          4
+        ],
+        [
+          9,
+          0
+        ]
+      ],
+      "food_index": {
+        "(8, 1)": 0,
+        "(4, 4)": 1,
+        "(9, 0)": 2
+      },
+      "nest": [
+        2,
+        6
+      ],
+      "success": true,
+      "steps_to_success": 107,
+      "deliveries": 3,
+      "llm_calls": 320,
+      "prompt_tokens": 27152,
+      "completion_tokens": 42436,
+      "transport_events": 0,
+      "memory_hits": 209,
+      "memory_misses": 5,
+      "memory_deposits": 14,
+      "memory_relevant_hits": 33,
+      "sweep_moves": 259,
+      "directed_moves": 61,
+      "parse_errors": 0,
+      "failure_reason": null,
+      "hive_records": 28
+    },
+    {
+      "arm": "hive_memory",
+      "seed": 108,
+      "foods": [
+        [
+          3,
+          5
+        ],
+        [
+          1,
+          8
+        ],
+        [
+          3,
+          9
+        ]
+      ],
+      "food_index": {
+        "(3, 5)": 0,
+        "(1, 8)": 1,
+        "(3, 9)": 2
+      },
+      "nest": [
+        1,
+        4
+      ],
+      "success": true,
+      "steps_to_success": 96,
+      "deliveries": 3,
+      "llm_calls": 288,
+      "prompt_tokens": 26381,
+      "completion_tokens": 34370,
+      "transport_events": 0,
+      "memory_hits": 270,
+      "memory_misses": 4,
+      "memory_deposits": 23,
+      "memory_relevant_hits": 28,
+      "sweep_moves": 246,
+      "directed_moves": 42,
+      "parse_errors": 0,
+      "failure_reason": null,
+      "hive_records": 46
+    },
+    {
+      "arm": "hive_memory",
+      "seed": 109,
+      "foods": [
+        [
+          4,
+          9
+        ],
+        [
+          3,
+          7
+        ],
+        [
+          8,
+          4
+        ]
+      ],
+      "food_index": {
+        "(4, 9)": 0,
+        "(3, 7)": 1,
+        "(8, 4)": 2
+      },
+      "nest": [
+        1,
+        3
+      ],
+      "success": true,
+      "steps_to_success": 27,
+      "deliveries": 3,
+      "llm_calls": 79,
+      "prompt_tokens": 7083,
+      "completion_tokens": 11206,
+      "transport_events": 0,
+      "memory_hits": 46,
+      "memory_misses": 4,
+      "memory_deposits": 19,
+      "memory_relevant_hits": 22,
+      "sweep_moves": 41,
+      "directed_moves": 38,
+      "parse_errors": 0,
+      "failure_reason": null,
+      "hive_records": 38
+    },
+    {
+      "arm": "hive_memory",
+      "seed": 110,
+      "foods": [
+        [
+          0,
+          1
+        ],
+        [
+          0,
+          8
+        ],
+        [
+          4,
+          2
+        ]
+      ],
+      "food_index": {
+        "(0, 1)": 0,
+        "(0, 8)": 1,
+        "(4, 2)": 2
+      },
+      "nest": [
+        8,
+        1
+      ],
+      "success": true,
+      "steps_to_success": 40,
+      "deliveries": 3,
+      "llm_calls": 120,
+      "prompt_tokens": 10389,
+      "completion_tokens": 16421,
+      "transport_events": 0,
+      "memory_hits": 86,
+      "memory_misses": 4,
+      "memory_deposits": 24,
+      "memory_relevant_hits": 0,
+      "sweep_moves": 97,
+      "directed_moves": 23,
+      "parse_errors": 0,
+      "failure_reason": null,
+      "hive_records": 48
+    },
+    {
+      "arm": "hive_memory",
+      "seed": 111,
+      "foods": [
+        [
+          7,
+          0
+        ],
+        [
+          9,
+          7
+        ],
+        [
+          8,
+          0
+        ]
+      ],
+      "food_index": {
+        "(7, 0)": 0,
+        "(9, 7)": 1,
+        "(8, 0)": 2
+      },
+      "nest": [
+        9,
+        2
+      ],
+      "success": true,
+      "steps_to_success": 35,
+      "deliveries": 3,
+      "llm_calls": 104,
+      "prompt_tokens": 9050,
+      "completion_tokens": 14200,
+      "transport_events": 0,
+      "memory_hits": 48,
+      "memory_misses": 23,
+      "memory_deposits": 21,
+      "memory_relevant_hits": 10,
+      "sweep_moves": 73,
+      "directed_moves": 31,
+      "parse_errors": 0,
+      "failure_reason": null,
+      "hive_records": 42
+    },
+    {
+      "arm": "hive_memory",
+      "seed": 112,
+      "foods": [
+        [
+          3,
+          8
+        ],
+        [
+          7,
+          0
+        ],
+        [
+          3,
+          7
+        ]
+      ],
+      "food_index": {
+        "(3, 8)": 0,
+        "(7, 0)": 1,
+        "(3, 7)": 2
+      },
+      "nest": [
+        2,
+        5
+      ],
+      "success": true,
+      "steps_to_success": 70,
+      "deliveries": 3,
+      "llm_calls": 210,
+      "prompt_tokens": 17243,
+      "completion_tokens": 29204,
+      "transport_events": 0,
+      "memory_hits": 125,
+      "memory_misses": 6,
+      "memory_deposits": 14,
+      "memory_relevant_hits": 7,
+      "sweep_moves": 183,
+      "directed_moves": 27,
+      "parse_errors": 0,
+      "failure_reason": null,
+      "hive_records": 28
+    },
+    {
+      "arm": "hive_memory",
+      "seed": 113,
+      "foods": [
+        [
+          0,
+          1
+        ],
+        [
+          4,
+          2
+        ],
+        [
+          4,
+          6
+        ]
+      ],
+      "food_index": {
+        "(0, 1)": 0,
+        "(4, 2)": 1,
+        "(4, 6)": 2
+      },
+      "nest": [
+        3,
+        6
+      ],
+      "success": true,
+      "steps_to_success": 40,
+      "deliveries": 3,
+      "llm_calls": 119,
+      "prompt_tokens": 10360,
+      "completion_tokens": 21405,
+      "transport_events": 0,
+      "memory_hits": 75,
+      "memory_misses": 6,
+      "memory_deposits": 42,
+      "memory_relevant_hits": 10,
+      "sweep_moves": 90,
+      "directed_moves": 29,
+      "parse_errors": 0,
+      "failure_reason": null,
+      "hive_records": 84
+    },
+    {
+      "arm": "hive_memory",
+      "seed": 114,
+      "foods": [
+        [
+          8,
+          8
+        ],
+        [
+          8,
+          4
+        ],
+        [
+          9,
+          1
+        ]
+      ],
+      "food_index": {
+        "(8, 8)": 0,
+        "(8, 4)": 1,
+        "(9, 1)": 2
+      },
+      "nest": [
+        0,
+        2
+      ],
+      "success": true,
+      "steps_to_success": 50,
+      "deliveries": 3,
+      "llm_calls": 149,
+      "prompt_tokens": 13039,
+      "completion_tokens": 18759,
+      "transport_events": 0,
+      "memory_hits": 92,
+      "memory_misses": 21,
+      "memory_deposits": 15,
+      "memory_relevant_hits": 11,
+      "sweep_moves": 110,
+      "directed_moves": 39,
+      "parse_errors": 0,
+      "failure_reason": null,
+      "hive_records": 30
+    },
+    {
+      "arm": "hive_memory",
+      "seed": 115,
+      "foods": [
+        [
+          7,
+          0
+        ],
+        [
+          8,
+          8
+        ],
+        [
+          9,
+          3
+        ]
+      ],
+      "food_index": {
+        "(7, 0)": 0,
+        "(8, 8)": 1,
+        "(9, 3)": 2
+      },
+      "nest": [
+        8,
+        4
+      ],
+      "success": false,
+      "steps_to_success": null,
+      "deliveries": 2,
+      "llm_calls": 360,
+      "prompt_tokens": 27166,
+      "completion_tokens": 57945,
+      "transport_events": 0,
+      "memory_hits": 119,
+      "memory_misses": 21,
+      "memory_deposits": 6,
+      "memory_relevant_hits": 2,
+      "sweep_moves": 299,
+      "directed_moves": 25,
+      "parse_errors": 0,
+      "failure_reason": "delivered_2_of_3",
+      "hive_records": 12
+    },
+    {
+      "arm": "hive_memory",
+      "seed": 116,
+      "foods": [
+        [
+          6,
+          9
+        ],
+        [
+          1,
+          7
+        ],
+        [
+          1,
+          5
+        ]
+      ],
+      "food_index": {
+        "(6, 9)": 0,
+        "(1, 7)": 1,
+        "(1, 5)": 2
+      },
+      "nest": [
+        7,
+        7
+      ],
+      "success": true,
+      "steps_to_success": 45,
+      "deliveries": 3,
+      "llm_calls": 135,
+      "prompt_tokens": 12688,
+      "completion_tokens": 19473,
+      "transport_events": 0,
+      "memory_hits": 115,
+      "memory_misses": 3,
+      "memory_deposits": 29,
+      "memory_relevant_hits": 31,
+      "sweep_moves": 87,
+      "directed_moves": 48,
+      "parse_errors": 0,
+      "failure_reason": null,
+      "hive_records": 58
+    },
+    {
+      "arm": "hive_memory",
+      "seed": 117,
+      "foods": [
+        [
+          1,
+          8
+        ],
+        [
+          9,
+          5
+        ],
+        [
+          5,
+          7
+        ]
+      ],
+      "food_index": {
+        "(1, 8)": 0,
+        "(9, 5)": 1,
+        "(5, 7)": 2
+      },
+      "nest": [
+        8,
+        6
+      ],
+      "success": true,
+      "steps_to_success": 80,
+      "deliveries": 3,
+      "llm_calls": 240,
+      "prompt_tokens": 22051,
+      "completion_tokens": 31968,
+      "transport_events": 0,
+      "memory_hits": 203,
+      "memory_misses": 22,
+      "memory_deposits": 53,
+      "memory_relevant_hits": 16,
+      "sweep_moves": 209,
+      "directed_moves": 31,
+      "parse_errors": 0,
+      "failure_reason": null,
+      "hive_records": 106
+    },
+    {
+      "arm": "hive_memory",
+      "seed": 118,
+      "foods": [
+        [
+          0,
+          9
+        ],
+        [
+          7,
+          8
+        ],
+        [
+          9,
+          5
+        ]
+      ],
+      "food_index": {
+        "(0, 9)": 0,
+        "(7, 8)": 1,
+        "(9, 5)": 2
+      },
+      "nest": [
+        4,
+        5
+      ],
+      "success": true,
+      "steps_to_success": 101,
+      "deliveries": 3,
+      "llm_calls": 302,
+      "prompt_tokens": 25081,
+      "completion_tokens": 42262,
+      "transport_events": 0,
+      "memory_hits": 176,
+      "memory_misses": 21,
+      "memory_deposits": 22,
+      "memory_relevant_hits": 10,
+      "sweep_moves": 273,
+      "directed_moves": 29,
+      "parse_errors": 0,
+      "failure_reason": null,
+      "hive_records": 44
+    },
+    {
+      "arm": "hive_memory",
+      "seed": 119,
+      "foods": [
+        [
+          3,
+          7
+        ],
+        [
+          9,
+          0
+        ],
+        [
+          2,
+          7
+        ]
+      ],
+      "food_index": {
+        "(3, 7)": 0,
+        "(9, 0)": 1,
+        "(2, 7)": 2
+      },
+      "nest": [
+        1,
+        6
+      ],
+      "success": true,
+      "steps_to_success": 31,
+      "deliveries": 3,
+      "llm_calls": 93,
+      "prompt_tokens": 7894,
+      "completion_tokens": 14018,
+      "transport_events": 0,
+      "memory_hits": 43,
+      "memory_misses": 10,
+      "memory_deposits": 11,
+      "memory_relevant_hits": 14,
+      "sweep_moves": 58,
+      "directed_moves": 34,
+      "parse_errors": 1,
+      "failure_reason": null,
+      "hive_records": 22
+    },
+    {
+      "arm": "hive_memory",
+      "seed": 120,
+      "foods": [
+        [
+          3,
+          4
+        ],
+        [
+          5,
+          5
+        ],
+        [
+          2,
+          1
+        ]
+      ],
+      "food_index": {
+        "(3, 4)": 0,
+        "(5, 5)": 1,
+        "(2, 1)": 2
+      },
+      "nest": [
+        5,
+        3
+      ],
+      "success": true,
+      "steps_to_success": 18,
+      "deliveries": 3,
+      "llm_calls": 54,
+      "prompt_tokens": 4779,
+      "completion_tokens": 7684,
+      "transport_events": 0,
+      "memory_hits": 33,
+      "memory_misses": 3,
+      "memory_deposits": 14,
+      "memory_relevant_hits": 11,
+      "sweep_moves": 32,
+      "directed_moves": 22,
+      "parse_errors": 0,
+      "failure_reason": null,
+      "hive_records": 28
+    }
+  ],
+  "totals": {
+    "prompt_tokens": 298705,
+    "completion_tokens": 482285,
+    "total_tokens": 780990,
+    "estimated_cost_usd": 0.17631326122998933,
+    "cache_entries": 3451
+  }
+}

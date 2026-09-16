@@ -7,7 +7,8 @@ import { componentTagger } from "lovable-tagger";
 export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
-    port: 8080,
+    port: 8081,
+    allowedHosts: ["antelligenceee.operator-jarvis.org", ".operator-jarvis.org"],
   },
   // Base URL for production - will be served from backend
   base: mode === 'production' ? '/static/' : '/',

@@ -1,0 +1,129 @@
+{
+  "arms": {
+    "solo_planner": {
+      "accepted_nodes": 94,
+      "admission_rate": 0.5875,
+      "cost_usd": 0.0029988750000000007,
+      "determinism_failures": 0,
+      "execution_success_rate": 0.4,
+      "execution_successes": 8,
+      "max_width_mean": 0.8,
+      "mean_depth": 4.7,
+      "parse_errors": 2,
+      "proposed_nodes": 160,
+      "redundant_node_fraction": 0.0,
+      "rejection_breakdown": {
+        "acyclicity": 0,
+        "contradiction_cascade": 0,
+        "reachability": 26,
+        "resource_consistency": 32,
+        "verifier_feasibility": 8
+      },
+      "runs": 20,
+      "tokens_per_accepted_node": 428.56382978723406,
+      "total_tokens": 40285,
+      "unsafe_act_count": 0
+    },
+    "swarm_partitioned": {
+      "accepted_nodes": 40,
+      "admission_rate": 0.25316455696202533,
+      "cost_usd": 0.005800544999999996,
+      "determinism_failures": 0,
+      "execution_success_rate": 0.0,
+      "execution_successes": 0,
+      "max_width_mean": 1.35,
+      "mean_depth": 1.3,
+      "parse_errors": 29,
+      "proposed_nodes": 158,
+      "redundant_node_fraction": 0.0,
+      "rejection_breakdown": {
+        "acyclicity": 0,
+        "contradiction_cascade": 0,
+        "reachability": 37,
+        "resource_consistency": 51,
+        "verifier_feasibility": 30
+      },
+      "runs": 20,
+      "tokens_per_accepted_node": 3902.225,
+      "total_tokens": 156089,
+      "unsafe_act_count": 0
+    },
+    "swarm_partitioned_merged": {
+      "accepted_nodes": 128,
+      "admission_rate": 0.810126582278481,
+      "cost_usd": 0.006357199999999989,
+      "determinism_failures": 0,
+      "execution_success_rate": 0.8,
+      "execution_successes": 16,
+      "max_width_mean": 0.8,
+      "mean_depth": 6.4,
+      "parse_errors": 37,
+      "proposed_nodes": 158,
+      "redundant_node_fraction": 0.0,
+      "rejection_breakdown": {
+        "acyclicity": 0,
+        "contradiction_cascade": 0,
+        "reachability": 0,
+        "resource_consistency": 30,
+        "verifier_feasibility": 0
+      },
+      "runs": 20,
+      "tokens_per_accepted_node": 1380.4609375,
+      "total_tokens": 176699,
+      "unsafe_act_count": 0
+    }
+  },
+  "budget_cap_pass": true,
+  "budget_cap_usd": 0.5,
+  "determinism_all_pass": true,
+  "experiment": "e15-fixed-provisioning",
+  "failed_attempt_cost_usd": 0.0015999999999999992,
+  "matrix_cost_usd": 0.015156619999999985,
+  "paired_sign_tests": {
+    "swarm_partitioned_merged_vs_solo": {
+      "losses": 0,
+      "n_non_tied": 8,
+      "p_two_sided": 0.0078125,
+      "ties": 12,
+      "wins": 8
+    },
+    "swarm_partitioned_vs_solo": {
+      "losses": 8,
+      "n_non_tied": 8,
+      "p_two_sided": 0.0078125,
+      "ties": 12,
+      "wins": 0
+    }
+  },
+  "predeclared_flags": {
+    "asymmetry": false,
+    "half_solo_bar": 4,
+    "refuted": false,
+    "repair": true
+  },
+  "predeclared_verdict_fired": "SUPPORTED_WITH_REPAIR",
+  "pretest_cost_usd": 0.0007000000000000002,
+  "seeds": [
+    101,
+    102,
+    103,
+    104,
+    105,
+    106,
+    107,
+    108,
+    109,
+    110,
+    111,
+    112,
+    113,
+    114,
+    115,
+    116,
+    117,
+    118,
+    119,
+    120
+  ],
+  "total_cost_usd": 0.017456619999999985
+}

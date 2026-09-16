@@ -1,0 +1,51 @@
+[
+  {
+    "repo": "cooperbench/CooperBench",
+    "commit": "cdd16702860bbfad28e26d17e7a679caff1a31e3",
+    "url": "https://raw.githubusercontent.com/cooperbench/CooperBench/cdd16702860bbfad28e26d17e7a679caff1a31e3/src/cooperbench/eval/sandbox.py",
+    "path": "/Volumes/WD_BLACK/antelligence-collective-20260908/hive-research-20260910/sources/cooperbench-sandbox.py",
+    "sha256": "cd69b9ce6fd04425a31e8e45ecb3eb8dbf379cef9c746107aecd0d92a5f438fc"
+  },
+  {
+    "repo": "cooperbench/CooperBench",
+    "commit": "cdd16702860bbfad28e26d17e7a679caff1a31e3",
+    "url": "https://raw.githubusercontent.com/cooperbench/CooperBench/cdd16702860bbfad28e26d17e7a679caff1a31e3/src/cooperbench/runner/solo.py",
+    "path": "/Volumes/WD_BLACK/antelligence-collective-20260908/hive-research-20260910/sources/cooperbench-solo.py",
+    "sha256": "8012a70b8eea932ff1b38203f622d077e75a6423b9fa3c99e34226a9b2241b8c"
+  },
+  {
+    "repo": "ulab-uiuc/MARBLE",
+    "commit": "8d60fa17b5596b44458a52d4296061b9fc13d6f2",
+    "url": "https://raw.githubusercontent.com/ulab-uiuc/MARBLE/8d60fa17b5596b44458a52d4296061b9fc13d6f2/marble/evaluator/evaluator.py",
+    "path": "/Volumes/WD_BLACK/antelligence-collective-20260908/hive-research-20260910/sources/marble-evaluator.py",
+    "sha256": "cc9234a9003792538acc5e01579f484d16446da696319cb0c34a7f3466990ad8"
+  },
+  {
+    "repo": "ulab-uiuc/MARBLE",
+    "commit": "8d60fa17b5596b44458a52d4296061b9fc13d6f2",
+    "url": "https://raw.githubusercontent.com/ulab-uiuc/MARBLE/8d60fa17b5596b44458a52d4296061b9fc13d6f2/marble/engine/engine.py",
+    "path": "/Volumes/WD_BLACK/antelligence-collective-20260908/hive-research-20260910/sources/marble-engine.py",
+    "sha256": "649867349144d057db96638275568186b67d379d3b07b5a1b4884d17e94c7c52"
+  },
+  {
+    "repo": "ulab-uiuc/MARBLE",
+    "commit": "8d60fa17b5596b44458a52d4296061b9fc13d6f2",
+    "url": "https://raw.githubusercontent.com/ulab-uiuc/MARBLE/8d60fa17b5596b44458a52d4296061b9fc13d6f2/marble/agent/base_agent.py",
+    "path": "/Volumes/WD_BLACK/antelligence-collective-20260908/hive-research-20260910/sources/marble-base_agent.py",
+    "sha256": "4d4ac3c7cc007adbb7e4c89d2cab54fd7baee71565d950a1cb17a6b9d6752044"
+  },
+  {
+    "repo": "sierra-research/tau2-bench",
+    "commit": "caca045853d1e1cb1f9550846155a8299fd000a4",
+    "url": "https://raw.githubusercontent.com/sierra-research/tau2-bench/caca045853d1e1cb1f9550846155a8299fd000a4/src/tau2/evaluator/evaluator_env.py",
+    "path": "/Volumes/WD_BLACK/antelligence-collective-20260908/hive-research-20260910/sources/tau2-bench-evaluator_env.py",
+    "sha256": "b53ebfe6b0b06d7a2071b5f9dd03ee6ca8ac6000b0ef44f3bd345b346c30d8ac"
+  },
+  {
+    "repo": "sierra-research/tau2-bench",
+    "commit": "caca045853d1e1cb1f9550846155a8299fd000a4",
+    "url": "https://raw.githubusercontent.com/sierra-research/tau2-bench/caca045853d1e1cb1f9550846155a8299fd000a4/src/tau2/domains/telecom/tasks/create_tasks.py",
+    "path": "/Volumes/WD_BLACK/antelligence-collective-20260908/hive-research-20260910/sources/tau2-bench-create_tasks.py",
+    "sha256": "7ce75c5afc869a344985e68f7725d18709e51f6aa1233a91e5d387ba45bfac59"
+  }
+]

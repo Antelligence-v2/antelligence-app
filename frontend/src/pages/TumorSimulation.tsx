@@ -8,12 +8,12 @@ import { SimulationLoading } from "@/components/SimulationLoading";
 import { TumorSimulationGrid } from "@/components/TumorSimulationGrid";
 import { TumorSimulationControls } from "@/components/TumorSimulationControls";
 import { TumorSimulationSidebar } from "@/components/TumorSimulationSidebar";
+import { RunProvenance } from "@/components/RunProvenance";
 // Removed TumorPerformanceCharts import - moved to visualization tab
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Brain, Activity, Zap, Home } from "lucide-react";
+import { Brain, Activity, Zap, Home, FlaskConical } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8001";
+import { BUILD_INFO, IS_PREVIEW_MODE, API_BASE_URL } from "@/lib/runtime";
 
 interface TumorSimulationConfig {
   domain_size: number;
@@ -25,6 +25,8 @@ interface TumorSimulationConfig {
   use_queen: boolean;
   use_llm_queen: boolean;
   max_steps: number;
+  seed: number;
+  offline: boolean;
   cell_density: number;
   vessel_density: number;
 }
@@ -36,11 +38,13 @@ const TumorSimulation = () => {
     voxel_size: 20.0,
     n_nanobots: 10,
     tumor_radius: 200.0,
-    agent_type: "LLM-Powered",
+    agent_type: "Rule-Based",
     selected_model: "mistralai/Mistral-Large-Instruct-2411",
-    use_queen: true,
-    use_llm_queen: true,
+    use_queen: false,
+    use_llm_queen: false,
     max_steps: 200,
+    seed: 17,
+    offline: true,
     cell_density: 0.001,
     vessel_density: 0.01,
   });
@@ -55,48 +59,70 @@ const TumorSimulation = () => {
   const [detailedMode, setDetailedMode] = useState(false); // Simple vs Detailed mode toggle
 
   const runSimulation = useCallback(async () => {
+    if (IS_PREVIEW_MODE) {
+      toast.info("Preview mode is frontend-only. Tumor simulation stays local on the private backend.");
+      return;
+    }
+
     setIsLoading(true);
     setLoadingProgress(0);
     setIsPlaying(false);
     setSimulationResults(null);
     toast.info("Starting tumor nanobot simulation...");
 
+    const progressInterval = setInterval(() => {
+      setLoadingProgress(prev => Math.min(prev + 1, 90));
+    }, 200);
     try {
-      const progressInterval = setInterval(() => {
-        setLoadingProgress(prev => Math.min(prev + 1, 90));
-      }, 200);
-
       const response = await axios.post(`${API_BASE_URL}/simulation/tumor/run`, config);
-      
-      clearInterval(progressInterval);
       setLoadingProgress(100);
-
       setSimulationResults(response.data);
       setCurrentStep(0);
-      
-      // Save simulation data to session storage for visualization tab
-      sessionStorage.setItem('tumorSimulationResults', JSON.stringify(response.data));
-      sessionStorage.setItem('tumorSimulationConfig', JSON.stringify(config));
-      sessionStorage.setItem('tumorSimulationStep', '0');
-      
-      setTimeout(() => {
-        setIsLoading(false);
-        setLoadingProgress(0);
-        toast.success("Simulation complete! Results loaded for playback.");
-      }, 800);
-      
+      // Full histories exceed browser storage quotas; persist only a URL pointer.
+      const url = new URL(window.location.href);
+      url.searchParams.set("run", response.data.run_id);
+      window.history.replaceState(window.history.state, "", url);
+      toast.success("Simulation complete! Results loaded for playback.");
     } catch (error: any) {
       console.error("Tumor simulation API error:", error);
+      const detail = error.response?.data?.detail;
+      toast.error(`Failed to run simulation: ${detail?.message ?? (typeof detail === "string" ? detail : error.message)}`);
+    } finally {
+      clearInterval(progressInterval);
       setIsLoading(false);
       setLoadingProgress(0);
-      toast.error(`Failed to run simulation: ${error.response?.data?.detail || error.message}`);
     }
   }, [config]);
+
+  useEffect(() => {
+    const runId = new URLSearchParams(window.location.search).get("run");
+    if (!runId || IS_PREVIEW_MODE) return;
+    const controller = new AbortController();
+    setIsLoading(true);
+    axios.get(`${API_BASE_URL}/simulation/tumor/runs/${encodeURIComponent(runId)}`, { signal: controller.signal })
+      .then(({ data }) => {
+        setSimulationResults(data);
+        setConfig(data.config);
+        setCurrentStep(0);
+      })
+      .catch((error) => {
+        if (!controller.signal.aborted) {
+          toast.error(`Could not load saved run: ${error.response?.data?.detail?.message ?? error.message}`);
+        }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setIsLoading(false);
+      });
+    return () => controller.abort();
+  }, []);
 
   const handleReset = () => {
     setIsPlaying(false);
     setSimulationResults(null);
     setCurrentStep(0);
+    const url = new URL(window.location.href);
+    url.searchParams.delete("run");
+    window.history.replaceState(window.history.state, "", url);
     toast("Simulation has been reset.");
   };
 
@@ -157,16 +183,13 @@ const TumorSimulation = () => {
 
    const currentSubstrateData = getCurrentSubstrateData();
    
-   // Debug logging
-   console.log('Simulation Results:', simulationResults);
-   console.log('Current Step Data:', currentStepData);
-   console.log('Current Substrate Data:', currentSubstrateData);
+
 
   const metrics = {
     currentStep: currentStepData?.step ?? 0,
     totalSteps: simulationResults?.total_steps_run ?? 0,
     time: currentStepData?.time ?? 0,
-    cellsKilled: simulationResults?.tumor_statistics?.cells_killed ?? 0,
+    cellsKilled: currentStepData?.metrics?.cells_killed ?? 0,
     deliveries: currentStepData?.metrics?.total_deliveries ?? 0,
     drugDelivered: currentStepData?.metrics?.total_drug_delivered ?? 0,
     hypoxicCells: currentStepData?.metrics?.hypoxic_cells ?? 0,
@@ -198,8 +221,8 @@ const TumorSimulation = () => {
       <main className="flex-1 flex flex-col overflow-hidden">
         {/* Header with gradient background */}
         <div className="p-4 border-b bg-gradient-to-r from-white via-blue-50 to-indigo-50 dark:from-slate-800 dark:via-slate-700 dark:to-slate-600 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-4">
               <Button
                 onClick={() => navigate('/')}
                 variant="ghost"
@@ -209,6 +232,15 @@ const TumorSimulation = () => {
                 <Home className="w-4 h-4 mr-2" />
                 Back to Home
               </Button>
+              <Button
+                onClick={() => navigate('/experiments')}
+                variant="outline"
+                size="sm"
+                className="gap-2 border-purple-300 text-purple-700 hover:border-purple-400 hover:bg-purple-50 dark:border-purple-700 dark:text-purple-300 dark:hover:bg-purple-950/40"
+              >
+                <FlaskConical className="h-4 w-4" />
+                Experiment Lab
+              </Button>
               <div className="h-6 w-px bg-slate-300 dark:bg-slate-600" />
               <div className="flex items-center gap-3">
                 <div>
@@ -216,8 +248,13 @@ const TumorSimulation = () => {
                     Tumor Nanobot Simulation
                   </h1>
                   <p className="text-sm text-slate-600 dark:text-slate-400">
-                    Glioblastoma Treatment Analysis
+                    Synthetic 2D research model — not clinical treatment guidance
                   </p>
+                  {IS_PREVIEW_MODE && (
+                    <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">
+                      Preview build: {BUILD_INFO.buildLabel} · backend execution disabled
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -384,7 +421,7 @@ const TumorSimulation = () => {
                            </p>
                            <p className="text-sm text-pink-700 dark:text-pink-300">
                              Nanobots navigate toward hypoxic tumor regions using chemotaxis and pheromone trails, 
-                             delivering targeted drug payloads to maximize treatment effectiveness.
+                             delivering targeted drug payloads in a simplified research model, not a prediction of clinical effectiveness.
                            </p>
                          </div>
                        </div>
@@ -429,6 +466,15 @@ const TumorSimulation = () => {
             )}
           </div>
         </div>
+
+        {simulationResults && (
+          <RunProvenance
+            runId={simulationResults.run_id}
+            provenance={simulationResults.provenance}
+            apiBaseUrl={API_BASE_URL}
+            isPreviewMode={IS_PREVIEW_MODE}
+          />
+        )}
       </main>
     </div>
   );

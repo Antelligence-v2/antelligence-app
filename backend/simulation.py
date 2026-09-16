@@ -1,13 +1,13 @@
 # simulation.py
 import numpy as np
 import os
-import openai
 import random
 from random import choice
 import json
 from dotenv import load_dotenv
 import asyncio
 import time
+from litellm_client import create_client as create_llm_client
 
 # Load environment variables
 load_dotenv()
@@ -16,30 +16,23 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 MISTRAL_API_KEY = os.getenv("MISTRAL_API_KEY")
 
+# LiteLLM API base
+LITELLM_API_BASE = "http://host.orb.internal:4000/v1"
+
+# Initialize model clients via LiteLLM
+def get_openai_client():
+    return create_llm_client(api_key=OPENAI_API_KEY, api_base=LITELLM_API_BASE)
+
+def get_gemini_client():
+    return create_llm_client(api_key=GEMINI_API_KEY, api_base=LITELLM_API_BASE)
+
+def get_mistral_client():
+    return create_llm_client(api_key=MISTRAL_API_KEY, api_base=LITELLM_API_BASE)
+
 # Initialize model clients
-try:
-    import google.generativeai as genai
-    if GEMINI_API_KEY:
-        genai.configure(api_key=GEMINI_API_KEY)
-        print("✅ Gemini API configured")
-except ImportError:
-    print("⚠️ google-generativeai not installed")
-    genai = None
-
-try:
-    from mistralai import Mistral
-    mistral_client = Mistral(api_key=MISTRAL_API_KEY) if MISTRAL_API_KEY else None
-    if mistral_client:
-        print("✅ Mistral client configured")
-except ImportError:
-    print("⚠️ mistralai not installed")
-    mistral_client = None
-
-# OpenAI client for GPT models
-openai_client = None
-if OPENAI_API_KEY:
-    openai_client = openai.OpenAI(api_key=OPENAI_API_KEY)
-    print("✅ OpenAI client configured")
+openai_client = get_openai_client()
+gemini_client = get_gemini_client()
+mistral_client = get_mistral_client()
 
 class SimpleAntAgent:
     def __init__(self, unique_id, model, is_llm_controlled=True):
@@ -124,19 +117,30 @@ class SimpleAntAgent:
             self.steps_since_food = 0
             # Deposit strong trail pheromone upon successful pickup
             self.model.deposit_pheromone(self.pos, 'trail', self.model.trail_deposit * 2)
+        # Food drop at nest for LLM ants (they never got drop logic before)
+        if self.carrying_food and self.is_llm_controlled:
+            nest_x, nest_y = self.model.width // 2, self.model.height // 2
+            dist_to_nest = abs(self.pos[0] - nest_x) + abs(self.pos[1] - nest_y)
+            if dist_to_nest <= 2:  # Within 2 cells of nest
+                self.carrying_food = False
+                self.model.metrics['food_collected'] += 1
+                self.model.metrics['food_collected_by_llm'] += 1
+                # Strong trail pheromone back toward food
+                self.model.deposit_pheromone(self.pos, 'trail', self.model.trail_deposit * 3)
         else:
             self.steps_since_food += 1
             # If LLM ant hasn't found food for a while, deposit recruitment pheromone
             if self.is_llm_controlled and self.steps_since_food > 10 and not self.carrying_food:
                 self.model.deposit_pheromone(self.pos, 'recruitment', self.model.recruitment_deposit)
         
-        # Only drop food at nest/home for rule-based ants
-        if self.carrying_food and not self.is_llm_controlled:
+        # Drop food at nest/home for both LLM and rule-based ants
+        if self.carrying_food:
             home = (self.model.width // 2, self.model.height // 2)
-            # Drop food if at home position or very close to it
-            if abs(self.pos[0] - home[0]) <= 1 and abs(self.pos[1] - home[1]) <= 1:
-                if random.random() < 0.3:  # 30% chance to drop at home
+            # Drop food if within Manhattan distance 2 of nest center
+            if abs(self.pos[0] - home[0]) <= 2 and abs(self.pos[1] - home[1]) <= 2:
+                if self.is_llm_controlled or random.random() < 0.3:
                     self.carrying_food = False
+                    self.model.metrics['food_collected'] += 1
                     # Deposit trail pheromone at nest when dropping food
                     self.model.deposit_pheromone(self.pos, 'trail', self.model.trail_deposit * 1.5)
 
@@ -653,6 +657,44 @@ class SimpleForagingModel:
         
         # Use set for foods for better performance
         self.foods = set()
+        
+        # Spawn food in spatial clusters (more realistic than pure random)
+        # Food sources in nature are patchy, not uniformly distributed
+        n_clusters = max(2, min(4, N_food // 4))  # 2-4 clusters depending on total food
+        cluster_radius = max(2, min(width, height) // 5)  # cluster spread radius
+        
+        # Avoid placing clusters too close to nest (center) so ants must actually forage
+        nest_cx, nest_cy = width // 2, height // 2
+        min_dist_from_nest = max(3, min(width, height) // 4)
+        
+        cluster_centers = []
+        attempts = 0
+        while len(cluster_centers) < n_clusters and attempts < 100:
+            cx = np.random.randint(1, width - 1)
+            cy = np.random.randint(1, height - 1)
+            dist_from_nest = abs(cx - nest_cx) + abs(cy - nest_cy)
+            if dist_from_nest >= min_dist_from_nest:
+                cluster_centers.append((cx, cy))
+            attempts += 1
+        
+        # If we couldn't find enough valid centers, fill with any valid position
+        while len(cluster_centers) < n_clusters:
+            cluster_centers.append((np.random.randint(1, width - 1), np.random.randint(1, height - 1)))
+        
+        # Place food items around each cluster center
+        food_per_cluster = N_food // n_clusters
+        for cx, cy in cluster_centers:
+            placed = 0
+            cluster_attempts = 0
+            while placed < food_per_cluster and cluster_attempts < 50:
+                fx = cx + np.random.randint(-cluster_radius, cluster_radius + 1)
+                fy = cy + np.random.randint(-cluster_radius, cluster_radius + 1)
+                if 0 <= fx < width and 0 <= fy < height and (fx, fy) not in self.foods:
+                    self.foods.add((fx, fy))
+                    placed += 1
+                cluster_attempts += 1
+        
+        # Fill any remaining slots with random positions (rounding residual)
         while len(self.foods) < N_food:
             new_food_pos = (np.random.randint(width), np.random.randint(height))
             self.foods.add(new_food_pos)
@@ -715,9 +757,9 @@ class SimpleForagingModel:
         self.api_enabled = False
         if IO_API_KEY:
             try:
-                self.io_client = openai.OpenAI(
+                self.io_client = create_llm_client(
                     api_key=IO_API_KEY,
-                    base_url="https://api.intelligence.io.solutions/api/v1/"
+                    api_base=LITELLM_API_BASE
                 )
                 self.api_enabled = True
                 self.log_error("LLM API initialized successfully.")
@@ -999,19 +1041,18 @@ class SimpleForagingModel:
         }
 
     def set_pheromone_params(self, decay_rate, trail_deposit=None, alarm_deposit=None, recruitment_deposit=None, max_value=None, fear_deposit=None):
-        """Update pheromone parameters during runtime.
-        
-        New behavior: Fixed deposits of 2 for each pheromone type.
-        Max value auto-calculated based on ant count.
-        """
+        """Update pheromone parameters during runtime."""
         self.pheromone_decay_rate = decay_rate
-        # Fixed deposits for all pheromone types
-        self.trail_deposit = 2.0
-        self.alarm_deposit = 2.0
-        self.recruitment_deposit = 2.0
-        self.fear_deposit = 2.0
-        # Max value based on number of ants
-        self.max_pheromone_value = len(self.ants) * 2.0
+        if trail_deposit is not None:
+            self.trail_deposit = trail_deposit
+        if alarm_deposit is not None:
+            self.alarm_deposit = alarm_deposit
+        if recruitment_deposit is not None:
+            self.recruitment_deposit = recruitment_deposit
+        if max_value is not None:
+            self.max_pheromone_value = max_value
+        if fear_deposit is not None:
+            self.fear_deposit = fear_deposit
 
     def log_error(self, message: str):
         """Log a non-fatal error during the simulation."""

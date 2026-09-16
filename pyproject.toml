@@ -1,0 +1,51 @@
+[project]
+name = "antelligence"
+version = "0.2.0"
+description = "DeSci compute-as-a-service: privacy-preserving tumor simulation with ZK proofs on Base L2"
+requires-python = ">=3.10"
+dependencies = [
+  "fastapi",
+  "uvicorn[standard]",
+  "openai",
+  "numpy",
+  "python-dotenv",
+  "pandas",
+  "web3",
+  "google-generativeai",
+  "mistralai",
+  "httpx",
+  "scipy",
+  "nibabel",
+  "scikit-image",
+  "pydantic",
+  "matplotlib",
+]
+
+[project.optional-dependencies]
+test = [
+  "pytest>=9",
+]
+
+[project.scripts]
+antelligence = "backend.cli:main"
+antelligence-api = "backend.api_server:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+python_classes = "Test*"
+python_functions = "test_*"
+addopts = "-v --tb=short"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["backend*"]
+
+[tool.setuptools.package-data]
+backend = ["research_fixtures/*.json"]
+
+[tool.uv]
+package = true

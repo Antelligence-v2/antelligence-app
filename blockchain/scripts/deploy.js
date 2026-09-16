@@ -19,6 +19,10 @@ async function main() {
   await tumorIntel.waitForDeployment();
   console.log("TumorIntel ➜", await tumorIntel.getAddress());
 
+  const ExperienceRegistry = await ethers.getContractFactory("ExperienceRegistry");
+  const experienceRegistry = await ExperienceRegistry.deploy();
+  await experienceRegistry.waitForDeployment();
+  console.log("ExperienceRegistry ➜", await experienceRegistry.getAddress());
 }
 
 main().catch((e) => {
