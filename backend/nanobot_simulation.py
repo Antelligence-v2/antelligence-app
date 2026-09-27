@@ -179,6 +179,15 @@ class NanobotAgent:
         Search for tumor cells to target.
         Prioritizes nearest living cell for drug delivery.
         """
+        # A bot that can no longer target (payload <= 2.0) must reload. Before this
+        # check, a bot left with exactly 2.0 ug after six 3 ug deliveries could
+        # neither target (> 2.0) nor return (< 2.0) and searched forever.
+        if self.drug_payload <= 2.0:
+            self.target_cell = None
+            self.target_vessel = self.model.geometry.find_nearest_vessel(tuple(self.position))
+            self.state = NanobotState.RETURNING
+            return
+
         # FIRST PRIORITY: Check for nearby targets immediately
         nearby_cell = self._find_nearest_living_cell(max_distance=100.0)  # Updated to find any living cell
         if nearby_cell and self.drug_payload > 2.0:
@@ -532,7 +541,7 @@ class NanobotAgent:
                 self.model.deposit_pheromone('alarm_pheromone', voxel, 5.0)
         
         # If payload depleted, return to vessel
-        if self.drug_payload < 2.0:  # Return when < 2 μg remaining
+        if self.drug_payload <= 2.0:  # Return when no further useful delivery is possible
             self.target_cell = None
             self.target_vessel = self.model.geometry.find_nearest_vessel(tuple(self.position))
             self.state = NanobotState.RETURNING
@@ -558,7 +567,9 @@ class NanobotAgent:
             self.state = NanobotState.RELOADING
         else:
             direction = direction / distance
-            self.position[:2] += direction * self.speed
+            # Never step past the vessel: with 30 um steps and a 10 um arrival radius
+            # a bot 11-29 um away used to overshoot and oscillate around it forever.
+            self.position[:2] += direction * min(self.speed, distance)
             self._clamp_position()
     
     def _reload_drug(self):
@@ -628,8 +639,9 @@ class NanobotAgent:
                 direction_to_center = tumor_center - pos_2d
                 if np.linalg.norm(direction_to_center) > 0:
                     direction_to_center = direction_to_center / np.linalg.norm(direction_to_center)
-                    # Move toward tumor boundary edge
-                    edge_position = tumor_center + direction_to_center * (self.model.geometry.tumor_radius - 5.0)
+                    # Move to the nearest tumor edge (previously center + direction_to_center,
+                    # which placed the bot on the opposite side of the tumor)
+                    edge_position = tumor_center - direction_to_center * (self.model.geometry.tumor_radius - 5.0)
                     self.position[0] = edge_position[0]
                     self.position[1] = edge_position[1]
                     
