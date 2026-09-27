@@ -366,3 +366,32 @@ infrastructure. The tumor world is a synthetic 2D model, not clinical software.
 A cross-world result, positive or negative, is reported with the same pre-registered,
 paired-seed methodology as the DeSci paper; agreement is not truth, and `staged` is
 not `verified_onchain`.
+
+---
+
+## 14. Parity with the paper's hive modules (added after import)
+
+The C0–F3 modules from solmonger's review packet (`review/hive-fit-20260911`
+@ `c37923e`) now live in `backend/research_hive_*.py`, byte-identical and
+hash-checked against the packet manifest.
+
+**Verified equivalent** (`tests/engine/test_trust_parity.py`): for the same
+scenarios, engine `EvidenceMemory` and `HiveMemoryStore` leave the same set of
+*usable* evidence — source replacement, contradiction cascade, cross-arm
+refusal, tamper detection on open, record-size bounds, and 15 randomized
+E13-shaped sighting/pickup streams (600 checkpoints, 0–6 usable facts).
+
+**Intended differences**
+
+| Topic | Hive store | Engine | Why |
+|---|---|---|---|
+| Keying | source lineage (`source_id` + `source_revision`) | subject + subject revision | signals name subjects (a zone, a food); same invalidation semantics |
+| Admission | claims `retained`; only an evaluator admits procedures | claims admitted after N distinct-author confirmations (default 1) | E13's harness auto-admitted every sighting via a pilot evaluator, i.e. N = 1 |
+| Superseded status | `superseded` for the replaced record | `invalidated` (reason `source_replaced`) | one "not usable" status; reason is kept |
+| Contradiction resolution | none | authority-only `resolve()` | lets a verifier restore the winner |
+| Recall | substring query over admitted procedures | subject/kind filter, local selectors | structured recall for worlds |
+| Transport | recipient-addressed request/reply; conflicting replies quarantined | range/topic broadcast signals + `AdmissionPolicy` | stigmergy; no quarantine equivalent yet |
+
+**Task-DAG (E15)** is a verbatim port: functions are source-identical to
+`run_e15.py`, admission bytes match on 3 arms × 20 seeds, and the admitted
+DAGs from the paper's real LLM runs re-execute to the published 8 / 0 / 16.

@@ -40,6 +40,8 @@ WORLD = "world"
 VERIFIER = "verifier"
 
 _SCHEMA_VERSION = 1
+MAX_BODY_BYTES = 65_536  # same bounds as research_hive_memory
+MAX_DEPENDENCIES = 128
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS records (
     id TEXT PRIMARY KEY, scope TEXT NOT NULL, kind TEXT NOT NULL, author TEXT NOT NULL,
@@ -71,6 +73,10 @@ class TrustError(EvidenceError):
 
 class StaleError(EvidenceError):
     """The record describes an older revision of its subject."""
+
+
+class IntegrityError(EvidenceError):
+    """A stored record no longer matches its content-derived id (tampering)."""
 
 
 class DependencyError(EvidenceError):
@@ -157,6 +163,19 @@ class EvidenceMemory:
         self._db.executescript(_SCHEMA)
         self._db.execute(f"PRAGMA user_version={_SCHEMA_VERSION}")
         self._pending: List[dict] = []
+        self.verify_integrity()
+
+    def verify_integrity(self) -> int:
+        """Recompute every record id from its stored content; raise on any mismatch."""
+        count = 0
+        for row in self._db.execute("SELECT * FROM records"):
+            record = _row_to_record(row)
+            content = {"scope": record.scope, "kind": record.kind, "subject": record.subject,
+                       "subject_rev": record.subject_rev, "body": record.body, "depends_on": list(record.depends_on)}
+            if content_hash({**content, "author": record.author}) != record.id or content_hash(content) != record.content_key:
+                raise IntegrityError(f"record {record.id[:12]} does not match its content")
+            count += 1
+        return count
 
     def close(self) -> None:
         self._db.close()
@@ -211,6 +230,8 @@ class EvidenceMemory:
         if rev > current:
             raise StaleError(f"{subject}: proposed revision {rev} is ahead of current {current}")
         deps = tuple(sorted(set(depends_on)))
+        if len(deps) > MAX_DEPENDENCIES:
+            raise ValueError(f"at most {MAX_DEPENDENCIES} dependencies")
         for dep in deps:
             parent = self.get(dep)
             if parent is None:
@@ -220,6 +241,8 @@ class EvidenceMemory:
             if parent.status != ADMITTED:
                 raise DependencyError(f"dependency {dep} is {parent.status}")
         detached = plain(dict(body))
+        if len(canonical_json(detached).encode()) > MAX_BODY_BYTES:
+            raise ValueError(f"record body exceeds {MAX_BODY_BYTES} bytes")
         content = {"scope": scope, "kind": kind, "subject": subject, "subject_rev": rev, "body": detached, "depends_on": list(deps)}
         content_key = content_hash(content)
         record_id = content_hash({**content, "author": author})
