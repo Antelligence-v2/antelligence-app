@@ -245,7 +245,7 @@ class Scheduler:
         # Phase 2: apply in deterministic order.
         for view, intent in zip(views, intents):
             agent_id = view.agent_id
-            if intent.action != NOOP or intent.rationale:
+            if intent.action != NOOP or intent.rationale or intent.meta:
                 self.log.append(ev.DECIDED, tick, intent.to_dict(), agent_id)
             blocked = self.gate.check(agent_id, intent, tick) if self.gate is not None else None
             if blocked is not None:
