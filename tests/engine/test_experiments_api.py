@@ -39,7 +39,7 @@ def test_paired_comparison_drops_missing_pairs_and_respects_direction():
 # -------------------------------------------------------------- registry
 def test_catalog_and_param_validation():
     names = {w["name"] for w in catalog()}
-    assert names == {"foraging", "tumor"}
+    assert names == {"foraging", "tumor", "task_dag"}
     tumor = world("tumor")
     assert tumor.resolve_params({}) == {"max_steps": 150, "n_nanobots": 10}
     for bad in ({"max_steps": 5}, {"n_nanobots": 0}, {"max_steps": True}, {"speed": 2}):
@@ -162,8 +162,8 @@ def client(tmp_path):
 
 
 def test_api_run_lifecycle(client):
-    assert client.get("/engine/health").json()["worlds"] == ["foraging", "tumor"]
-    assert {w["name"] for w in client.get("/engine/worlds").json()} == {"foraging", "tumor"}
+    assert client.get("/engine/health").json()["worlds"] == ["foraging", "task_dag", "tumor"]
+    assert {w["name"] for w in client.get("/engine/worlds").json()} == {"foraging", "task_dag", "tumor"}
     created = client.post("/engine/runs", json={"world": "foraging", "arm": "hive_memory", "case": 101})
     assert created.status_code == 201
     run = created.json()
@@ -211,3 +211,12 @@ def test_api_is_local_only(tmp_path):
     assert remote.get("/engine/health").status_code == 403
     local = TestClient(create_app(tmp_path))
     assert local.get("/engine/health", headers={"origin": "https://evil.example"}).status_code == 403
+
+
+def test_task_dag_experiment_reproduces_the_merge_result():
+    report = run_experiment({"world": "task_dag", "arms": list(world("task_dag").arms), "cases": list(range(101, 121))})
+    comps = report["comparisons_vs_baseline"]
+    assert report["arms"]["swarm_partitioned_merged"]["successes"] == 16
+    assert report["arms"]["swarm_partitioned"]["successes"] == 0
+    assert comps["swarm_partitioned"]["losses"] == 16 and comps["swarm_partitioned_merged"]["ties"] == 20
+    assert execute_run(RunSpec("task_dag", "swarm_partitioned_merged", 101))["bundle"]["metrics"]["success"] is True

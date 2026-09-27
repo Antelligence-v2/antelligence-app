@@ -81,8 +81,14 @@ def _tumor(arm: str, case: int, *, run_id: str, max_steps: int, n_nanobots: int)
     return build(arm, case, run_id=run_id, max_steps=max_steps, n_nanobots=n_nanobots)
 
 
+def _task_dag(arm: str, case: int, *, run_id: str) -> Scheduler:
+    from antelligence.worlds.task_dag import build
+    return build(arm, case, run_id=run_id)
+
+
 def _registry() -> Dict[str, WorldSpec]:
     from antelligence.worlds.foraging import ARMS as FORAGING_ARMS, SEEDS
+    from antelligence.worlds.task_dag import ARMS as DAG_ARMS, SEEDS as DAG_SEEDS
     from antelligence.worlds.tumor import ARMS as TUMOR_ARMS
 
     return {
@@ -97,6 +103,12 @@ def _registry() -> Dict[str, WorldSpec]:
             primary_metric="living_cells", lower_is_better=True, success_metric="cleared",
             params={"max_steps": (150, 10, 400), "n_nanobots": (10, 1, 40)}, builder=_tumor,
             description="Synthetic 2D glioblastoma with rule nanobots (research model, not clinical).",
+        ),
+        "task_dag": WorldSpec(
+            name="task_dag", arms=tuple(DAG_ARMS), default_cases=tuple(DAG_SEEDS), baseline="solo_planner",
+            primary_metric="success", lower_is_better=False, success_metric="success",
+            params={}, builder=_task_dag,
+            description="E15 partial-view planners + deterministic merge + model-free admission (scripted planners).",
         ),
     }
 
