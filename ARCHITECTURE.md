@@ -2,6 +2,25 @@
 
 > Tech stack, folder structure, and conventions. Read every loop. Know the project before you start.
 
+## Swarm Engine
+
+`antelligence/` is the shared engine (see
+`docs/plans/2026-09-27-antelligence-engine-kernel.md`):
+
+```
+antelligence/
+├── kernel/        signal, field, types, scheduler, events, memory, admission, verifier, policies/
+├── providers/     one OpenAI-compatible client + cache / budget / offline fake
+├── worlds/        foraging (E13), task_dag (E15), tumor, research_qa
+├── experiments/   registry, runner, paired statistics, store
+├── provenance/    run bundles, replay verification, publishing outbox
+└── api/           /engine router (mounted in backend/main.py)
+```
+
+Rules: the kernel never imports a world; policies see only a `LocalView`;
+signals become visible the tick after emission; outcomes are world/verifier
+owned; chain writes never happen inside the tick loop.
+
 ## Repository Layout
 
 ```

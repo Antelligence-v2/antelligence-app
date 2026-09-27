@@ -42,6 +42,30 @@ synthetic 2D, short-horizon research—not clinical efficacy, modeled toxicity, 
 cryptographic verification. See [Experiment Lab](docs/EXPERIMENT_LAB.md) for usage,
 API routes, limits and the acceptance workflow.
 
+### Swarm engine (`antelligence/`)
+
+One engine runs every swarm experiment. Agents see only a local view and
+coordinate through typed, expiring, provenance-bearing signals; evidence
+memory invalidates stale facts; a model-free verifier owns outcomes; every run
+produces a hash-chained event log and a replayable bundle.
+
+Worlds on the engine: **foraging** (the paper's E13), **task_dag** (E15),
+**tumor** (the glioblastoma simulator) and **research_qa** (Workbench
+protocols, Python API only). Each port is checked against its original: E13
+oracle and E15 admission are reproduced exactly, the tumor world matches the
+legacy simulator's physics, and research QA matches `swarm_core`.
+
+```bash
+# engine API is mounted in backend.main under /engine (local-only)
+curl -X POST http://127.0.0.1:8001/engine/experiments -H 'content-type: application/json' \
+  -d '{"world": "foraging", "arms": ["baseline", "hive_memory", "signals"]}'
+curl -X POST http://127.0.0.1:8001/engine/runs/<run_id>/verify   # replay from the bundle
+```
+
+Bundles are `trust_tier=local_replay`, `proof_ok=false`: replayable
+provenance, not cryptographic proof. Design and results:
+[engine plan](docs/plans/2026-09-27-antelligence-engine-kernel.md).
+
 ### CLI
 
 The Python package exposes these entry points:

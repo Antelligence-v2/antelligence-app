@@ -1,7 +1,9 @@
 # Antelligence Engine — Shared Kernel Design & Implementation Plan
 
-> **Status:** proposal (2026-09-27). Nothing in this document is built yet.
-> **Branch:** `engine/v1` (from `main`), one commit per phase.
+> **Status (2026-09-27):** P1–P7 built, plus P4a (hive modules imported), P4b
+> (task-DAG world) and the trust-layer parity check; P8 done in reduced form
+> (see section 15).
+> **Branch:** `engine/v1` (from `main`), one commit per phase, tags `engine-p1`…`engine-p8`.
 
 ---
 
@@ -395,3 +397,27 @@ E13-shaped sighting/pickup streams (600 checkpoints, 0–6 usable facts).
 **Task-DAG (E15)** is a verbatim port: functions are source-identical to
 `run_e15.py`, admission bytes match on 3 arms × 20 seeds, and the admitted
 DAGs from the paper's real LLM runs re-execute to the published 8 / 0 / 16.
+
+---
+
+## 15. P8 cutover — what was done and what remains
+
+**Done**
+- Engine API mounted in `backend/main.py` at `/engine/*` (local-only).
+- Three legacy nanobot bugs fixed in `backend/nanobot_simulation.py`
+  (payload deadlock, boundary snap, vessel overshoot; standalone commit),
+  and the engine aligned with the fixed legacy.
+- Dead code removed: root `app.py` (Streamlit; unreferenced, `streamlit` not a
+  dependency) and `backend/cors_debug.py` (unused allow-all CORS helper).
+
+**Deliberately not done** — the frontend still uses these, so deleting them
+would break pages. Each needs a frontend migration (and, for the ant sim, a
+product decision):
+
+| Legacy | Used by |
+|---|---|
+| `backend/simulation.py` (ant sim) + `/simulation/run`, `/compare`, `/cache`, `/history` | home page `Index.tsx`, `SimulationComparison.tsx`, `ComparisonPanel.tsx` |
+| `backend/tumor_hunt.py` + `/simulation/tumor/hunt` | `TumorHunt.tsx` |
+| `backend/nanobot_simulation.py` + `/simulation/tumor/run` | `TumorSimulation.tsx` (animation frames) |
+| `backend/litellm_client.py` | the three legacy simulators above |
+| `backend/api_server.py` | `antelligence-api` entry point, README, tests |

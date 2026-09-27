@@ -87,6 +87,7 @@ out/
 frontend/.env.preview
 data/*.sqlite3
 data/*.sqlite3-*
+data/engine/
 
 # Medical imaging data — large raw files, download via scripts/download_brats.py
 data/brats/dataset/
