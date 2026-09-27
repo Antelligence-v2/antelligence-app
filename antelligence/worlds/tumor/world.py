@@ -197,6 +197,7 @@ class TumorWorld:
             "kill_rate": (total - living) / total if total else 0.0,
             "net_reduction_pct": 100.0 * (initial - living) / initial if initial else 0.0,
             "initial_living_cells": initial,
+            "cleared": self.cleared_at is not None,
             "cleared_at": self.cleared_at,
             "half_cleared_at": self.half_cleared_at,
             **stats,
