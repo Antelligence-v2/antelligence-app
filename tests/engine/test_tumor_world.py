@@ -16,24 +16,36 @@ from antelligence.providers import FakeProvider
 from antelligence.worlds.tumor import ARMS, LLM_ACTIONS, LLM_SIGNAL_KINDS, QUEEN, NanobotPolicy, TumorWorld, build
 
 
-@pytest.mark.parametrize("seed, steps", [(1, 30), (2, 30), (7, 60)])
-def test_legacy_compat_mode_reproduces_the_legacy_simulator_exactly(seed, steps):
+PARITY_CASES = [(seed, steps) for seed in (1, 2, 3, 7, 11) for steps in (30, 60, 150)]
+
+
+def test_engine_matches_the_fixed_legacy_simulator():
+    """Legacy (deadlock, boundary and overshoot bugs fixed) vs engine default mode.
+
+    Physics is identical (same cell counts, same RNG draws). Bot outcomes can differ
+    by a kill or two because engine agents decide simultaneously from one snapshot
+    (a bot may pick a cell another bot kills earlier in the same tick), whereas
+    legacy bots decide sequentially. Most cases still match exactly.
+    """
     from backend.config import SimulationConfig
     from backend.runtime_factory import run_simulation
 
-    with contextlib.redirect_stdout(io.StringIO()):
-        _, legacy = run_simulation(SimulationConfig(num_bots=10, grid_size=60, steps=steps, seed=seed))
-    engine = build("rule", seed, max_steps=steps, legacy_payload_deadlock=True, tumor_radius=198.0).run().metrics
-    assert engine["kill_rate"] == pytest.approx(legacy["kill_rate"])
-    assert engine["total_cells"] == legacy["total_cells"]
-    assert engine["apoptotic_cells"] == legacy["cells_killed"]
-    assert engine["deliveries"] == legacy["total_deliveries"]
+    exact = 0
+    for seed, steps in PARITY_CASES:
+        with contextlib.redirect_stdout(io.StringIO()):
+            _, legacy = run_simulation(SimulationConfig(num_bots=10, grid_size=60, steps=steps, seed=seed))
+        engine = build("rule", seed, max_steps=steps, tumor_radius=198.0).run().metrics
+        assert engine["total_cells"] == legacy["total_cells"], (seed, steps)
+        assert abs(engine["apoptotic_cells"] - legacy["cells_killed"]) <= 2, (seed, steps)
+        assert abs(engine["deliveries"] - legacy["total_deliveries"]) <= 2, (seed, steps)
+        exact += engine["apoptotic_cells"] == legacy["cells_killed"] and engine["deliveries"] == legacy["total_deliveries"]
+    assert exact >= 12, f"only {exact}/{len(PARITY_CASES)} cases matched exactly"
 
 
 def test_payload_deadlock_fix_lets_bots_reload_and_keep_treating():
     legacy_like = build("rule", 1, max_steps=150, legacy_payload_deadlock=True).run().metrics
     fixed = build("rule", 1, max_steps=150).run().metrics
-    assert legacy_like["deliveries"] == 60, "legacy: exactly one payload (6 deliveries) per bot"
+    assert legacy_like["deliveries"] == 60, "pre-fix behaviour: exactly one payload (6 deliveries) per bot"
     assert fixed["deliveries"] > 60 and fixed["apoptotic_cells"] > legacy_like["apoptotic_cells"]
 
 

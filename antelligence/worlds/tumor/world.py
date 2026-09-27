@@ -168,6 +168,11 @@ class TumorWorld:
         if agent_id == QUEEN:
             return Outcome(intent.action == "noop", None if intent.action == "noop" else "queen_cannot_act")
         body = self.bodies[agent_id]
+        if body.state == SEARCHING and not self.legacy_payload_deadlock and body.payload <= 2.0:
+            # A bot that can no longer target spends its turn heading back to reload
+            # (same as the fixed legacy NanobotAgent._search_for_target).
+            self._start_return(body)
+            return Outcome(True, "reload_required", effects={"state": RETURNING})
         if intent.action == "noop":
             self.counters["idle"] += 1
             return Outcome(True)
@@ -265,8 +270,6 @@ class TumorWorld:
         cell = self.physics.cell(body.target_cell) if body.target_cell is not None else None
         if cell is None or not cell.is_alive:
             body.target_cell, body.state = None, SEARCHING
-            if self._needs_reload(body):
-                self._start_return(body)
             return Outcome(True, "target_lost")
         direction = np.array(cell.position[:2]) - body.position
         distance = np.linalg.norm(direction)
@@ -282,8 +285,6 @@ class TumorWorld:
         cell = self.physics.cell(body.target_cell) if body.target_cell is not None else None
         if cell is None or not cell.is_alive:
             body.target_cell, body.state = None, SEARCHING
-            if self._needs_reload(body):
-                self._start_return(body)
             return Outcome(True, "target_lost")
         effects: Dict[str, Any] = {}
         pos = tuple(body.position)
@@ -319,7 +320,9 @@ class TumorWorld:
         if distance < 10.0:
             body.state = RELOADING
             return Outcome(True, effects={"state": RELOADING})
-        body.position = body.position + direction / distance * body.speed
+        # Stop at the vessel rather than overshoot (legacy oscillated around it forever).
+        step = body.speed if self.legacy_payload_deadlock else min(body.speed, distance)
+        body.position = body.position + direction / distance * step
         self._clamp(body)
         return Outcome(True, effects={"pos": _round2(body.position)})
 
