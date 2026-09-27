@@ -26,6 +26,8 @@ OUTCOME = "outcome"
 SIGNAL_DEPOSITED = "signal_deposited"
 SIGNAL_REJECTED = "signal_rejected"
 SIGNAL_EXPIRED = "signal_expired"
+INTENT_BLOCKED = "intent_blocked"
+MEMORY_CHANGED = "memory_changed"
 TICK_ENDED = "tick_ended"
 RUN_FINISHED = "run_finished"
 

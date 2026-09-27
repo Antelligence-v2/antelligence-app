@@ -24,7 +24,7 @@ from antelligence.kernel import events as ev
 from antelligence.kernel.canonical import content_hash
 from antelligence.kernel.field import FieldFullError, SignalField
 from antelligence.kernel.signal import Signal, SignalError
-from antelligence.kernel.types import NOOP, Intent, LocalView, Policy, World
+from antelligence.kernel.types import NOOP, Intent, LocalView, Outcome, Policy, World
 
 
 class Admission(Protocol):
@@ -38,7 +38,21 @@ class Admission(Protocol):
 class MemoryReader(Protocol):
     """Supplies the admitted memory an agent may use this tick."""
 
-    def recall_for(self, agent_id: str, scope: str, tick: int) -> Tuple[Any, ...]: ...
+    def recall_for(self, agent_id: str, scope: str, tick: int, observation: Mapping[str, Any]) -> Tuple[Any, ...]: ...
+
+
+class IntentGate(Protocol):
+    """Pre-apply verification; a non-None reason blocks the intent."""
+
+    def check(self, agent_id: str, intent: Intent, tick: int) -> Optional[str]: ...
+
+
+class Recorder(Protocol):
+    """Writes evidence from admitted signals and world outcomes; returns transitions."""
+
+    def on_signal(self, signal: Signal, tick: int) -> List[dict]: ...
+
+    def on_outcome(self, scope: str, agent_id: str, intent: Intent, outcome: Outcome, tick: int) -> List[dict]: ...
 
 
 @dataclass(frozen=True)
@@ -86,6 +100,13 @@ class RunResult:
         return dict(self.__dict__)
 
 
+def _describe(component: Any) -> Any:
+    if component is None:
+        return None
+    describe = getattr(component, "describe", None)
+    return describe() if callable(describe) else type(component).__name__
+
+
 def derive_seed(run_seed: int, agent_id: str, tick: int) -> int:
     digest = hashlib.sha256(f"{run_seed}:{agent_id}:{tick}".encode()).digest()
     return int.from_bytes(digest[:8], "big") & 0x7FFF_FFFF_FFFF_FFFF
@@ -102,6 +123,8 @@ class Scheduler:
         default_policy: Optional[Policy] = None,
         admission: Optional[Admission] = None,
         memory: Optional[MemoryReader] = None,
+        gate: Optional[IntentGate] = None,
+        recorder: Optional[Recorder] = None,
         log: Optional[ev.EventLog] = None,
     ) -> None:
         self.world = world
@@ -111,6 +134,9 @@ class Scheduler:
         self.config = config
         self.admission = admission
         self.memory = memory
+        self.gate = gate
+        self.recorder = recorder
+        self.intents_blocked = 0
         self.log = log if log is not None else ev.EventLog()
         self.tick = 0
         self.policy_failures = 0
@@ -135,6 +161,10 @@ class Scheduler:
                 "arm": self.config.arm,
                 "max_emits_per_tick": self.config.max_emits_per_tick,
                 "policies": {a: self._policy_for(a).describe() for a in agents},
+                "admission": _describe(self.admission),
+                "gate": _describe(self.gate),
+                "memory": self.memory is not None,
+                "recorder": self.recorder is not None,
             }
         )
 
@@ -175,6 +205,7 @@ class Scheduler:
             signals_deposited=self.signals_deposited,
             signals_rejected=self.signals_rejected,
             stopped_reason=stopped,
+            extra={"intents_blocked": self.intents_blocked},
         )
 
     async def step(self) -> None:
@@ -189,7 +220,9 @@ class Scheduler:
         for agent_id in agents:
             observation = self.world.observe(agent_id, tick)
             sensed = tuple(self.field.sense(scope, tick, observation.sense, exclude_sender=agent_id))
-            memory = self.memory.recall_for(agent_id, scope, tick) if self.memory is not None else ()
+            memory = (
+                self.memory.recall_for(agent_id, scope, tick, observation.data) if self.memory is not None else ()
+            )
             view = LocalView(
                 agent_id=agent_id,
                 tick=tick,
@@ -214,8 +247,17 @@ class Scheduler:
             agent_id = view.agent_id
             if intent.action != NOOP or intent.rationale:
                 self.log.append(ev.DECIDED, tick, intent.to_dict(), agent_id)
-            outcome = self.world.apply(agent_id, intent, tick)
+            blocked = self.gate.check(agent_id, intent, tick) if self.gate is not None else None
+            if blocked is not None:
+                self.intents_blocked += 1
+                self.log.append(ev.INTENT_BLOCKED, tick, {"action": intent.action, "reason": blocked,
+                                                          "cites": list(intent.cites)}, agent_id)
+                outcome = Outcome(False, blocked, effects={"blocked": True})
+            else:
+                outcome = self.world.apply(agent_id, intent, tick)
             self.log.append(ev.OUTCOME, tick, {"action": intent.action, **outcome.to_dict()}, agent_id)
+            if self.recorder is not None:
+                self._log_memory(self.recorder.on_outcome(scope, agent_id, intent, outcome, tick), agent_id)
             self._emit(agent_id, intent, view, tick)
 
         for signal in self.field.expire(tick):
@@ -266,6 +308,12 @@ class Scheduler:
                 continue
             self.signals_deposited += 1
             self.log.append(ev.SIGNAL_DEPOSITED, tick, signal.to_dict(), agent_id)
+            if self.recorder is not None:
+                self._log_memory(self.recorder.on_signal(signal, tick), agent_id)
+
+    def _log_memory(self, transitions: List[dict], agent_id: str) -> None:
+        for transition in transitions:
+            self.log.append(ev.MEMORY_CHANGED, transition.get("tick", self.tick), transition, agent_id)
 
     def _reject(self, agent_id: str, tick: int, signal: Optional[Signal], reason: str, extra: Optional[dict] = None) -> None:
         self.signals_rejected += 1

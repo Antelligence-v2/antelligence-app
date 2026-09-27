@@ -182,7 +182,7 @@ class StaticMemory:
     def __init__(self):
         self.calls = []
 
-    def recall_for(self, agent_id, scope, tick):
+    def recall_for(self, agent_id, scope, tick, observation):
         self.calls.append((agent_id, scope, tick))
         return ()
 

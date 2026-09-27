@@ -48,6 +48,7 @@ class Intent:
     params: Mapping[str, Any] = field(default_factory=dict)
     emit: Tuple[SignalDraft, ...] = ()
     rationale: Optional[str] = None
+    cites: Tuple[str, ...] = ()  # evidence record ids this action relies on
 
     def __post_init__(self) -> None:
         if not isinstance(self.action, str) or not self.action:
@@ -57,6 +58,10 @@ class Intent:
         if not all(isinstance(d, SignalDraft) for d in emit):
             raise ValueError("emit must contain SignalDraft objects")
         object.__setattr__(self, "emit", emit)
+        cites = tuple(self.cites)
+        if not all(isinstance(c, str) and c for c in cites):
+            raise ValueError("cites must be non-empty strings")
+        object.__setattr__(self, "cites", cites)
 
     def to_dict(self) -> dict:
         return {
@@ -64,6 +69,7 @@ class Intent:
             "params": self.params,
             "emit": len(self.emit),
             "rationale": self.rationale,
+            "cites": list(self.cites),
         }
 
 

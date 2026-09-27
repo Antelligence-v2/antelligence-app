@@ -13,7 +13,10 @@ MOVES = {"n": (0, 1), "s": (0, -1), "e": (1, 0), "w": (-1, 0)}
 
 class ToyWorld:
     def __init__(self, size: int = 8, agents: int = 3, food: List[Tuple[int, int]] | None = None,
-                 sight: int = 1, hearing: float = 6.0) -> None:
+                 sight: int = 1, hearing: float = 6.0, hazardous_misfire: bool = False) -> None:
+        # hazardous_misfire: collecting where there is no food "succeeds" but is
+        # unsafe (models delivering payload to healthy tissue).
+        self.hazardous_misfire = hazardous_misfire
         self.size = size
         self.sight = sight
         self.hearing = hearing
@@ -56,11 +59,13 @@ class ToyWorld:
             return Outcome(True, effects={"pos": [nx, ny]})
         if intent.action == "collect":
             if (x, y) not in self.food:
+                if self.hazardous_misfire:
+                    return Outcome(True, "misfire", effects={"unsafe": True, "misfire": [x, y]})
                 return Outcome(False, "no_food_here")
             self.food.discard((x, y))
             self.collected += 1
             self._revision += 1
-            return Outcome(True, effects={"collected": [x, y]})
+            return Outcome(True, effects={"collected": [x, y], "subjects_changed": [food_subject((x, y))]})
         return Outcome(False, "unknown_action")
 
     def step_environment(self, tick: int) -> None:
@@ -74,7 +79,12 @@ class ToyWorld:
 
     def describe(self) -> Dict[str, object]:
         return {"world": "toy", "size": self.size, "agents": len(self._agents),
-                "food": [list(f) for f in self._initial_food], "sight": self.sight, "hearing": self.hearing}
+                "food": [list(f) for f in self._initial_food], "sight": self.sight, "hearing": self.hearing,
+                "hazardous_misfire": self.hazardous_misfire}
+
+
+def food_subject(pos) -> str:
+    return f"food:{int(pos[0])},{int(pos[1])}"
 
 
 def _step_toward(pos, target) -> str:
@@ -121,3 +131,44 @@ class SlowAsyncForager(ForagerPolicy):
     async def decide(self, view: LocalView) -> Intent:  # type: ignore[override]
         await asyncio.sleep(self._jitter.random() * 0.002)
         return ForagerPolicy.decide(self, view)
+
+
+class RememberingForager(ForagerPolicy):
+    """Acts on recalled food claims and cites them.
+
+    With ``private_cache=True`` it also keeps its own copy of every record it
+    has seen and keeps acting on it after the shared memory invalidated it —
+    the stale-memory failure the evidence gate must block.
+    """
+
+    def __init__(self, private_cache: bool = False) -> None:
+        super().__init__(use_signals=True)
+        self.private_cache = private_cache
+        self.cache = {}
+
+    def decide(self, view: LocalView) -> Intent:
+        pos = tuple(view.observation["pos"])
+        visible = [tuple(f) for f in view.observation["food"]]
+        for record in view.memory:
+            self.cache[view.agent_id, record.subject] = record
+        known = [r for r in view.memory if r.body.get("kind") == "found"]
+        if self.private_cache:
+            known = [r for (agent, _), r in sorted(self.cache.items()) if agent == view.agent_id]
+        for record in sorted(known, key=lambda r: (r.subject, r.id)):
+            target = tuple(int(c) for c in record.body["pos"])
+            if target == pos:
+                return Intent("collect", cites=(record.id,))
+        if pos in visible:
+            return Intent("collect")
+        if visible:
+            target = min(visible)
+            return Intent("move", {"dir": _step_toward(pos, target)},
+                          emit=(SignalDraft(kind="found", pos=target, ttl=5),))
+        if known:
+            target = tuple(int(c) for c in sorted(known, key=lambda r: r.subject)[0].body["pos"])
+            return Intent("move", {"dir": _step_toward(pos, target)})
+        rng = random.Random(view.seed)
+        return Intent("move", {"dir": rng.choice(sorted(MOVES))})
+
+    def describe(self) -> Dict[str, object]:
+        return {"policy": "remembering", "private_cache": self.private_cache}
