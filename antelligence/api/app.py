@@ -43,7 +43,7 @@ class RunRequest(BaseModel):
 class ExperimentBody(BaseModel):
     model_config = ConfigDict(extra="forbid")
     world: str
-    arms: List[str] = Field(min_length=1, max_length=MAX_ARMS)
+    arms: Optional[List[str]] = Field(default=None, min_length=1, max_length=MAX_ARMS)  # omitted: every arm
     cases: Optional[List[Annotated[int, Field(ge=0, le=2**31 - 1)]]] = Field(default=None, min_length=1,
                                                                              max_length=MAX_CASES)
     baseline: Optional[str] = None

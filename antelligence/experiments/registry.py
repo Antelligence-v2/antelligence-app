@@ -45,6 +45,8 @@ class WorldSpec:
     params: Mapping[str, Tuple[int, int, int]]  # name -> (default, min, max)
     builder: Callable[..., Scheduler]
     description: str
+    arm_descriptions: Mapping[str, str] = field(default_factory=dict)
+    metric_label: str = ""
 
     def resolve_params(self, params: Mapping[str, Any]) -> Dict[str, int]:
         unknown = set(params) - set(self.params)
@@ -68,7 +70,8 @@ class WorldSpec:
                 "baseline": self.baseline, "primary_metric": self.primary_metric,
                 "lower_is_better": self.lower_is_better, "success_metric": self.success_metric,
                 "params": {k: {"default": d, "min": lo, "max": hi} for k, (d, lo, hi) in self.params.items()},
-                "description": self.description}
+                "description": self.description, "metric_label": self.metric_label or self.primary_metric,
+                "arm_descriptions": {arm: self.arm_descriptions.get(arm, "") for arm in self.arms}}
 
 
 def _foraging(arm: str, case: int, *, run_id: str, max_steps: int) -> Scheduler:
@@ -97,18 +100,40 @@ def _registry() -> Dict[str, WorldSpec]:
             primary_metric="sweep_moves", lower_is_better=True, success_metric="success",
             params={"max_steps": (120, 10, 400)}, builder=_foraging,
             description="E13 chain-prioritized foraging (10x10, 3 agents, 3 foods in order).",
+            metric_label="blind-search (sweep) moves",
+            arm_descriptions={
+                "baseline": "Agents search alone; nothing is shared.",
+                "hive_memory": "Sightings become shared evidence; agents follow remembered food and cite it; stale facts are blocked.",
+                "signals": "Sightings are local, expiring signals other agents can hear; no lasting memory.",
+                "hive_memory_signals": "Shared evidence memory plus local signals.",
+            },
         ),
         "tumor": WorldSpec(
             name="tumor", arms=tuple(TUMOR_ARMS), default_cases=tuple(range(1, 11)), baseline="rule",
-            primary_metric="living_cells", lower_is_better=True, success_metric="cleared",
+            primary_metric="mean_living_cells", lower_is_better=True, success_metric="cleared",
             params={"max_steps": (150, 10, 400), "n_nanobots": (10, 1, 40)}, builder=_tumor,
             description="Synthetic 2D glioblastoma with rule nanobots (research model, not clinical).",
+            metric_label="average living tumor cells (lower = faster kill)",
+            arm_descriptions={
+                "no_bots": "No nanobots: natural cell loss only.",
+                "rule": "Nanobots act alone: target the nearest sensed cell, otherwise follow chemical gradients.",
+                "pheromone": "Adds diffusing chemical pheromones (trail, alarm, recruitment).",
+                "signals": "Bots post 'found' and 'claimed' signals and avoid cells another bot has claimed.",
+                "hive": "Signals plus shared memory of tumor zones; stale zone facts are blocked.",
+                "hive_queen": "Hive plus a Queen that only hears reports and recruits bots toward busy zones.",
+            },
         ),
         "task_dag": WorldSpec(
             name="task_dag", arms=tuple(DAG_ARMS), default_cases=tuple(DAG_SEEDS), baseline="solo_planner",
             primary_metric="success", lower_is_better=False, success_metric="success",
             params={}, builder=_task_dag,
             description="E15 partial-view planners + deterministic merge + model-free admission (scripted planners).",
+            metric_label="plans that execute successfully",
+            arm_descriptions={
+                "solo_planner": "One planner sees the whole task and proposes the full plan.",
+                "swarm_partitioned": "Each agent sees only its own sample and proposes its piece; pieces are simply combined.",
+                "swarm_partitioned_merged": "Same partial views, then a deterministic merge repairs ordering and resource conflicts.",
+            },
         ),
     }
 

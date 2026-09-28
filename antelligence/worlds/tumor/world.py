@@ -107,6 +107,8 @@ class TumorWorld:
                 self.bodies[f"bot-{i:03d}"] = Body(position=pos)
         self._revision = 0
         self.cleared_at: Optional[int] = None
+        self._living_sum = 0
+        self._living_ticks = 0
         self.half_cleared_at: Optional[int] = None
         self.counters = {"search_moves": 0, "duplicate_targets": 0, "invalid_actions": 0, "idle": 0}
         self._prepared_tick: Optional[int] = None
@@ -189,6 +191,8 @@ class TumorWorld:
         self._ensure_prepared(tick)
         self.physics.diffuse()
         living = len(self.physics.living_cells())
+        self._living_sum += living
+        self._living_ticks += 1
         if self.half_cleared_at is None and living <= self.physics.initial_living / 2:
             self.half_cleared_at = tick
         if self.cleared_at is None and living == 0:
@@ -203,6 +207,9 @@ class TumorWorld:
             "net_reduction_pct": 100.0 * (initial - living) / initial if initial else 0.0,
             "initial_living_cells": initial,
             "cleared": self.cleared_at is not None,
+            # Area under the living-cell curve per tick: lower means the tumor shrank faster.
+            "mean_living_cells": (round(self._living_sum / self._living_ticks, 6) if self._living_ticks
+                                  else float(stats["living_cells"])),
             "cleared_at": self.cleared_at,
             "half_cleared_at": self.half_cleared_at,
             **stats,
