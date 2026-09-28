@@ -1,10 +1,14 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
 import type { Frames } from "@/api/engine";
 import { cn } from "@/lib/utils";
 import { GridScene, type GridSceneData } from "./GridScene";
 import { TumorScene, type TumorSceneData } from "./TumorScene";
 import { FIELD_STYLE } from "./styles";
 import { frameAgentIds } from "./decode";
+
+// three.js + React Three Fiber load only when someone opens the 3D view.
+const Scene3D = lazy(() => import("./Scene3D"));
 
 const Legend = ({ items }: { items: Array<[string, string]> }) => (
   <div className="flex flex-wrap gap-x-3 gap-y-1.5 text-2xs text-muted-foreground">
@@ -44,6 +48,8 @@ export function Viewport({ data, position, tick, selected, onSelect }: {
   const kind = data.scene.kind as string;
   const fields = ((data.scene.fields as string[] | undefined) ?? []).filter((f) => FIELD_STYLE[f]);
   const [layer, setLayer] = useState<string | null>(fields.includes("drug") ? "drug" : fields[0] ?? null);
+  const is3dRun = data.scene.dimensionality === 3;
+  const [view, setView] = useState<"2d" | "3d">(is3dRun ? "3d" : "2d");
   useEffect(() => { if (layer && !fields.includes(layer)) setLayer(fields[0] ?? null); }, [fields, layer]);
 
   const frame = data.frames[Math.min(data.frames.length - 1, Math.max(0, tick - data.frames[0].tick))].world;
@@ -52,7 +58,13 @@ export function Viewport({ data, position, tick, selected, onSelect }: {
     <section className="surface-edge grid overflow-hidden rounded-xl border bg-card lg:grid-cols-[minmax(0,1fr)_260px]">
       <div className="min-w-0 border-b p-3 lg:border-b-0 lg:border-r">
         <div className="mx-auto max-w-[560px]">
-          <SceneCanvas data={data} position={position} layer={layer} selected={selected} onSelect={onSelect} />
+          {kind === "tumor" && view === "3d" ? (
+            <Suspense fallback={<Skeleton className="aspect-square w-full rounded-lg" />}>
+              <Scene3D data={data} position={position} selected={selected} onSelect={onSelect} />
+            </Suspense>
+          ) : (
+            <SceneCanvas data={data} position={position} layer={layer} selected={selected} onSelect={onSelect} />
+          )}
         </div>
       </div>
       <aside className="space-y-5 p-4">
@@ -61,7 +73,30 @@ export function Viewport({ data, position, tick, selected, onSelect }: {
           <span className="numeric font-mono text-2xs text-muted-foreground">t{tick}</span>
         </div>
 
-        {kind === "tumor" && fields.length > 0 && (
+        {kind === "tumor" && (
+          <div className="space-y-2">
+            <p className="text-2xs font-medium uppercase tracking-[0.08em] text-muted-foreground">View</p>
+            <div className="flex items-center gap-0.5 rounded-md border p-0.5">
+              {(["2d", "3d"] as const).map((v) => (
+                <button
+                  key={v}
+                  type="button"
+                  onClick={() => setView(v)}
+                  className={cn("h-7 flex-1 rounded px-2 text-xs font-medium uppercase transition-colors", view === v ? "bg-accent text-foreground" : "text-muted-foreground hover:text-foreground")}
+                >
+                  {v}
+                </button>
+              ))}
+            </div>
+            <p className="text-2xs text-muted-foreground">
+              {view === "3d"
+                ? `Drag to orbit, scroll to zoom, click a bot.${is3dRun ? "" : " This run is 2D, so it lies flat; launch with dimensionality 3 for a volumetric tumor."}`
+                : is3dRun ? "Top-down projection of a 3D run; fields show the slice through the tumor center." : "Top-down view."}
+            </p>
+          </div>
+        )}
+
+        {kind === "tumor" && view === "2d" && fields.length > 0 && (
           <div className="space-y-2">
             <p className="text-2xs font-medium uppercase tracking-[0.08em] text-muted-foreground">Field</p>
             <div className="flex flex-wrap gap-1">
@@ -87,7 +122,11 @@ export function Viewport({ data, position, tick, selected, onSelect }: {
           ) : (
             <Legend items={[["agent", "bg-primary"], ["food (next = ring)", "bg-warning"], ["carrying", "bg-warning"], ["signal", "bg-info"], ["nest", "border border-primary bg-primary/15"]]} />
           )}
-          <p className="text-2xs text-muted-foreground">{kind === "tumor" ? "Ring around a bot = drug payload left. Line = current target." : "Dashed square = selected agent's field of view."}</p>
+          <p className="text-2xs text-muted-foreground">
+            {kind !== "tumor" ? "Dashed square = selected agent's field of view."
+              : view === "3d" ? "Glass sphere = tumor boundary. Lines = recent paths. Dead cells shrink."
+              : "Ring around a bot = drug payload left. Line = current target."}
+          </p>
         </div>
 
         <div className="space-y-1.5 border-t pt-4 text-xs">
