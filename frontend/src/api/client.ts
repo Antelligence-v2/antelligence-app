@@ -4,6 +4,7 @@ import type { z } from "zod";
 import { API_BASE_URL } from "@/lib/runtime";
 import {
   EventPageSchema,
+  FramesSchema,
   HealthSchema,
   ExperimentListItemSchema,
   ExperimentSchema,
@@ -12,6 +13,7 @@ import {
   WorldSchema,
   fetchAllEvents,
   toApiError,
+  ApiError,
   type ExperimentBody,
   type RunRequest,
 } from "./engine";
@@ -35,6 +37,15 @@ export const engine = {
   events: (runId: string, signal?: AbortSignal) =>
     fetchAllEvents((offset, limit) =>
       call(EventPageSchema, http.get(`/runs/${encodeURIComponent(runId)}/events`, { params: { offset, limit }, signal }))),
+  /** null when the run has no frames (non-spatial world or recorded before frames existed). */
+  frames: async (runId: string, signal?: AbortSignal) => {
+    try {
+      return await call(FramesSchema, http.get(`/runs/${encodeURIComponent(runId)}/frames`, { signal }));
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 404 && /no frames/.test(error.message)) return null;
+      throw error;
+    }
+  },
   verify: (runId: string) => call(ReplaySchema, http.post(`/runs/${encodeURIComponent(runId)}/verify`)),
   experiments: (signal?: AbortSignal) => call(ExperimentListItemSchema.array(), http.get("/experiments", { signal })),
   experiment: (id: string, signal?: AbortSignal) => call(ExperimentSchema, http.get(`/experiments/${encodeURIComponent(id)}`, { signal })),

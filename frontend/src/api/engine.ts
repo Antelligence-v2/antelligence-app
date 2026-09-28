@@ -126,6 +126,21 @@ export const EventPageSchema = z.object({
 });
 export type EventPage = z.infer<typeof EventPageSchema>;
 
+/** Visualization frames (not evidence): static scene + one snapshot per tick, tick 0 = initial state. */
+export const SignalMarkSchema = z.tuple([z.number(), z.number(), z.string(), z.string(), z.number()]);
+export const FrameSchema = z.object({
+  tick: z.number(),
+  world: z.record(z.unknown()),
+  signals: z.array(SignalMarkSchema),
+});
+export const FramesSchema = z.object({
+  run_id: z.string(),
+  scene: z.record(z.unknown()),
+  frames: z.array(FrameSchema).min(1),
+});
+export type Frame = z.infer<typeof FrameSchema>;
+export type Frames = z.infer<typeof FramesSchema>;
+
 export const ReplaySchema = z.object({
   replay_ok: z.boolean(),
   reason: z.string().nullable(),

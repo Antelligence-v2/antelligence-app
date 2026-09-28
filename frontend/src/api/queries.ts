@@ -8,6 +8,7 @@ export const keys = {
   worlds: ["engine", "worlds"] as const,
   run: (id: string) => ["engine", "run", id] as const,
   events: (id: string) => ["engine", "events", id] as const,
+  frames: (id: string) => ["engine", "frames", id] as const,
   experiments: ["engine", "experiments"] as const,
   experiment: (id: string) => ["engine", "experiment", id] as const,
 };
@@ -37,6 +38,9 @@ export const useRun = (id: string | undefined) =>
 
 export const useRunEvents = (id: string | undefined) =>
   useQuery({ queryKey: keys.events(id ?? ""), queryFn: ({ signal }) => engine.events(id!, signal), enabled: !!id, staleTime: Infinity });
+
+export const useRunFrames = (id: string | undefined) =>
+  useQuery({ queryKey: keys.frames(id ?? ""), queryFn: ({ signal }) => engine.frames(id!, signal), enabled: !!id, staleTime: Infinity });
 
 export const useExperiments = () =>
   useQuery({ queryKey: keys.experiments, queryFn: ({ signal }) => engine.experiments(signal) });

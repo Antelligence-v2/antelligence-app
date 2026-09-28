@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { ChevronRight, RotateCcw, ShieldCheck } from "lucide-react";
-import { useRun, useRunEvents, useVerifyRun } from "@/api/queries";
+import { useRun, useRunEvents, useRunFrames, useVerifyRun } from "@/api/queries";
 import type { EngineEvent, Run } from "@/api/engine";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -21,6 +21,7 @@ import { EventStream, type StreamScope } from "@/features/runs/EventStream";
 import { EventDetail } from "@/features/runs/EventDetail";
 import { AgentPanel } from "@/features/runs/AgentPanel";
 import { Provenance } from "@/features/runs/Provenance";
+import { Viewport } from "@/features/viewport/Viewport";
 import { armLabel, humanize, worldMeta } from "@/features/worlds/meta";
 import { cn } from "@/lib/utils";
 
@@ -150,9 +151,13 @@ const LEGEND_COLOR: Record<string, string> = {
 };
 
 /** Agents lanes + event stream + agent-at-tick panel, all synced to the playhead. */
-function Inspector({ events, playback }: { events: EngineEvent[]; playback: Playback }) {
+function Inspector({ events, playback, agent, setAgent }: {
+  events: EngineEvent[];
+  playback: Playback;
+  agent: string | null;
+  setAgent: (agent: string | null) => void;
+}) {
   const lanes = useMemo(() => agentLanes(events), [events]);
-  const [agent, setAgent] = useState<string | null>(null);
   const [scope, setScope] = useState<StreamScope>("tick");
   const [types, setTypes] = useState<Set<string>>(() => new Set());
   const [open, setOpen] = useState<EngineEvent | null>(null);
@@ -222,6 +227,8 @@ function RunBody({ run, events }: { run: Run; events: EngineEvent[] }) {
   const initial = params.get("t") !== null ? Number(params.get("t")) : undefined;
   const playback = usePlayback(range.min, range.max, Number.isFinite(initial) ? initial : undefined);
   const meta = worldMeta(run.spec.world);
+  const frames = useRunFrames(run.run_id);
+  const [agent, setAgent] = useState<string | null>(null);
 
   // Mirror the playhead into ?t= when paused, so a link reopens at the same tick.
   useEffect(() => {
@@ -254,8 +261,12 @@ function RunBody({ run, events }: { run: Run; events: EngineEvent[] }) {
         })}
       </div>
       <SafetyStrip run={run} />
+      {frames.data && (
+        <Viewport data={frames.data} position={playback.position} tick={playback.tick} selected={agent} onSelect={setAgent} />
+      )}
+      {frames.isPending && <Skeleton className="h-[420px] rounded-xl" />}
       <Timeline run={run} series={series} events={events} playback={playback} />
-      <Inspector events={events} playback={playback} />
+      <Inspector events={events} playback={playback} agent={agent} setAgent={setAgent} />
     </>
   );
 }
