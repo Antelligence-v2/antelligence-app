@@ -8,11 +8,13 @@ export type NavItem = {
   /** Two-key chord shown in the palette, e.g. "g w". */
   chord?: string;
   description: string;
+  /** Extra path prefixes that also mark this item active (e.g. /runs under Worlds). */
+  matches?: string[];
 };
 
 /** Engine-native product surfaces. */
 export const PRIMARY_NAV: NavItem[] = [
-  { to: "/", label: "Worlds", icon: Orbit, chord: "g w", description: "Launch runs on engine worlds" },
+  { to: "/", label: "Worlds", icon: Orbit, chord: "g w", description: "Launch runs on engine worlds", matches: ["/w", "/runs"] },
   { to: "/research", label: "Research", icon: MessagesSquare, chord: "g r", description: "Compare LLM swarms on reference tasks" },
 ];
 
@@ -25,10 +27,14 @@ export const LEGACY_NAV: NavItem[] = [
   { to: "/comparison", label: "Ant comparison", icon: GitCompareArrows, description: "Queen vs no-queen ant runs" },
 ];
 
-export function isActive(pathname: string, to: string): boolean {
+function matchesPath(pathname: string, to: string): boolean {
   return to === "/" ? pathname === "/" : pathname === to || pathname.startsWith(`${to}/`);
 }
 
+export function isActive(pathname: string, item: Pick<NavItem, "to" | "matches">): boolean {
+  return [item.to, ...(item.matches ?? [])].some((to) => matchesPath(pathname, to));
+}
+
 export function isLegacyPath(pathname: string): boolean {
-  return LEGACY_NAV.some((item) => isActive(pathname, item.to));
+  return LEGACY_NAV.some((item) => isActive(pathname, item));
 }

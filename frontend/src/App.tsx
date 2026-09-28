@@ -10,6 +10,8 @@ import { createQueryClient } from "./api/queries";
 
 // Every page is its own chunk, so the shell paints before page code loads.
 const Home = lazy(() => import("./pages/Home"));
+const WorldLaunch = lazy(() => import("./pages/WorldLaunch"));
+const RunPage = lazy(() => import("./pages/RunPage"));
 const ResearchWorkbench = lazy(() => import("./pages/ResearchWorkbench"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 // Legacy pages keep their original URLs; they link to each other by path.
@@ -32,6 +34,8 @@ const App = () => (
           <Routes>
             <Route element={<AppShell />}>
               <Route path="/" element={<Home />} />
+              <Route path="/w/:world" element={<WorldLaunch />} />
+              <Route path="/runs/:runId" element={<RunPage />} />
               <Route path="/research" element={<ResearchWorkbench />} />
               <Route path="/research/:id" element={<ResearchWorkbench />} />
               <Route path="/ants" element={<AntColony />} />

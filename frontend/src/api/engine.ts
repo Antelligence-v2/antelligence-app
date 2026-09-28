@@ -13,6 +13,7 @@ const hash = z.string().min(1);
 export const HealthSchema = z.object({ ok: z.boolean(), worlds: z.array(z.string()) });
 
 export const ParamBoundsSchema = z.object({ default: z.number(), min: z.number(), max: z.number() });
+export type ParamBounds = z.infer<typeof ParamBoundsSchema>;
 
 export const WorldSchema = z.object({
   name: z.string(),

@@ -26,7 +26,7 @@ export function LogoMark({ className }: { className?: string }) {
 
 function NavRow({ item, onNavigate }: { item: NavItem; onNavigate?: () => void }) {
   const { pathname } = useLocation();
-  const active = isActive(pathname, item.to);
+  const active = isActive(pathname, item);
   return (
     <NavLink
       to={item.to}
