@@ -11,11 +11,15 @@ import ExperimentLab from "./pages/ExperimentLab";
 import ResearchWorkbench from "./pages/ResearchWorkbench";
 import NotFound from "./pages/NotFound";
 import { PreviewModeBanner } from "./components/PreviewModeBanner";
+import { ThemeProvider } from "./design/theme";
+import { lazy, Suspense } from "react";
+
+const DesignSystem = import.meta.env.DEV ? lazy(() => import("./pages/DesignSystem")) : null;
 
 const queryClient = new QueryClient();
 
 const App = () => (
-  <div className="dark">
+  <ThemeProvider>
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Toaster />
@@ -31,13 +35,14 @@ const App = () => (
             <Route path="/experiments/:id" element={<ExperimentLab />} />
             <Route path="/research" element={<ResearchWorkbench />} />
             <Route path="/research/:id" element={<ResearchWorkbench />} />
+            {DesignSystem && <Route path="/design" element={<Suspense fallback={null}><DesignSystem /></Suspense>} />}
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
       </TooltipProvider>
     </QueryClientProvider>
-  </div>
+  </ThemeProvider>
 );
 
 export default App;
