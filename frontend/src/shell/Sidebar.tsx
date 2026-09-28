@@ -7,6 +7,9 @@ import { cn } from "@/lib/utils";
 import { Kbd } from "@/design/Kbd";
 import { useThemeToggle } from "@/design/theme";
 import { BUILD_INFO } from "@/lib/runtime";
+import { StatusDot } from "@/design/StatusDot";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { useEngineHealth } from "@/api/queries";
 import { LEGACY_NAV, PRIMARY_NAV, isActive, isLegacyPath, type NavItem } from "./nav";
 
 export function LogoMark({ className }: { className?: string }) {
@@ -43,6 +46,27 @@ function NavRow({ item, onNavigate }: { item: NavItem; onNavigate?: () => void }
       <item.icon className={cn("relative size-4 shrink-0", active ? "text-primary" : "opacity-80")} />
       <span className="relative truncate">{item.label}</span>
     </NavLink>
+  );
+}
+
+function EngineStatus() {
+  const health = useEngineHealth();
+  const tone = health.isPending ? "neutral" : health.data?.ok ? "success" : "danger";
+  const label = health.isPending ? "Connecting…" : health.data?.ok ? "Engine online" : "Engine offline";
+  const build = BUILD_INFO.gitSha && BUILD_INFO.gitSha !== "unknown" ? BUILD_INFO.gitSha.slice(0, 7) : BUILD_INFO.mode;
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span className="flex min-w-0 cursor-default items-center gap-2 text-2xs text-muted-foreground">
+          <StatusDot tone={tone} />
+          <span className="truncate">{label}</span>
+        </span>
+      </TooltipTrigger>
+      <TooltipContent side="top" align="start" className="space-y-0.5">
+        <p>{health.error ? health.error.message : health.data ? `Worlds: ${health.data.worlds.join(", ")}` : "Checking /engine/health"}</p>
+        <p className="font-mono text-muted-foreground">build {build}</p>
+      </TooltipContent>
+    </Tooltip>
   );
 }
 
@@ -88,9 +112,7 @@ export function Sidebar({ onOpenPalette, onNavigate }: { onOpenPalette: () => vo
       </Collapsible.Root>
 
       <div className="mt-auto flex items-center justify-between gap-2 px-2">
-        <span className="truncate font-mono text-2xs text-muted-foreground/60" title={`${BUILD_INFO.buildLabel} · ${BUILD_INFO.gitSha}`}>
-          {BUILD_INFO.gitSha && BUILD_INFO.gitSha !== "unknown" ? BUILD_INFO.gitSha.slice(0, 7) : BUILD_INFO.mode}
-        </span>
+        <EngineStatus />
         <button
           type="button"
           onClick={toggle}

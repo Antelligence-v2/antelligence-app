@@ -1,11 +1,12 @@
 import { lazy } from "react";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "./design/theme";
 import { AppShell } from "./shell/AppShell";
+import { createQueryClient } from "./api/queries";
 
 // Every page is its own chunk, so the shell paints before page code loads.
 const Home = lazy(() => import("./pages/Home"));
@@ -19,7 +20,7 @@ const TumorHunt = lazy(() => import("./pages/TumorHunt"));
 const ExperimentLab = lazy(() => import("./pages/ExperimentLab"));
 const DesignSystem = import.meta.env.DEV ? lazy(() => import("./pages/DesignSystem")) : null;
 
-const queryClient = new QueryClient();
+const queryClient = createQueryClient();
 
 const App = () => (
   <ThemeProvider>
