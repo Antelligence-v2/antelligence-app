@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
-import { ChevronRight, RotateCcw } from "lucide-react";
-import { useRun, useRunEvents } from "@/api/queries";
+import { ChevronRight, RotateCcw, ShieldCheck } from "lucide-react";
+import { useRun, useRunEvents, useVerifyRun } from "@/api/queries";
 import type { EngineEvent, Run } from "@/api/engine";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -20,6 +20,7 @@ import { Swimlanes } from "@/features/runs/Swimlanes";
 import { EventStream, type StreamScope } from "@/features/runs/EventStream";
 import { EventDetail } from "@/features/runs/EventDetail";
 import { AgentPanel } from "@/features/runs/AgentPanel";
+import { Provenance } from "@/features/runs/Provenance";
 import { armLabel, humanize, worldMeta } from "@/features/worlds/meta";
 import { cn } from "@/lib/utils";
 
@@ -262,6 +263,13 @@ function RunBody({ run, events }: { run: Run; events: EngineEvent[] }) {
 function RunView({ run }: { run: Run }) {
   const events = useRunEvents(run.run_id);
   const meta = worldMeta(run.spec.world);
+  const verifyRun = useVerifyRun();
+  const verify = {
+    run: () => verifyRun.mutate(run.run_id),
+    pending: verifyRun.isPending,
+    result: verifyRun.data,
+    error: verifyRun.error,
+  };
 
   return (
     <Page className="space-y-6">
@@ -290,6 +298,16 @@ function RunView({ run }: { run: Run }) {
         <div className="flex items-center gap-2">
           <VerdictBadge verdict={run.verdict.verdict} />
           <TrustBadge trust={run.bundle.trust} />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              document.getElementById("provenance")?.scrollIntoView({ behavior: "smooth" });
+              if (!verify.result) verify.run();
+            }}
+          >
+            <ShieldCheck /> Verify
+          </Button>
           <Button variant="outline" size="sm" asChild>
             <Link to={`/w/${run.spec.world}`}><RotateCcw /> New run</Link>
           </Button>
@@ -299,6 +317,7 @@ function RunView({ run }: { run: Run }) {
       {events.isError && <ErrorState error={events.error} onRetry={() => void events.refetch()} />}
       {events.isPending && <BodySkeleton />}
       {events.data && <RunBody run={run} events={events.data.events} />}
+      <Provenance run={run} verify={verify} />
     </Page>
   );
 }
