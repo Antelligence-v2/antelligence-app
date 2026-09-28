@@ -15,6 +15,11 @@ import {
 } from "@/features/runs/derive";
 import { PlaybackHints, Scrubber } from "@/features/runs/Scrubber";
 import { usePlayback, type Playback } from "@/features/runs/usePlayback";
+import { LANE_LEGEND, agentLanes } from "@/features/runs/describe";
+import { Swimlanes } from "@/features/runs/Swimlanes";
+import { EventStream, type StreamScope } from "@/features/runs/EventStream";
+import { EventDetail } from "@/features/runs/EventDetail";
+import { AgentPanel } from "@/features/runs/AgentPanel";
 import { armLabel, humanize, worldMeta } from "@/features/worlds/meta";
 import { cn } from "@/lib/utils";
 
@@ -139,6 +144,75 @@ function Timeline({ run, series, events, playback }: { run: Run; series: TickPoi
   );
 }
 
+const LEGEND_COLOR: Record<string, string> = {
+  acted: "bg-primary/35", signaled: "bg-primary", rejected: "bg-warning", blocked: "bg-danger",
+};
+
+/** Agents lanes + event stream + agent-at-tick panel, all synced to the playhead. */
+function Inspector({ events, playback }: { events: EngineEvent[]; playback: Playback }) {
+  const lanes = useMemo(() => agentLanes(events), [events]);
+  const [agent, setAgent] = useState<string | null>(null);
+  const [scope, setScope] = useState<StreamScope>("tick");
+  const [types, setTypes] = useState<Set<string>>(() => new Set());
+  const [open, setOpen] = useState<EngineEvent | null>(null);
+
+  const openEvent = (e: EngineEvent) => {
+    setOpen(e);
+    if (e.tick !== playback.tick) playback.seek(e.tick);
+  };
+
+  return (
+    <>
+      {lanes.agents.length > 0 && playback.max > playback.min && (
+        <section className="surface-edge rounded-xl border bg-card">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b px-4 py-3">
+            <h2 className="text-sm font-medium">Agents <span className="font-normal text-muted-foreground">· {lanes.agents.length}</span></h2>
+            <div className="flex flex-wrap items-center gap-3 text-2xs text-muted-foreground">
+              {LANE_LEGEND.map(([state, label]) => (
+                <span key={state} className="inline-flex items-center gap-1.5"><span className={`size-2 rounded-sm ${LEGEND_COLOR[state]}`} />{label}</span>
+              ))}
+            </div>
+          </div>
+          <div className="p-4 pb-0">
+            <Swimlanes
+              lanes={lanes}
+              min={playback.min}
+              max={playback.max}
+              cursor={playback.position}
+              selected={agent}
+              onPick={(a, t) => { setAgent(a); playback.seek(t); }}
+            />
+          </div>
+        </section>
+      )}
+
+      <section className="surface-edge grid overflow-hidden rounded-xl border bg-card lg:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="min-w-0 border-b lg:border-b-0 lg:border-r">
+          <div className="border-b px-4 py-3"><h2 className="text-sm font-medium">Event log</h2></div>
+          <EventStream
+            events={events}
+            tick={playback.tick}
+            scope={scope}
+            onScope={setScope}
+            types={types}
+            onTypes={setTypes}
+            agent={agent}
+            onClearAgent={() => setAgent(null)}
+            onOpen={openEvent}
+            openSeq={open?.seq ?? null}
+          />
+        </div>
+        <div className="min-w-0">
+          <div className="border-b px-4 py-3"><h2 className="text-sm font-medium">Agent at tick</h2></div>
+          <AgentPanel agent={agent} tick={playback.tick} events={events} onOpen={openEvent} />
+        </div>
+      </section>
+
+      <EventDetail event={open} events={events} onOpen={openEvent} onClose={() => setOpen(null)} />
+    </>
+  );
+}
+
 /** Mounted once events are loaded, so playback starts on the real tick range. */
 function RunBody({ run, events }: { run: Run; events: EngineEvent[] }) {
   const [params, setParams] = useSearchParams();
@@ -180,6 +254,7 @@ function RunBody({ run, events }: { run: Run; events: EngineEvent[] }) {
       </div>
       <SafetyStrip run={run} />
       <Timeline run={run} series={series} events={events} playback={playback} />
+      <Inspector events={events} playback={playback} />
     </>
   );
 }
