@@ -9,7 +9,7 @@ metric with an exact sign test. Reports carry their caveats with them.
 from __future__ import annotations
 
 from collections import Counter
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Any, Callable, Dict, List, Optional, Sequence
 
 from antelligence.experiments.registry import RunSpec, world
 from antelligence.experiments.stats import paired_comparison, wilson_interval
@@ -143,12 +143,14 @@ def experiment_request(world_name: str, arms: Optional[Sequence[str]], cases: Se
 
 
 def run_experiment(request: Dict[str, Any], *, store: Optional[EngineStore] = None,
-                   outbox: Optional[ProvenanceOutbox] = None, force: bool = False) -> Dict[str, Any]:
+                   outbox: Optional[ProvenanceOutbox] = None, force: bool = False,
+                   on_progress: Optional[Callable[[int, int], None]] = None) -> Dict[str, Any]:
     """Run (or return the cached report for) an experiment.
 
     The cache key includes the engine fingerprint, so a report is reused only if
     no engine, world or physics source changed since it was computed. ``force``
-    re-runs and overwrites regardless.
+    re-runs and overwrites regardless. ``on_progress(done, total)`` is called
+    after each run (not at all for a cached report).
     """
     request = experiment_request(request["world"], request.get("arms"), request["cases"],
                                  params=request.get("params"), baseline=request.get("baseline"))
@@ -160,6 +162,8 @@ def run_experiment(request: Dict[str, Any], *, store: Optional[EngineStore] = No
             return cached
     ws = world(request["world"])
     runs: Dict[str, List[Dict[str, Any]]] = {}
+    total = len(request["arms"]) * len(request["cases"])
+    done = 0
     for arm in request["arms"]:
         runs[arm] = []
         for case in request["cases"]:
@@ -167,6 +171,9 @@ def run_experiment(request: Dict[str, Any], *, store: Optional[EngineStore] = No
                                  outbox=outbox, experiment_id=experiment_id)
             record.pop("bundle")
             runs[arm].append(record)
+            done += 1
+            if on_progress is not None:
+                on_progress(done, total)
 
     metric = ws.primary_metric
     arms_summary = {}

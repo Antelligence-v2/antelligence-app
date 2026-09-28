@@ -232,6 +232,16 @@ export const ExperimentListItemSchema = z.object({
 });
 export type ExperimentListItem = z.infer<typeof ExperimentListItemSchema>;
 
+export const ExperimentJobSchema = z.object({
+  job_id: z.string(),
+  status: z.enum(["running", "done", "failed"]),
+  done: z.number(),
+  total: z.number(),
+  experiment_id: z.string().nullable(),
+  error: z.string().nullable(),
+});
+export type ExperimentJob = z.infer<typeof ExperimentJobSchema>;
+
 export type RunRequest = { world: string; arm: string; case: number; params?: Record<string, number> };
 export type ExperimentBody = { world: string; arms: string[]; cases?: number[]; baseline?: string; params?: Record<string, number> };
 

@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { formatDistanceToNowStrict } from "date-fns";
 import { ArrowRight, FlaskConical, Loader2, Play } from "lucide-react";
 import { toast } from "sonner";
-import { useCreateExperiment, useExperiments, useWorlds } from "@/api/queries";
+import { useExperimentJob, useExperiments, useWorlds } from "@/api/queries";
 import type { World } from "@/api/engine";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -42,8 +42,10 @@ function useElapsed(active: boolean): number {
 
 function Builder({ worlds }: { worlds: World[] }) {
   const navigate = useNavigate();
-  const create = useCreateExperiment();
-  const elapsed = useElapsed(create.isPending);
+  const experiment = useExperimentJob();
+  const [starting, setStarting] = useState(false);
+  const busy = starting || experiment.running;
+  const elapsed = useElapsed(busy);
   const [worldName, setWorldName] = useState(worlds[0].name);
   const world = worlds.find((w) => w.name === worldName) ?? worlds[0];
   const [arms, setArms] = useState<string[]>(world.arms);
@@ -72,18 +74,19 @@ function Builder({ worlds }: { worlds: World[] }) {
     });
   };
 
-  const run = () => {
-    if (!valid || create.isPending) return;
-    create.mutate(
-      { world: world.name, arms, cases, baseline, params },
-      {
-        onSuccess: (report) => {
-          toast.success("Experiment complete", { description: `${worldMeta(world.name).title} · ${runCount} runs` });
-          navigate(`/lab/${report.experiment_id}`);
-        },
-      },
-    );
+  const run = async () => {
+    if (!valid || busy) return;
+    setStarting(true);
+    const report = await experiment.start({ world: world.name, arms, cases, baseline, params });
+    setStarting(false);
+    if (report) {
+      toast.success("Experiment complete", { description: `${worldMeta(world.name).title} · ${runCount} runs` });
+      navigate(`/lab/${report.experiment_id}`);
+    }
   };
+  const done = experiment.job?.done ?? 0;
+  const total = experiment.job?.total ?? runCount;
+  const pct = total ? Math.round((done / total) * 100) : 0;
 
   return (
     <div className="surface-edge space-y-8 rounded-xl border bg-card p-5 md:p-6">
@@ -176,19 +179,28 @@ function Builder({ worlds }: { worlds: World[] }) {
         </Section>
       )}
 
-      <div className="relative flex flex-wrap items-center justify-between gap-3 border-t pt-5">
-        {create.isPending && <div className="absolute inset-x-0 top-0 h-px animate-shimmer bg-[linear-gradient(90deg,transparent,hsl(var(--primary)),transparent)] bg-[length:200%_100%]" />}
-        <p className="numeric text-sm text-muted-foreground">
-          <span className="font-medium text-foreground">{arms.length}</span> arms × <span className="font-medium text-foreground">{cases.length}</span> seeds = <span className="font-medium text-foreground">{runCount}</span> runs
-          {create.isPending && <span className="ml-2 font-mono text-xs">· {elapsed}s</span>}
-        </p>
-        <Button onClick={run} disabled={!valid || create.isPending}>
-          {create.isPending ? <Loader2 className="animate-spin" /> : <Play />}
-          {create.isPending ? "Running…" : "Run experiment"}
-        </Button>
+      <div className="space-y-3 border-t pt-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="numeric text-sm text-muted-foreground">
+            {busy ? (
+              <><span className="font-medium text-foreground">{done}</span> / {total} runs done<span className="ml-2 font-mono text-xs">· {elapsed}s</span></>
+            ) : (
+              <><span className="font-medium text-foreground">{arms.length}</span> arms × <span className="font-medium text-foreground">{cases.length}</span> seeds = <span className="font-medium text-foreground">{runCount}</span> runs</>
+            )}
+          </p>
+          <Button onClick={() => void run()} disabled={!valid || busy}>
+            {busy ? <Loader2 className="animate-spin" /> : <Play />}
+            {busy ? `Running… ${pct}%` : "Run experiment"}
+          </Button>
+        </div>
+        {busy && (
+          <div className="h-1.5 overflow-hidden rounded-full bg-surface-3" role="progressbar" aria-valuemin={0} aria-valuemax={total} aria-valuenow={done} aria-label="Experiment progress">
+            <div className="h-full rounded-full bg-primary transition-[width] duration-300 ease-out" style={{ width: `${Math.max(2, pct)}%` }} />
+          </div>
+        )}
       </div>
       {!valid && arms.length < 2 && <p className="-mt-4 text-xs text-muted-foreground">Pick at least two arms to compare.</p>}
-      {create.isError && <ErrorState error={create.error} />}
+      {experiment.error && <ErrorState error={experiment.error} />}
     </div>
   );
 }

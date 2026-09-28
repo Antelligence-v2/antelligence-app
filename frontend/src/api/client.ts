@@ -6,6 +6,7 @@ import {
   EventPageSchema,
   FramesSchema,
   HealthSchema,
+  ExperimentJobSchema,
   ExperimentListItemSchema,
   ExperimentSchema,
   ReplaySchema,
@@ -49,5 +50,7 @@ export const engine = {
   verify: (runId: string) => call(ReplaySchema, http.post(`/runs/${encodeURIComponent(runId)}/verify`)),
   experiments: (signal?: AbortSignal) => call(ExperimentListItemSchema.array(), http.get("/experiments", { signal })),
   experiment: (id: string, signal?: AbortSignal) => call(ExperimentSchema, http.get(`/experiments/${encodeURIComponent(id)}`, { signal })),
+  startExperiment: (body: ExperimentBody) => call(ExperimentJobSchema, http.post("/experiments/jobs", body)),
+  experimentJob: (jobId: string) => call(ExperimentJobSchema, http.get(`/experiments/jobs/${encodeURIComponent(jobId)}`)),
   createExperiment: (body: ExperimentBody) => call(ExperimentSchema, http.post("/experiments", body, { timeout: 600_000 })),
 };

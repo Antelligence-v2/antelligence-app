@@ -1,7 +1,8 @@
 /** React Query bindings for the engine API: one place for keys, caching and invalidation. */
+import { useCallback, useEffect, useRef, useState } from "react";
 import { QueryClient, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { engine } from "./client";
-import type { ApiError, ExperimentBody, RunRequest } from "./engine";
+import { toApiError, type ApiError, type Experiment, type ExperimentBody, type ExperimentJob, type RunRequest } from "./engine";
 
 export const keys = {
   health: ["engine", "health"] as const,
@@ -69,4 +70,44 @@ export function useCreateExperiment() {
       void client.invalidateQueries({ queryKey: keys.experiments });
     },
   });
+}
+
+/**
+ * Runs an experiment as a background job and polls its progress.
+ * `start` resolves with the finished report (also seeded into the cache).
+ */
+export function useExperimentJob() {
+  const client = useQueryClient();
+  const [job, setJob] = useState<ExperimentJob | null>(null);
+  const [error, setError] = useState<ApiError | null>(null);
+  const alive = useRef(true);
+  useEffect(() => () => { alive.current = false; }, []);
+
+  const start = useCallback(async (body: ExperimentBody): Promise<Experiment | null> => {
+    setError(null);
+    try {
+      let current = await engine.startExperiment(body);
+      setJob(current);
+      while (current.status === "running") {
+        await new Promise((resolve) => setTimeout(resolve, 350));
+        if (!alive.current) return null;
+        current = await engine.experimentJob(current.job_id);
+        setJob(current);
+      }
+      if (current.status === "failed" || !current.experiment_id) throw new Error(current.error ?? "Experiment failed.");
+      const report = await engine.experiment(current.experiment_id);
+      client.setQueryData(keys.experiment(report.experiment_id), report);
+      void client.invalidateQueries({ queryKey: keys.experiments });
+      return report;
+    } catch (e) {
+      const err = toApiError(e);
+      if (alive.current) setError(err);
+      return null;
+    } finally {
+      if (alive.current) setJob((j) => (j && j.status === "running" ? null : j));
+    }
+  }, [client]);
+
+  const running = job?.status === "running";
+  return { start, job, running, error, reset: () => { setJob(null); setError(null); } };
 }
