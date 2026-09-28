@@ -1,11 +1,13 @@
-import { useLayoutEffect, useMemo, useRef } from "react";
-import { Canvas, type ThreeEvent } from "@react-three/fiber";
+import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
+import { Canvas, useThree, type ThreeEvent } from "@react-three/fiber";
 import { Line, OrbitControls } from "@react-three/drei";
+import { Bloom, EffectComposer } from "@react-three/postprocessing";
 import { useTheme } from "next-themes";
 import * as THREE from "three";
 import type { Frame, Frames } from "@/api/engine";
 import { framePair, frameAgentIds } from "./decode";
-import { themeRgb } from "./canvas";
+import { fieldImage, themeRgb } from "./canvas";
+import { FIELD_STYLE } from "./styles";
 
 const SCALE = 1 / 100; // 100 um per scene unit
 const TRAIL = 16;
@@ -138,6 +140,55 @@ function Vessels({ vessels, center }: { vessels: number[][]; center: number[] })
   );
 }
 
+/** A field (drug, pheromone...) as a translucent plane through the tumor center. */
+function FieldSlice({ frame, scene, layer }: {
+  frame: Frame;
+  scene: { domain: number[]; center: number[]; field_shape: number[]; field_slice_z?: number | null };
+  layer: string;
+}) {
+  const { resolvedTheme } = useTheme();
+  const encoded = (frame.world.fields as Record<string, { b64: string }> | undefined)?.[layer];
+  const texture = useMemo(() => {
+    if (!encoded) return null;
+    const image = fieldImage(encoded.b64, scene.field_shape[0], scene.field_shape[1], themeRgb(FIELD_STYLE[layer]?.color ?? "--primary"));
+    if (!image) return null;
+    const t = new THREE.CanvasTexture(image);
+    t.colorSpace = THREE.SRGBColorSpace;
+    t.minFilter = t.magFilter = THREE.LinearFilter;
+    return t;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [encoded?.b64, layer, resolvedTheme]);
+  useEffect(() => () => texture?.dispose(), [texture]);
+  if (!texture) return null;
+  const size = (scene.domain[1] - scene.domain[0]) * SCALE;
+  const offset: Vec3 = [
+    ((scene.domain[0] + scene.domain[1]) / 2 - scene.center[0]) * SCALE,
+    ((scene.field_slice_z ?? scene.center[2] ?? 0) - (scene.center[2] ?? 0)) * SCALE,
+    ((scene.domain[0] + scene.domain[1]) / 2 - scene.center[1]) * SCALE,
+  ];
+  return (
+    <mesh position={offset} rotation={[-Math.PI / 2, 0, 0]} renderOrder={-1}>
+      <planeGeometry args={[size, size]} />
+      <meshBasicMaterial map={texture} transparent depthWrite={false} side={THREE.DoubleSide} toneMapped={false} />
+    </mesh>
+  );
+}
+
+export type CameraPreset = "overview" | "top" | "side";
+const PRESETS: Record<CameraPreset, Vec3> = { overview: [4.6, 3.4, 5.2], top: [0, 7.2, 0.01], side: [7.2, 0.4, 0] };
+
+/** Moves the camera when a preset is chosen; the user can orbit freely afterwards. */
+function CameraRig({ preset }: { preset: CameraPreset }) {
+  const { camera, controls } = useThree();
+  useEffect(() => {
+    camera.position.set(...PRESETS[preset]);
+    camera.lookAt(0, 0, 0);
+    (controls as unknown as { target?: THREE.Vector3; update?: () => void } | null)?.target?.set(0, 0, 0);
+    (controls as unknown as { update?: () => void } | null)?.update?.();
+  }, [preset, camera, controls]);
+  return null;
+}
+
 /** The tumor boundary: a glassy sphere in 3D, a ring on the ground plane in 2D. */
 function Boundary({ radius, is3d }: { radius: number; is3d: boolean }) {
   const { resolvedTheme } = useTheme();
@@ -167,13 +218,19 @@ function Boundary({ radius, is3d }: { radius: number; is3d: boolean }) {
  * 3D replay of a tumor run: glassy tumor, cells by phase, vessels, glowing
  * nanobots with trails. Drag to orbit, scroll to zoom, click a bot to select.
  */
-export default function Scene3D({ data, position, selected, onSelect }: {
+export default function Scene3D({ data, position, selected, onSelect, layer = null, preset = "overview", autoRotate = false }: {
   data: Frames;
   position: number;
   selected: string | null;
   onSelect: (agent: string) => void;
+  layer?: string | null;
+  preset?: CameraPreset;
+  autoRotate?: boolean;
 }) {
-  const scene = data.scene as { center: number[]; tumor_radius: number; vessels: number[][]; dimensionality?: number };
+  const scene = data.scene as {
+    center: number[]; tumor_radius: number; vessels: number[][]; dimensionality?: number;
+    domain: number[]; field_shape: number[]; field_slice_z?: number | null;
+  };
   const is3d = scene.dimensionality === 3;
   const { a, b, t } = framePair(data.frames, position);
   const index = data.frames.indexOf(a);
@@ -197,12 +254,18 @@ export default function Scene3D({ data, position, selected, onSelect }: {
         <ambientLight intensity={0.55} />
         <directionalLight position={[4, 6, 3]} intensity={1.1} />
         <directionalLight position={[-3, -2, -4]} intensity={0.35} />
+        <CameraRig preset={preset} />
+        {layer && <FieldSlice frame={a} scene={scene} layer={layer} />}
         <Boundary radius={scene.tumor_radius} is3d={is3d} />
         <Vessels vessels={scene.vessels} center={center} />
         <Cells frame={a} center={center} />
         <Trails frames={data.frames} index={index} center={center} ids={ids} selected={selected} />
         <Bots rows={bots} center={center} ids={ids} selected={selected} onSelect={onSelect} />
-        <OrbitControls enableDamping dampingFactor={0.08} minDistance={1.2} maxDistance={12} makeDefault />
+        <OrbitControls enableDamping dampingFactor={0.08} minDistance={1.2} maxDistance={12} autoRotate={autoRotate} autoRotateSpeed={0.8} makeDefault />
+        <EffectComposer multisampling={4}>
+          {/* Only the unlit, over-bright nanobots exceed the threshold, so only they glow. */}
+          <Bloom intensity={0.9} luminanceThreshold={1} luminanceSmoothing={0.2} mipmapBlur />
+        </EffectComposer>
       </Canvas>
     </div>
   );

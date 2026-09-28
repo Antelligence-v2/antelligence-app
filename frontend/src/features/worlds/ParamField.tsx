@@ -12,6 +12,30 @@ export function ParamField({ name, bounds, value, onChange }: {
 }) {
   const [draft, setDraft] = useState(String(value));
   useEffect(() => setDraft(String(value)), [value]);
+  if (name === "dimensionality" && bounds.min === 2 && bounds.max === 3) {
+    return (
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="text-sm">Space</p>
+          <p className="text-2xs text-muted-foreground">{value === 3 ? "Volumetric tumor, bots move in 3D" : "Flat tumor slice (the classic model)"}</p>
+        </div>
+        <div role="radiogroup" aria-label="Dimensionality" className="flex items-center gap-0.5 rounded-md border p-0.5">
+          {[2, 3].map((d) => (
+            <button
+              key={d}
+              type="button"
+              role="radio"
+              aria-checked={value === d}
+              onClick={() => onChange(d)}
+              className={`h-7 w-12 rounded text-xs font-medium transition-colors ${value === d ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
+            >
+              {d}D
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  }
   const commit = () => {
     const n = Math.round(Number(draft));
     onChange(Number.isFinite(n) ? Math.min(bounds.max, Math.max(bounds.min, n)) : bounds.default);

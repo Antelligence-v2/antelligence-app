@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { decodeBase64 } from "./decode";
 
 /** Theme color from a CSS variable ("--primary") as an hsl() string. */
 export function themeColor(name: string, alpha = 1): string {
@@ -51,3 +52,32 @@ export function useSquareCanvas(draw: (ctx: CanvasRenderingContext2D, size: numb
 
   return { wrap, canvas, size };
 }
+
+/** Offscreen canvas holding one field frame as colored, alpha-scaled pixels. */
+export function fieldImage(b64: string, nx: number, ny: number, rgb: [number, number, number]): HTMLCanvasElement | null {
+  const bytes = decodeBase64(b64);
+  // Stretch between this frame's own min and max so near-uniform fields (oxygen)
+  // still show their structure instead of a flat slab.
+  let lo = 255;
+  let hi = 0;
+  for (const v of bytes) { if (v < lo) lo = v; if (v > hi) hi = v; }
+  const range = hi - lo;
+  if (range === 0) return null; // uniform: nothing to show
+  const img = new ImageData(nx, ny);
+  for (let x = 0; x < nx; x++) {
+    for (let y = 0; y < ny; y++) {
+      const v = bytes[x * ny + y] ?? 0; // engine layout: index = x * ny + y
+      const p = (y * nx + x) * 4;
+      img.data[p] = rgb[0];
+      img.data[p + 1] = rgb[1];
+      img.data[p + 2] = rgb[2];
+      img.data[p + 3] = range > 0 ? Math.round(Math.pow((v - lo) / range, 0.8) * 150) : 0;
+    }
+  }
+  const off = document.createElement("canvas");
+  off.width = nx;
+  off.height = ny;
+  off.getContext("2d")?.putImageData(img, 0, 0);
+  return off;
+}
+

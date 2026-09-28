@@ -6,6 +6,7 @@ import { GridScene, type GridSceneData } from "./GridScene";
 import { TumorScene, type TumorSceneData } from "./TumorScene";
 import { FIELD_STYLE } from "./styles";
 import { frameAgentIds } from "./decode";
+import type { CameraPreset } from "./Scene3D";
 
 // three.js + React Three Fiber load only when someone opens the 3D view.
 const Scene3D = lazy(() => import("./Scene3D"));
@@ -50,6 +51,8 @@ export function Viewport({ data, position, tick, selected, onSelect }: {
   const [layer, setLayer] = useState<string | null>(fields.includes("drug") ? "drug" : fields[0] ?? null);
   const is3dRun = data.scene.dimensionality === 3;
   const [view, setView] = useState<"2d" | "3d">(is3dRun ? "3d" : "2d");
+  const [preset, setPreset] = useState<CameraPreset>("overview");
+  const [autoRotate, setAutoRotate] = useState(false);
   useEffect(() => { if (layer && !fields.includes(layer)) setLayer(fields[0] ?? null); }, [fields, layer]);
 
   const frame = data.frames[Math.min(data.frames.length - 1, Math.max(0, tick - data.frames[0].tick))].world;
@@ -60,7 +63,7 @@ export function Viewport({ data, position, tick, selected, onSelect }: {
         <div className="mx-auto max-w-[560px]">
           {kind === "tumor" && view === "3d" ? (
             <Suspense fallback={<Skeleton className="aspect-square w-full rounded-lg" />}>
-              <Scene3D data={data} position={position} selected={selected} onSelect={onSelect} />
+              <Scene3D data={data} position={position} selected={selected} onSelect={onSelect} layer={layer} preset={preset} autoRotate={autoRotate} />
             </Suspense>
           ) : (
             <SceneCanvas data={data} position={position} layer={layer} selected={selected} onSelect={onSelect} />
@@ -96,7 +99,33 @@ export function Viewport({ data, position, tick, selected, onSelect }: {
           </div>
         )}
 
-        {kind === "tumor" && view === "2d" && fields.length > 0 && (
+        {kind === "tumor" && view === "3d" && (
+          <div className="space-y-2">
+            <p className="text-2xs font-medium uppercase tracking-[0.08em] text-muted-foreground">Camera</p>
+            <div className="flex flex-wrap gap-1">
+              {(["overview", "top", "side"] as const).map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => setPreset(p)}
+                  className={cn("h-7 rounded-md border px-2 text-xs capitalize transition-colors", preset === p ? "border-primary/50 bg-primary/10 text-foreground" : "text-muted-foreground hover:text-foreground")}
+                >
+                  {p}
+                </button>
+              ))}
+              <button
+                type="button"
+                aria-pressed={autoRotate}
+                onClick={() => setAutoRotate((v) => !v)}
+                className={cn("h-7 rounded-md border px-2 text-xs transition-colors", autoRotate ? "border-primary/50 bg-primary/10 text-foreground" : "text-muted-foreground hover:text-foreground")}
+              >
+                Rotate
+              </button>
+            </div>
+          </div>
+        )}
+
+        {kind === "tumor" && fields.length > 0 && (
           <div className="space-y-2">
             <p className="text-2xs font-medium uppercase tracking-[0.08em] text-muted-foreground">Field</p>
             <div className="flex flex-wrap gap-1">
@@ -111,7 +140,11 @@ export function Viewport({ data, position, tick, selected, onSelect }: {
                 </button>
               ))}
             </div>
-            {layer && <p className="text-2xs text-muted-foreground">Brighter = higher concentration, scaled to this tick's range.</p>}
+            {layer && (
+              <p className="text-2xs text-muted-foreground">
+                Brighter = higher concentration, scaled to this tick's range.{view === "3d" ? " Shown as a slice through the tumor center." : ""}
+              </p>
+            )}
           </div>
         )}
 
