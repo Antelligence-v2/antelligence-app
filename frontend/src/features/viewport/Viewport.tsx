@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { GridScene, type GridSceneData } from "./GridScene";
 import { TumorScene, type TumorSceneData } from "./TumorScene";
 import { FIELD_STYLE } from "./styles";
+import { frameAgentIds } from "./decode";
 
 const Legend = ({ items }: { items: Array<[string, string]> }) => (
   <div className="flex flex-wrap gap-x-3 gap-y-1.5 text-2xs text-muted-foreground">
@@ -12,6 +13,22 @@ const Legend = ({ items }: { items: Array<[string, string]> }) => (
     ))}
   </div>
 );
+
+/** Just the scene canvas for a run's frames (tumor or grid), no chrome. */
+export function SceneCanvas({ data, position, layer, selected, onSelect }: {
+  data: Frames;
+  position: number;
+  layer: string | null;
+  selected: string | null;
+  onSelect: (agent: string) => void;
+}) {
+  const agentIds = frameAgentIds(data);
+  return (data.scene.kind as string) === "tumor" ? (
+    <TumorScene scene={data.scene as unknown as TumorSceneData} frames={data.frames} position={position} layer={layer} agentIds={agentIds} selected={selected} onSelect={onSelect} />
+  ) : (
+    <GridScene scene={data.scene as unknown as GridSceneData} frames={data.frames} position={position} agentIds={agentIds} selected={selected} onSelect={onSelect} />
+  );
+}
 
 /**
  * Spatial replay of a run from its recorded frames, driven by the playhead.
@@ -29,20 +46,13 @@ export function Viewport({ data, position, tick, selected, onSelect }: {
   const [layer, setLayer] = useState<string | null>(fields.includes("drug") ? "drug" : fields[0] ?? null);
   useEffect(() => { if (layer && !fields.includes(layer)) setLayer(fields[0] ?? null); }, [fields, layer]);
 
-  const first = data.frames[0].world;
-  const count = ((kind === "tumor" ? first.bots : first.agents) as unknown[] | undefined)?.length ?? 0;
-  const agentIds = Array.from({ length: count }, (_, i) => (kind === "tumor" ? `bot-${String(i).padStart(3, "0")}` : String(i)));
   const frame = data.frames[Math.min(data.frames.length - 1, Math.max(0, tick - data.frames[0].tick))].world;
 
   return (
     <section className="surface-edge grid overflow-hidden rounded-xl border bg-card lg:grid-cols-[minmax(0,1fr)_260px]">
       <div className="min-w-0 border-b p-3 lg:border-b-0 lg:border-r">
         <div className="mx-auto max-w-[560px]">
-          {kind === "tumor" ? (
-            <TumorScene scene={data.scene as unknown as TumorSceneData} frames={data.frames} position={position} layer={layer} agentIds={agentIds} selected={selected} onSelect={onSelect} />
-          ) : (
-            <GridScene scene={data.scene as unknown as GridSceneData} frames={data.frames} position={position} agentIds={agentIds} selected={selected} onSelect={onSelect} />
-          )}
+          <SceneCanvas data={data} position={position} layer={layer} selected={selected} onSelect={onSelect} />
         </div>
       </div>
       <aside className="space-y-5 p-4">

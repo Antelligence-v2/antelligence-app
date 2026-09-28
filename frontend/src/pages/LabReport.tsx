@@ -1,5 +1,6 @@
-import { Link, useNavigate, useParams } from "react-router-dom";
-import { AlertTriangle, ArrowDown, ArrowUp, ChevronRight, Info, Trophy } from "lucide-react";
+import { useState } from "react";
+import { Link, useParams } from "react-router-dom";
+import { AlertTriangle, ArrowDown, ArrowUp, ChevronRight, Info, Play, Trophy } from "lucide-react";
 import { useExperiment } from "@/api/queries";
 import type { Experiment } from "@/api/engine";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -8,6 +9,8 @@ import { Hash } from "@/design/Hash";
 import { Page } from "@/design/PageHeader";
 import { ErrorState } from "@/design/States";
 import { cellIntensity, effectOf, forestBound, formatP, formatPct } from "@/features/lab/stats";
+import { Compare, type WatchSelection } from "@/features/lab/Compare";
+import { Button } from "@/components/ui/button";
 import { formatMetric } from "@/features/runs/derive";
 import { armLabel, humanize, worldMeta } from "@/features/worlds/meta";
 import { cn } from "@/lib/utils";
@@ -24,7 +27,7 @@ function Card({ title, aside, children, className }: { title: string; aside?: Re
   );
 }
 
-function Recommendation({ report }: { report: Experiment }) {
+function Recommendation({ report, onWatch }: { report: Experiment; onWatch: () => void }) {
   const rec = report.recommendation;
   if (!rec) return null;
   const tone = rec.best_arm ? "success" : rec.underpowered ? "warning" : "neutral";
@@ -37,10 +40,13 @@ function Recommendation({ report }: { report: Experiment }) {
       )}
     >
       {tone === "success" ? <Trophy className="mt-0.5 size-4 shrink-0 text-success" /> : tone === "warning" ? <AlertTriangle className="mt-0.5 size-4 shrink-0 text-warning" /> : <Info className="mt-0.5 size-4 shrink-0 text-muted-foreground" />}
-      <div className="space-y-1">
+      <div className="min-w-0 flex-1 space-y-1">
         <p className="text-sm font-medium">{rec.best_arm ? `${armLabel(rec.best_arm)} works best` : rec.underpowered ? "Too few seeds to decide" : "No arm beat the baseline"}</p>
         <p className="text-sm text-muted-foreground">{rec.summary}</p>
       </div>
+      {rec.best_arm && (
+        <Button size="sm" variant="outline" className="shrink-0" onClick={onWatch}><Play /> Watch it</Button>
+      )}
     </div>
   );
 }
@@ -148,8 +154,7 @@ function ArmsTable({ report }: { report: Experiment }) {
 }
 
 /** Arms × seeds grid of the primary metric; brighter = better; click a cell to open that run. */
-function RunMatrix({ report }: { report: Experiment }) {
-  const navigate = useNavigate();
+function RunMatrix({ report, selection, onPick }: { report: Experiment; selection: WatchSelection; onPick: (arm: string, seed: number) => void }) {
   const metric = report.primary_metric;
   const all = Object.values(report.runs).flat().map((r) => (typeof r[metric] === "number" ? (r[metric] as number) : null));
   const present = all.filter((v): v is number => v !== null);
@@ -175,15 +180,17 @@ function RunMatrix({ report }: { report: Experiment }) {
                   <td key={r.run_id} className="p-0">
                     <button
                       type="button"
-                      onClick={() => navigate(`/runs/${encodeURIComponent(r.run_id)}`)}
-                      title={`${armLabel(arm)} · seed ${r.spec.case} · ${r.verdict}`}
+                      onClick={() => onPick(arm, r.spec.case)}
+                      title={`Watch ${armLabel(arm)} · seed ${r.spec.case} · ${r.verdict}`}
                       className={cn(
-                        "numeric h-8 min-w-11 rounded-md px-1.5 font-mono text-2xs transition-[transform,box-shadow] hover:scale-105 hover:shadow-e2",
+                        "group relative numeric h-8 min-w-11 rounded-md px-1.5 font-mono text-2xs transition-[transform,box-shadow] hover:scale-105 hover:shadow-e2",
                         r.verdict !== "success" && r.verdict !== "safe_incomplete" && "ring-1 ring-danger",
+                        r.spec.case === selection.seed && (arm === selection.left || arm === selection.right) && "ring-2 ring-foreground/70",
                       )}
                       style={{ background: `hsl(var(--primary) / ${0.06 + t * 0.39})` }}
                     >
-                      {v === null ? "—" : formatMetric(metric, v)}
+                      <span className="group-hover:opacity-0">{v === null ? "—" : formatMetric(metric, v)}</span>
+                      <Play className="absolute inset-0 m-auto size-3 fill-current opacity-0 transition-opacity group-hover:opacity-100" />
                     </button>
                   </td>
                 );
@@ -198,6 +205,15 @@ function RunMatrix({ report }: { report: Experiment }) {
 
 function Report({ report }: { report: Experiment }) {
   const meta = worldMeta(report.request.world);
+  const baseline = report.request.baseline;
+  const challenger = report.recommendation?.best_arm ?? Object.keys(report.comparisons_vs_baseline)[0] ?? baseline;
+  const [selection, setSelection] = useState<WatchSelection>({ seed: report.request.cases[0], left: baseline, right: challenger });
+  const watch = (next: WatchSelection) => {
+    setSelection(next);
+    document.getElementById("watch")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+  const pick = (arm: string, seed: number) =>
+    watch(arm === baseline ? { ...selection, seed } : { seed, left: baseline, right: arm });
   const Direction = report.lower_is_better ? ArrowDown : ArrowUp;
   const params = Object.entries(report.request.params);
   return (
@@ -218,7 +234,9 @@ function Report({ report }: { report: Experiment }) {
         </p>
       </header>
 
-      <Recommendation report={report} />
+      <Recommendation report={report} onWatch={() => watch({ seed: selection.seed, left: baseline, right: challenger })} />
+
+      <Compare key={selection.seed} report={report} selection={selection} onSelection={setSelection} />
 
       <Card title="Effect vs baseline" aside={<span className="text-2xs text-muted-foreground">paired sign test · wins/losses/ties</span>}>
         <ForestPlot report={report} />
@@ -226,8 +244,8 @@ function Report({ report }: { report: Experiment }) {
 
       <Card title="Arms"><ArmsTable report={report} /></Card>
 
-      <Card title="Runs" aside={<span className="text-2xs text-muted-foreground">{humanize(report.primary_metric)} per seed · click to open</span>}>
-        <RunMatrix report={report} />
+      <Card title="Runs" aside={<span className="text-2xs text-muted-foreground">{humanize(report.primary_metric)} per seed · click any cell to watch it</span>}>
+        <RunMatrix report={report} selection={selection} onPick={pick} />
       </Card>
 
       <section className="space-y-2 rounded-xl border border-dashed p-4">

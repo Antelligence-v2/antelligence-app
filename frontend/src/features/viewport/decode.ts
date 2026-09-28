@@ -1,5 +1,5 @@
 /** Pure helpers for replaying frames. No DOM. */
-import type { Frame } from "../../api/engine.ts";
+import type { Frame, Frames } from "../../api/engine.ts";
 
 /** base64 → bytes (works in browsers and Node 20). */
 export function decodeBase64(b64: string): Uint8Array {
@@ -48,4 +48,12 @@ export function trails(frames: readonly Frame[], key: string, upto: number, leng
     rows.forEach((row, i) => (out[i] ??= []).push([row[0], row[1]]));
   }
   return out;
+}
+
+/** Agent ids in frame row order (the engine emits agents sorted by id). */
+export function frameAgentIds(data: Frames): string[] {
+  const kind = data.scene.kind as string;
+  const first = data.frames[0].world;
+  const count = ((kind === "tumor" ? first.bots : first.agents) as unknown[] | undefined)?.length ?? 0;
+  return Array.from({ length: count }, (_, i) => (kind === "tumor" ? `bot-${String(i).padStart(3, "0")}` : String(i)));
 }
