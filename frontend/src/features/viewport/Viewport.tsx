@@ -1,4 +1,7 @@
 import { lazy, Suspense, useEffect, useState } from "react";
+import { Pause, Play, RotateCcw } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import type { Playback } from "@/features/runs/usePlayback";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Frames } from "@/api/engine";
 import { cn } from "@/lib/utils";
@@ -39,13 +42,13 @@ export function SceneCanvas({ data, position, layer, selected, onSelect }: {
  * Spatial replay of a run from its recorded frames, driven by the playhead.
  * Click an agent to select it (shared with the inspector).
  */
-export function Viewport({ data, position, tick, selected, onSelect }: {
+export function Viewport({ data, playback, selected, onSelect }: {
   data: Frames;
-  position: number;
-  tick: number;
+  playback: Playback;
   selected: string | null;
   onSelect: (agent: string) => void;
 }) {
+  const { position, tick } = playback;
   const kind = data.scene.kind as string;
   const fields = ((data.scene.fields as string[] | undefined) ?? []).filter((f) => FIELD_STYLE[f]);
   const [layer, setLayer] = useState<string | null>(fields.includes("drug") ? "drug" : fields[0] ?? null);
@@ -71,10 +74,21 @@ export function Viewport({ data, position, tick, selected, onSelect }: {
         </div>
       </div>
       <aside className="space-y-5 p-4">
-        <div className="flex items-baseline justify-between">
+        <div className="flex items-center justify-between gap-2">
           <h2 className="text-sm font-medium">Scene</h2>
-          <span className="numeric font-mono text-2xs text-muted-foreground">t{tick}</span>
+          <span className="numeric font-mono text-2xs text-muted-foreground">t{tick} / {playback.max}</span>
         </div>
+        {playback.max > playback.min && (
+          <div className="flex gap-2">
+            <Button size="sm" className="flex-1" onClick={playback.toggle}>
+              {playback.playing ? <Pause className="fill-current" /> : <Play className="fill-current" />}
+              {playback.playing ? "Pause" : playback.tick >= playback.max ? "Replay" : "Play"}
+            </Button>
+            <Button size="sm" variant="outline" aria-label="Restart from the first tick" onClick={() => { playback.seek(playback.min); if (!playback.playing) playback.toggle(); }}>
+              <RotateCcw />
+            </Button>
+          </div>
+        )}
 
         {kind === "tumor" && (
           <div className="space-y-2">

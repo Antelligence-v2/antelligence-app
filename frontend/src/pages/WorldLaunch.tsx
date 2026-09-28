@@ -73,7 +73,7 @@ function Launcher({ world }: { world: World }) {
       {
         onSuccess: (run) => {
           toast.success("Run complete", { description: `${meta.title} · ${armLabel(arm)} · case ${caseId}` });
-          navigate(`/runs/${encodeURIComponent(run.run_id)}`);
+          navigate(`/runs/${encodeURIComponent(run.run_id)}?play=1`);
         },
       },
     );
