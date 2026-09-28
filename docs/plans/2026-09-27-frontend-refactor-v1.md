@@ -1,6 +1,6 @@
 # Frontend Refactor v1 — Plan
 
-**Status:** in progress (11/14 steps + landing page) · **Branch:** `kashyap/frontend-refactor-v1` (from `engine/v1`) · one commit per step
+**Status:** in progress (13/14 steps + landing page) · **Branch:** `kashyap/frontend-refactor-v1` (from `engine/v1`) · one commit per step
 **Supersedes:** [frontend-port](2026-09-27-frontend-port.md). That plan assumed the engine didn't exist yet.
 **Builds on:** [engine kernel](2026-09-27-antelligence-engine-kernel.md) · slots in: [3D visualization](2026-09-27-3d-tumor-visualization.md)
 
@@ -124,6 +124,7 @@ Vite, Tailwind, shadcn/Radix, react-query, recharts (restyled), cmdk, lucide.
 | 11 | `cf98309` | Engine lab lives at `/lab` (legacy lab keeps `/experiments`); shows the engine's optional recommendation |
 | 12 | `ca9ea8e` | |
 | 13 | `ef3d8af` | Entry chunk 203 → 153 kB gzip with a 170 kB budget in `npm run check`; axe WCAG A/AA clean in both themes |
-| 9 | — | **Blocked:** needs `runner.py`, `app.py`, `worlds/tumor/world.py`, which hold another session's uncommitted recommendation feature |
-| 10 | — | Waits on 9. Note: foraging and tumor outcomes already carry `effects.pos`, which covers bot positions but not cells or vessels |
+| — | `b5734d4` | The engine session's uncommitted recommendation work, reviewed, tested (+4 tests) and committed first |
+| 9 | `6446c47` | Frames stored gzipped beside the event log (25–46 kB per tumor run); trace hashes unchanged |
+| 10 | `8ea202b` | Tumor + foraging scenes; field layers contrast-stretched per tick |
 | 14 | — | Waits on a product decision (keep the ant sim as a world or delete it) |
