@@ -98,7 +98,11 @@ class TumorPhysics:
         chemical_pheromones: bool = False,
         pheromone_params: Optional[Dict[str, float]] = None,
         quiet: bool = True,
+        dimensionality: int = 2,
     ) -> None:
+        if dimensionality not in (2, 3):
+            raise ValueError("dimensionality must be 2 or 3")
+        self.dimensionality = dimensionality
         self.quiet = quiet
         self.chemical_pheromones = chemical_pheromones
         self.pheromone_params = {**DEFAULT_PHEROMONE_PARAMS, **(pheromone_params or {})}
@@ -107,7 +111,7 @@ class TumorPhysics:
         with self.rng():
             self.microenv = Microenvironment(
                 x_range=(0, domain_size), y_range=(0, domain_size), z_range=(0, domain_size),
-                dx=voxel_size, dy=voxel_size, dz=voxel_size, dimensionality=2,
+                dx=voxel_size, dy=voxel_size, dz=voxel_size, dimensionality=dimensionality,
             )
             create_oxygen_substrate(self.microenv, boundary_value=38.0)
             create_drug_substrate(self.microenv, diffusion_coeff=1e-7)
@@ -127,11 +131,38 @@ class TumorPhysics:
             self.microenv.add_substrate("drug_b", diffusion_coefficient=1e-7, decay_rate=0.05)
             self.geometry: TumorGeometry = create_simple_tumor_environment(
                 domain_size=domain_size, tumor_radius=tumor_radius, cell_density=cell_density,
-                dimensionality=2, vessel_density=vessel_density,
+                dimensionality=dimensionality, vessel_density=vessel_density,
             )
+            if dimensionality == 3:
+                self._fill_volume()
         self.initial_total = len(self.geometry.tumor_cells)
         self.initial_living = len(self.geometry.get_living_cells())
         self._cells_by_id = {c.cell_id: c for c in self.geometry.tumor_cells}
+
+    def _fill_volume(self) -> None:
+        """Lift the legacy generator's 3D layout (a flat disk at z = center) into a volume.
+
+        Each cell and vessel keeps its distance from the tumor center (so its
+        legacy type / initial phase stays consistent) and is rotated onto a
+        uniformly random direction on the sphere. Immune cells follow their
+        vessel's height. Runs on this world's private RNG, so it is seeded.
+        """
+        center = np.array(self.geometry.center, dtype=float)
+
+        def on_sphere(position) -> tuple:
+            p = np.array(position, dtype=float)
+            radius = float(np.linalg.norm(p[:2] - center[:2]))
+            direction = np.random.normal(size=3)
+            direction /= np.linalg.norm(direction)
+            return tuple(float(v) for v in center + direction * radius)
+
+        for cell in self.geometry.tumor_cells:
+            cell.position = on_sphere(cell.position)
+        for vessel in self.geometry.vessels:
+            vessel.position = on_sphere(vessel.position)
+        for immune in self.geometry.immune_cells:
+            x, y, _ = immune.position
+            immune.position = (x, y, float(center[2] + np.random.normal() * self.geometry.tumor_radius * 0.5))
 
     # ------------------------------------------------------------------ rng
     @contextlib.contextmanager
@@ -164,14 +195,21 @@ class TumorPhysics:
     def living_cells(self) -> List[TumorCell]:
         return self.geometry.get_living_cells()
 
-    def cells_near(self, pos: Tuple[float, float], radius: float) -> List[TumorCell]:
-        x, y = pos
+    def cells_near(self, pos: Tuple[float, ...], radius: float) -> List[TumorCell]:
         r2 = radius * radius
+        if self.dimensionality == 2:
+            x, y = pos[0], pos[1]
+            return [c for c in self.geometry.get_living_cells()
+                    if (c.position[0] - x) ** 2 + (c.position[1] - y) ** 2 <= r2]
+        x, y, z = pos[0], pos[1], pos[2]
         return [c for c in self.geometry.get_living_cells()
-                if (c.position[0] - x) ** 2 + (c.position[1] - y) ** 2 <= r2]
+                if (c.position[0] - x) ** 2 + (c.position[1] - y) ** 2 + (c.position[2] - z) ** 2 <= r2]
 
-    def voxel(self, pos: Tuple[float, float]) -> Tuple[int, ...]:
-        return self.microenv.position_to_voxel((pos[0], pos[1], 0.0))
+    def _xyz(self, pos: Tuple[float, ...]) -> Tuple[float, float, float]:
+        return (pos[0], pos[1], pos[2] if self.dimensionality == 3 else 0.0)
+
+    def voxel(self, pos: Tuple[float, ...]) -> Tuple[int, ...]:
+        return self.microenv.position_to_voxel(self._xyz(pos))
 
     def deposit(self, substrate: str, pos: Tuple[float, float], amount: float) -> bool:
         field = self.microenv.get_substrate(substrate)
@@ -183,13 +221,13 @@ class TumorPhysics:
     def concentration(self, substrate: str, pos: Tuple[float, float]) -> float:
         if self.microenv.get_substrate(substrate) is None:
             return 0.0
-        return float(self.microenv.get_concentration_at(substrate, (pos[0], pos[1], 0.0)))
+        return float(self.microenv.get_concentration_at(substrate, self._xyz(pos)))
 
     def gradient(self, substrate: str, pos: Tuple[float, float]) -> Tuple[float, float]:
         if self.microenv.get_substrate(substrate) is None:
             return (0.0, 0.0)
-        g = self.microenv.get_gradient_at(substrate, (pos[0], pos[1], 0.0))
-        return (float(g[0]), float(g[1]))
+        g = self.microenv.get_gradient_at(substrate, self._xyz(pos))
+        return tuple(float(g[i]) for i in range(self.dimensionality))
 
     # ------------------------------------------------------------- stepping
     def prepare(self) -> None:
