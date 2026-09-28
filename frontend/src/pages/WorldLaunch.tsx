@@ -3,14 +3,14 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Dices, Loader2, Play } from "lucide-react";
 import { toast } from "sonner";
 import { useCreateRun, useWorlds } from "@/api/queries";
-import type { ParamBounds, World } from "@/api/engine";
+import type { World } from "@/api/engine";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Slider } from "@/components/ui/slider";
 import { Kbd } from "@/design/Kbd";
 import { Page, PageHeader } from "@/design/PageHeader";
 import { EmptyState, ErrorState } from "@/design/States";
 import { armLabel, humanize, worldMeta } from "@/features/worlds/meta";
+import { ParamField } from "@/features/worlds/ParamField";
 import { cn } from "@/lib/utils";
 
 const MAX_CASE = 2 ** 31 - 1;
@@ -53,42 +53,6 @@ function ArmPicker({ world, value, onChange }: { world: World; value: string; on
           </button>
         );
       })}
-    </div>
-  );
-}
-
-function ParamField({ name, bounds, value, onChange }: {
-  name: string;
-  bounds: ParamBounds;
-  value: number;
-  onChange: (v: number) => void;
-}) {
-  const [draft, setDraft] = useState(String(value));
-  useEffect(() => setDraft(String(value)), [value]);
-  const commit = () => {
-    const n = Math.round(Number(draft));
-    onChange(Number.isFinite(n) ? Math.min(bounds.max, Math.max(bounds.min, n)) : bounds.default);
-  };
-  return (
-    <div className="space-y-2.5">
-      <div className="flex items-center justify-between gap-3">
-        <label htmlFor={`param-${name}`} className="text-sm">{humanize(name)}</label>
-        <input
-          id={`param-${name}`}
-          inputMode="numeric"
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onBlur={commit}
-          onKeyDown={(e) => e.key === "Enter" && commit()}
-          className="numeric h-7 w-20 rounded-md border bg-transparent px-2 text-right font-mono text-xs outline-none transition-colors focus:border-ring"
-        />
-      </div>
-      <Slider min={bounds.min} max={bounds.max} step={1} value={[value]} onValueChange={([v]) => onChange(v)} aria-label={humanize(name)} />
-      <div className="numeric flex justify-between font-mono text-2xs text-muted-foreground/70">
-        <span>{bounds.min}</span>
-        <span>default {bounds.default}</span>
-        <span>{bounds.max}</span>
-      </div>
     </div>
   );
 }
@@ -222,7 +186,7 @@ export default function WorldLaunch() {
   return (
     <Page>
       <div className="space-y-4">
-        <Link to="/" className="inline-flex items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground">
+        <Link to="/worlds" className="inline-flex items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground">
           <ArrowLeft className="size-3.5" /> Worlds
         </Link>
         <PageHeader

@@ -14,7 +14,7 @@ export type NavItem = {
 
 /** Engine-native product surfaces. */
 export const PRIMARY_NAV: NavItem[] = [
-  { to: "/", label: "Worlds", icon: Orbit, chord: "g w", description: "Launch runs on engine worlds", matches: ["/w", "/runs"] },
+  { to: "/worlds", label: "Worlds", icon: Orbit, chord: "g w", description: "Launch runs on engine worlds", matches: ["/w", "/runs"] },
   { to: "/research", label: "Research", icon: MessagesSquare, chord: "g r", description: "Compare LLM swarms on reference tasks" },
 ];
 

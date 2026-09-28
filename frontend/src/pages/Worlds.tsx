@@ -68,7 +68,7 @@ function CardSkeleton() {
   );
 }
 
-export default function Home() {
+export default function Worlds() {
   const worlds = useWorlds();
   const research = PRIMARY_NAV.find((item) => item.to === "/research");
 

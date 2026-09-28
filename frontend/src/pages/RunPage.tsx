@@ -274,7 +274,7 @@ function RunView({ run }: { run: Run }) {
   return (
     <Page className="space-y-6">
       <nav className="flex items-center gap-1 text-xs text-muted-foreground">
-        <Link to="/" className="hover:text-foreground">Worlds</Link>
+        <Link to="/worlds" className="hover:text-foreground">Worlds</Link>
         <ChevronRight className="size-3" />
         <Link to={`/w/${run.spec.world}`} className="hover:text-foreground">{meta.title}</Link>
         <ChevronRight className="size-3" />

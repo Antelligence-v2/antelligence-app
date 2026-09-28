@@ -18,7 +18,6 @@ import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { SimulationLoading } from "@/components/SimulationLoading";
-import { IntroPage } from "@/components/IntroPage";
 import { saveSimulationResult } from "@/lib/simulationHistory";
 import { BUILD_INFO, IS_PREVIEW_MODE, API_BASE_URL } from "@/lib/runtime";
 import { BarChart3 } from "lucide-react";
@@ -56,7 +55,6 @@ const Index = () => {
   const navigate = useNavigate();
   
   // --- INTRO PAGE STATE ---
-  const [showIntro, setShowIntro] = useState(true);
 
   // --- CENTRAL STATE MANAGEMENT ---
 
@@ -378,18 +376,7 @@ const Index = () => {
     };
   };
 
-  const handleEnterSimulation = () => {
-    setShowIntro(false);
-  };
-
-  const handleBackToIntro = () => {
-    setShowIntro(true);
-  };
-
-  // If showing intro, render intro page
-  if (showIntro) {
-    return <IntroPage onEnter={handleEnterSimulation} />;
-  }
+  const handleBackToIntro = () => navigate("/");
 
   const latestDetailedData = getLatestDetailedData();
 

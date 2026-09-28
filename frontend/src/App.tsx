@@ -1,4 +1,4 @@
-import { lazy } from "react";
+import { lazy, Suspense } from "react";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -9,7 +9,8 @@ import { AppShell } from "./shell/AppShell";
 import { createQueryClient } from "./api/queries";
 
 // Every page is its own chunk, so the shell paints before page code loads.
-const Home = lazy(() => import("./pages/Home"));
+const Landing = lazy(() => import("./pages/Landing"));
+const Worlds = lazy(() => import("./pages/Worlds"));
 const WorldLaunch = lazy(() => import("./pages/WorldLaunch"));
 const RunPage = lazy(() => import("./pages/RunPage"));
 const ResearchWorkbench = lazy(() => import("./pages/ResearchWorkbench"));
@@ -32,8 +33,9 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <Routes>
+            <Route path="/" element={<Suspense fallback={<div className="h-dvh bg-[#0b0f0a]" />}><Landing /></Suspense>} />
             <Route element={<AppShell />}>
-              <Route path="/" element={<Home />} />
+              <Route path="/worlds" element={<Worlds />} />
               <Route path="/w/:world" element={<WorldLaunch />} />
               <Route path="/runs/:runId" element={<RunPage />} />
               <Route path="/research" element={<ResearchWorkbench />} />
