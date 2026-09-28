@@ -181,7 +181,7 @@ function RunMatrix({ report }: { report: Experiment }) {
                         "numeric h-8 min-w-11 rounded-md px-1.5 font-mono text-2xs transition-[transform,box-shadow] hover:scale-105 hover:shadow-e2",
                         r.verdict !== "success" && r.verdict !== "safe_incomplete" && "ring-1 ring-danger",
                       )}
-                      style={{ background: `hsl(var(--primary) / ${0.08 + t * 0.55})`, color: t > 0.6 ? "hsl(var(--primary-foreground))" : undefined }}
+                      style={{ background: `hsl(var(--primary) / ${0.06 + t * 0.39})` }}
                     >
                       {v === null ? "—" : formatMetric(metric, v)}
                     </button>

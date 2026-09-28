@@ -1,7 +1,7 @@
 import { lazy, Suspense } from "react";
+import { LazyMotion, MotionConfig } from "framer-motion";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { QueryClientProvider } from "@tanstack/react-query";
-import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "./design/theme";
@@ -26,12 +26,14 @@ const ExperimentLab = lazy(() => import("./pages/ExperimentLab"));
 const DesignSystem = import.meta.env.DEV ? lazy(() => import("./pages/DesignSystem")) : null;
 
 const queryClient = createQueryClient();
+const motionFeatures = () => import("./design/motion").then((m) => m.default);
 
 const App = () => (
   <ThemeProvider>
+    <LazyMotion features={motionFeatures} strict>
+    <MotionConfig reducedMotion="user">
     <QueryClientProvider client={queryClient}>
       <TooltipProvider delayDuration={300}>
-        <Toaster />
         <Sonner />
         <BrowserRouter>
           <Routes>
@@ -57,6 +59,8 @@ const App = () => (
         </BrowserRouter>
       </TooltipProvider>
     </QueryClientProvider>
+    </MotionConfig>
+    </LazyMotion>
   </ThemeProvider>
 );
 

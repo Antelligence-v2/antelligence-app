@@ -1,15 +1,17 @@
-import { Suspense, useMemo, useState } from "react";
+import { lazy, Suspense, useMemo, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 import { Menu } from "lucide-react";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PreviewModeBanner } from "@/components/PreviewModeBanner";
-import { CommandPalette } from "./CommandPalette";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { useGlobalHotkeys } from "./hotkeys";
 import { LEGACY_NAV, PRIMARY_NAV } from "./nav";
 import { LogoMark, Sidebar } from "./Sidebar";
+
+// The palette (cmdk + dialog) loads on first ⌘K, not with the shell.
+const CommandPalette = lazy(() => import("./CommandPalette").then((mod) => ({ default: mod.CommandPalette })));
 
 export function PageFallback() {
   return (
@@ -31,6 +33,8 @@ export function AppShell() {
   const location = useLocation();
   const navigate = useNavigate();
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [paletteLoaded, setPaletteLoaded] = useState(false);
+  const openPalette = (open: boolean) => { if (open) setPaletteLoaded(true); setPaletteOpen(open); };
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   const chords = useMemo(() => {
@@ -41,18 +45,18 @@ export function AppShell() {
     }
     return map;
   }, [navigate]);
-  useGlobalHotkeys({ onPalette: () => setPaletteOpen((open) => !open), chords });
+  useGlobalHotkeys({ onPalette: () => openPalette(!paletteOpen), chords });
 
   return (
     <div className="flex h-dvh overflow-hidden bg-background">
       <aside className="hidden w-60 shrink-0 border-r bg-card/40 md:block">
-        <Sidebar onOpenPalette={() => setPaletteOpen(true)} />
+        <Sidebar onOpenPalette={() => openPalette(true)} />
       </aside>
 
       <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
         <SheetContent side="left" className="w-64 p-0">
           <SheetTitle className="sr-only">Navigation</SheetTitle>
-          <Sidebar onOpenPalette={() => { setMobileNavOpen(false); setPaletteOpen(true); }} onNavigate={() => setMobileNavOpen(false)} />
+          <Sidebar onOpenPalette={() => { setMobileNavOpen(false); openPalette(true); }} onNavigate={() => setMobileNavOpen(false)} />
         </SheetContent>
       </Sheet>
 
@@ -68,7 +72,7 @@ export function AppShell() {
         <main className="min-h-0 flex-1 overflow-y-auto">
           <ErrorBoundary resetKey={location.pathname}>
             <Suspense fallback={<PageFallback />}>
-              <motion.div
+              <m.div
                 key={location.pathname}
                 initial={{ opacity: 0, y: 6 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -76,13 +80,17 @@ export function AppShell() {
                 className="min-h-full"
               >
                 <Outlet />
-              </motion.div>
+              </m.div>
             </Suspense>
           </ErrorBoundary>
         </main>
       </div>
 
-      <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
+      {paletteLoaded && (
+        <Suspense fallback={null}>
+          <CommandPalette open={paletteOpen} onOpenChange={openPalette} />
+        </Suspense>
+      )}
     </div>
   );
 }

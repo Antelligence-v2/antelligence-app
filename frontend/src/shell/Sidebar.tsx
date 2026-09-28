@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
-import { motion } from "framer-motion";
 import { ChevronRight, Moon, Search, Sun } from "lucide-react";
 import * as Collapsible from "@radix-ui/react-collapsible";
 import { cn } from "@/lib/utils";
@@ -36,13 +35,7 @@ function NavRow({ item, onNavigate }: { item: NavItem; onNavigate?: () => void }
         active ? "text-foreground" : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
       )}
     >
-      {active && (
-        <motion.span
-          layoutId="nav-active"
-          className="absolute inset-0 rounded-md bg-accent"
-          transition={{ type: "spring", stiffness: 520, damping: 40 }}
-        />
-      )}
+      <span className={cn("absolute inset-0 rounded-md bg-accent transition-opacity duration-base", active ? "opacity-100" : "opacity-0")} />
       <item.icon className={cn("relative size-4 shrink-0", active ? "text-primary" : "opacity-80")} />
       <span className="relative truncate">{item.label}</span>
     </NavLink>
@@ -102,7 +95,7 @@ export function Sidebar({ onOpenPalette, onNavigate }: { onOpenPalette: () => vo
       </nav>
 
       <Collapsible.Root open={legacyOpen} onOpenChange={setLegacyOpen} className="flex flex-col gap-0.5">
-        <Collapsible.Trigger className="flex h-7 items-center gap-1.5 rounded-md px-2.5 text-2xs font-medium uppercase tracking-[0.08em] text-muted-foreground/70 transition-colors hover:text-foreground">
+        <Collapsible.Trigger className="flex h-7 items-center gap-1.5 rounded-md px-2.5 text-2xs font-medium uppercase tracking-[0.08em] text-muted-foreground transition-colors hover:text-foreground">
           <ChevronRight className={cn("size-3 transition-transform duration-base", legacyOpen && "rotate-90")} />
           Legacy
         </Collapsible.Trigger>

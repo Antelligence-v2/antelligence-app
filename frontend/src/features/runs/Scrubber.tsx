@@ -27,7 +27,7 @@ export function Scrubber({ playback, density, flagged }: {
   };
 
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
       <div className="flex items-center gap-0.5">
         <Button variant="ghost" size="icon-sm" aria-label="Previous tick" onClick={() => playback.step(-1)}><SkipBack /></Button>
         <Button variant="secondary" size="icon" aria-label={playing ? "Pause" : "Play"} onClick={playback.toggle} className="size-8 rounded-full">
@@ -44,7 +44,7 @@ export function Scrubber({ playback, density, flagged }: {
         aria-valuemin={min}
         aria-valuemax={max}
         aria-valuenow={tick}
-        className="group relative h-9 flex-1 cursor-pointer touch-none"
+        className="group relative order-last h-9 w-full cursor-pointer touch-none lg:order-none lg:w-auto lg:flex-1"
         onPointerDown={(e) => {
           e.currentTarget.setPointerCapture(e.pointerId);
           seekFromPointer(e.clientX);
@@ -73,7 +73,7 @@ export function Scrubber({ playback, density, flagged }: {
         />
       </div>
 
-      <div className="numeric w-24 text-right font-mono text-xs">
+      <div className="numeric ml-auto w-24 text-right font-mono text-xs lg:ml-0">
         <span className="text-foreground">t{tick}</span>
         <span className="text-muted-foreground"> / {max}</span>
       </div>

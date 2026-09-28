@@ -1,4 +1,4 @@
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, m } from "framer-motion";
 import { Check, Download, Loader2, ShieldCheck, ShieldQuestion, X } from "lucide-react";
 import type { Replay, Run } from "@/api/engine";
 import { Button } from "@/components/ui/button";
@@ -36,7 +36,7 @@ function downloadBundle(run: Run) {
 function ReplayResult({ result }: { result: Replay }) {
   const ok = result.replay_ok;
   return (
-    <motion.div
+    <m.div
       initial={{ opacity: 0, y: 4 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
@@ -57,7 +57,7 @@ function ReplayResult({ result }: { result: Replay }) {
           <Field label="replayed"><Hash value={result.replayed_trace_hash ?? "—"} head={10} tail={8} /></Field>
         </div>
       )}
-    </motion.div>
+    </m.div>
   );
 }
 

@@ -24,7 +24,7 @@
     --surface-2: 220 16% 96%;
     --surface-3: 220 14% 93%;
 
-    --primary: 191 91% 34%;
+    --primary: 191 94% 28%;
     --primary-foreground: 0 0% 100%;
     --secondary: 220 14% 95%;
     --secondary-foreground: 222 22% 12%;
@@ -35,14 +35,14 @@
 
     --border: 220 13% 89%;
     --input: 220 13% 86%;
-    --ring: 191 91% 34%;
+    --ring: 191 94% 28%;
 
     --destructive: 0 72% 48%;
     --destructive-foreground: 0 0% 100%;
-    --success: 152 62% 34%;
-    --warning: 35 92% 40%;
-    --danger: 0 72% 48%;
-    --info: 214 84% 48%;
+    --success: 152 64% 26%;
+    --warning: 32 95% 31%;
+    --danger: 0 74% 42%;
+    --info: 214 84% 40%;
 
     --radius: 0.5rem;
     --shadow-color: 222 30% 20%;

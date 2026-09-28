@@ -31,7 +31,7 @@ export function ParamField({ name, bounds, value, onChange }: {
         />
       </div>
       <Slider min={bounds.min} max={bounds.max} step={1} value={[value]} onValueChange={([v]) => onChange(v)} aria-label={humanize(name)} />
-      <div className="numeric flex justify-between font-mono text-2xs text-muted-foreground/70">
+      <div className="numeric flex justify-between font-mono text-2xs text-muted-foreground">
         <span>{bounds.min}</span>
         <span>default {bounds.default}</span>
         <span>{bounds.max}</span>

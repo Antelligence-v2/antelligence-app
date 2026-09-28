@@ -135,7 +135,7 @@ function Timeline({ run, series, events, playback }: { run: Run; series: TickPoi
         {playback.max > playback.min && <Scrubber playback={playback} density={density} flagged={flagged} />}
         <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-3">
           <div className="flex items-center gap-3">
-            <span className="numeric font-mono text-xs text-muted-foreground">tick {playback.tick}</span>
+            <span className="numeric whitespace-nowrap font-mono text-xs text-muted-foreground">tick {playback.tick}</span>
             <TickActivity events={byTick.get(playback.tick) ?? []} />
           </div>
           {playback.max > playback.min && <PlaybackHints />}

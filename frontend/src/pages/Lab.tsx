@@ -22,7 +22,7 @@ function Section({ label, hint, children }: { label: string; hint?: string; chil
     <section className="space-y-3">
       <div className="flex items-baseline justify-between gap-3">
         <h2 className="text-2xs font-medium uppercase tracking-[0.08em] text-muted-foreground">{label}</h2>
-        {hint && <p className="text-2xs text-muted-foreground/70">{hint}</p>}
+        {hint && <p className="text-2xs text-muted-foreground">{hint}</p>}
       </div>
       {children}
     </section>
@@ -140,7 +140,7 @@ function Builder({ worlds }: { worlds: World[] }) {
                   <button
                     type="button"
                     onClick={() => setBaseline(arm)}
-                    className={cn("shrink-0 rounded px-1.5 py-0.5 text-2xs transition-colors", isBase ? "bg-primary/15 text-primary" : "text-muted-foreground hover:bg-accent hover:text-foreground")}
+                    className={cn("shrink-0 rounded px-1.5 py-0.5 text-2xs transition-colors", isBase ? "bg-primary font-medium text-primary-foreground" : "text-muted-foreground hover:bg-accent hover:text-foreground")}
                   >
                     baseline
                   </button>

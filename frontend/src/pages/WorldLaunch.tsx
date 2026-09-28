@@ -20,7 +20,7 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
     <section className="space-y-3">
       <div className="flex items-baseline justify-between gap-3">
         <h2 className="text-2xs font-medium uppercase tracking-[0.08em] text-muted-foreground">{label}</h2>
-        {hint && <p className="text-2xs text-muted-foreground/70">{hint}</p>}
+        {hint && <p className="text-2xs text-muted-foreground">{hint}</p>}
       </div>
       {children}
     </section>

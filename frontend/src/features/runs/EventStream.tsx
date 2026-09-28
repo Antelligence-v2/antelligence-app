@@ -115,7 +115,7 @@ export function EventStream({ events, tick, scope, onScope, types, onTypes, agen
                   <span className="min-w-0 flex-1 truncate text-muted-foreground">{view.detail}</span>
                   <span className="w-16 shrink-0 truncate text-right font-mono text-2xs text-muted-foreground">{e.agent_id ?? "—"}</span>
                   <span className="numeric w-10 shrink-0 text-right font-mono text-2xs text-muted-foreground">t{e.tick}</span>
-                  <span className="numeric w-12 shrink-0 text-right font-mono text-2xs text-muted-foreground/60">#{e.seq}</span>
+                  <span className="numeric w-12 shrink-0 text-right font-mono text-2xs text-muted-foreground">#{e.seq}</span>
                 </button>
               );
             })}
