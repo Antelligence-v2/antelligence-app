@@ -13,6 +13,8 @@ const Landing = lazy(() => import("./pages/Landing"));
 const Worlds = lazy(() => import("./pages/Worlds"));
 const WorldLaunch = lazy(() => import("./pages/WorldLaunch"));
 const RunPage = lazy(() => import("./pages/RunPage"));
+const Lab = lazy(() => import("./pages/Lab"));
+const LabReport = lazy(() => import("./pages/LabReport"));
 const ResearchWorkbench = lazy(() => import("./pages/ResearchWorkbench"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 // Legacy pages keep their original URLs; they link to each other by path.
@@ -38,6 +40,8 @@ const App = () => (
               <Route path="/worlds" element={<Worlds />} />
               <Route path="/w/:world" element={<WorldLaunch />} />
               <Route path="/runs/:runId" element={<RunPage />} />
+              <Route path="/lab" element={<Lab />} />
+              <Route path="/lab/:id" element={<LabReport />} />
               <Route path="/research" element={<ResearchWorkbench />} />
               <Route path="/research/:id" element={<ResearchWorkbench />} />
               <Route path="/ants" element={<AntColony />} />

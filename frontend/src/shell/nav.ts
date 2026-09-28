@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { Bug, Crosshair, FlaskRound, GitCompareArrows, MessagesSquare, Orbit, ScanLine } from "lucide-react";
+import { Bug, Crosshair, FlaskConical, FlaskRound, GitCompareArrows, MessagesSquare, Orbit, ScanLine } from "lucide-react";
 
 export type NavItem = {
   to: string;
@@ -15,6 +15,7 @@ export type NavItem = {
 /** Engine-native product surfaces. */
 export const PRIMARY_NAV: NavItem[] = [
   { to: "/worlds", label: "Worlds", icon: Orbit, chord: "g w", description: "Launch runs on engine worlds", matches: ["/w", "/runs"] },
+  { to: "/lab", label: "Experiments", icon: FlaskConical, chord: "g e", description: "Compare arms across seeded cases" },
   { to: "/research", label: "Research", icon: MessagesSquare, chord: "g r", description: "Compare LLM swarms on reference tasks" },
 ];
 

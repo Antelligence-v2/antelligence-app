@@ -179,6 +179,24 @@ export const ExperimentRunRowSchema = z.object({
   verdict: z.string(),
 }).passthrough();
 
+/** Optional engine recommendation (newer engines): which arm, if any, beat the baseline. */
+export const RecommendationSchema = z.object({
+  best_arm: z.string().nullable(),
+  baseline: z.string(),
+  summary: z.string(),
+  significance: z.number(),
+  seeds: z.number(),
+  underpowered: z.boolean(),
+  verdicts: z.record(z.object({
+    verdict: z.string(),
+    reason: z.string(),
+    pct_change: z.number().nullable(),
+    mean_delta: z.number().nullable(),
+    p: z.number().nullable(),
+  }).passthrough()),
+}).passthrough();
+export type Recommendation = z.infer<typeof RecommendationSchema>;
+
 export const ExperimentSchema = z.object({
   experiment_id: z.string(),
   request: ExperimentRequestSchema,
@@ -188,6 +206,7 @@ export const ExperimentSchema = z.object({
   comparisons_vs_baseline: z.record(ComparisonSchema),
   runs: z.record(z.array(ExperimentRunRowSchema)),
   caveats: z.array(z.string()),
+  recommendation: RecommendationSchema.optional(),
 }).passthrough();
 export type Experiment = z.infer<typeof ExperimentSchema>;
 
