@@ -2,10 +2,10 @@ import { useState } from "react";
 import { Check, Copy } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { shortHash } from "./hashFormat";
 
-export function shortHash(value: string, head = 6, tail = 4): string {
-  return value.length <= head + tail + 1 ? value : `${value.slice(0, head)}…${value.slice(-tail)}`;
-}
+export { shortHash };
+
 
 /** A content hash or id: monospace, truncated, full value on hover, click to copy. */
 export function Hash({ value, head, tail, className, copy = true }: {
