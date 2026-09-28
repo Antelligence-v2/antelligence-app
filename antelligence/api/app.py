@@ -130,6 +130,18 @@ def make_router(service: EngineService) -> APIRouter:
             raise HTTPException(404, "run not found")
         return events
 
+    @router.get("/runs/{run_id}/frames")
+    def get_frames(run_id: str) -> Dict[str, Any]:
+        try:
+            frames = service.store.frames(run_id)
+        except ValueError as exc:
+            raise HTTPException(422, str(exc)) from exc
+        if frames is None:
+            if service.store.get_run(run_id) is None:
+                raise HTTPException(404, "run not found")
+            raise HTTPException(404, "no frames recorded for this run (non-spatial world, or recorded before frames existed)")
+        return frames
+
     @router.post("/runs/{run_id}/verify")
     async def verify_run(run_id: str) -> Dict[str, Any]:
         run = service.store.get_run(run_id)

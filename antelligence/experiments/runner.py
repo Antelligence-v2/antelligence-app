@@ -116,7 +116,8 @@ def execute_run(spec: RunSpec, *, store: Optional[EngineStore] = None, outbox: O
         "bundle_hash": bundle["bundle_hash"],
     }
     if store is not None:
-        store.save_run(record, bundle, scheduler.log, experiment_id=experiment_id)
+        frames = {"scene": scheduler.scene, "frames": scheduler.frames} if scheduler.frames else None
+        store.save_run(record, bundle, scheduler.log, experiment_id=experiment_id, frames=frames)
     if outbox is not None:
         outbox.enqueue(bundle)
     return {**record, "bundle": bundle}

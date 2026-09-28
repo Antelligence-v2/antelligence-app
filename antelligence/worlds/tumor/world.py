@@ -28,6 +28,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import numpy as np
 
 from antelligence.kernel.field import SenseQuery
+from antelligence.kernel.frames import encode_field
 from antelligence.kernel.types import Intent, Observation, Outcome
 from antelligence.worlds.tumor.physics import TumorPhysics
 
@@ -131,6 +132,35 @@ class TumorWorld:
         return {"world": "tumor", "version": 1, "seed": self.seed, "n_nanobots": self.n_nanobots,
                 "max_steps": self.max_steps, "sense_radius": self.sense_radius, "hearing": self.hearing,
                 "queen": self.queen, "legacy_payload_deadlock": self.legacy_payload_deadlock, **self.config}
+
+    # ---------------------------------------------------------- visualization
+    FRAME_FIELDS = ("drug", "oxygen", "trail_pheromone", "alarm_pheromone", "recruitment_pheromone")
+    FRAME_STRIDE = 2  # 61x61 voxel grid -> 31x31 per frame
+
+    def _frame_fields(self) -> List[str]:
+        return [name for name in self.FRAME_FIELDS if self.physics.microenv.get_substrate(name) is not None]
+
+    def scene(self) -> Dict[str, Any]:
+        """Static layout for renderers (read-only)."""
+        env = self.physics.microenv
+        shape = [len(range(0, env.nx, self.FRAME_STRIDE)), len(range(0, env.ny, self.FRAME_STRIDE))]
+        return {"kind": "tumor", "units": "um", "domain": list(self.domain), "center": list(self.center),
+                "tumor_radius": self.tumor_radius, "vessels": [[round(x, 1), round(y, 1)] for x, y in self.vessels],
+                "field_shape": shape, "field_spacing": env.dx * self.FRAME_STRIDE, "fields": self._frame_fields(),
+                "bot_states": [SEARCHING, TARGETING, DELIVERING, RETURNING, RELOADING],
+                "cell_phases": ["viable", "hypoxic", "necrotic", "apoptotic"]}
+
+    def snapshot(self) -> Dict[str, Any]:
+        """Dynamic state at the end of a tick (read-only: no RNG, no mutation)."""
+        states = {s: i for i, s in enumerate((SEARCHING, TARGETING, DELIVERING, RETURNING, RELOADING))}
+        phases = {"viable": 0, "hypoxic": 1, "necrotic": 2, "apoptotic": 3}
+        bots = [[round(float(b.position[0]), 1), round(float(b.position[1]), 1), states.get(b.state, 0),
+                 round(b.payload, 1), b.target_cell] for _, b in sorted(self.bodies.items())]
+        cells = [[round(float(c.position[0]), 1), round(float(c.position[1]), 1), phases.get(c.phase.value, 0), c.cell_id]
+                 for c in self.physics.geometry.tumor_cells]
+        fields = {name: encode_field(self.physics.microenv.get_substrate(name).concentration, self.FRAME_STRIDE)
+                  for name in self._frame_fields()}
+        return {"bots": bots, "cells": cells, "fields": fields}
 
     def observe(self, agent_id: str, tick: int) -> Observation:
         self._ensure_prepared(tick)
