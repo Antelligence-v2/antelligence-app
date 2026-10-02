@@ -131,8 +131,10 @@ def test_budget_caps_calls_and_tokens_and_counts_failures():
         run(budget.complete(req("c")))
     assert budget.usage.calls == 2
 
-    tokens = Budgeted(FakeProvider(lambda r: "x" * 40), max_tokens=10)
-    run(tokens.complete(req("a")))
+    tokens = Budgeted(FakeProvider(lambda r: "x" * 40), max_tokens=12)
+    with pytest.raises(BudgetExceeded, match="cannot cover"):
+        run(tokens.complete(req("a")))  # default max_tokens=256 can never fit a 12-token budget
+    run(tokens.complete(req("a", max_tokens=10)))  # 1 prompt + 10 completion reserved: fits
     with pytest.raises(BudgetExceeded):
         run(tokens.complete(req("b")))
 

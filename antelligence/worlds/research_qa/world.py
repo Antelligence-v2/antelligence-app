@@ -137,16 +137,16 @@ class ResearchQAWorld:
             # A policy that failed (e.g. provider error) is failed closed to noop by
             # the scheduler: that is a missing answer (error cell), not an invalid one.
             return Outcome(False, "no_answer")
-        if intent.action == ABSTAIN:
-            self.answers[agent_id][round_number] = {"answer": None, "evidence_ids": [], "brief": ""}
-            return Outcome(True, effects={"answer": None})
-        if intent.action != ANSWER:
+        if intent.action not in (ANSWER, ABSTAIN):
             # Includes "malformed": the policy got a reply it could not parse.
             self.invalid[agent_id] += 1
             return Outcome(False, "malformed_reply" if intent.action == MALFORMED else "unknown_action")
         visible = set(self.visible_ids(agent_id))
         view_task = dict(self.task, evidence=[e for e in self.task["evidence"] if e["id"] in visible])
         payload = {k: intent.params.get(k) for k in ("answer", "evidence_ids", "brief")}
+        if intent.action == ABSTAIN:
+            # An abstention still carries its public brief and citations (as in swarm_core).
+            payload = {"answer": None, "evidence_ids": payload["evidence_ids"] or [], "brief": payload["brief"] or ""}
         try:
             parsed = _parse_answer(json.dumps(payload), view_task)
         except (_PayloadError, ValueError) as exc:
@@ -191,7 +191,9 @@ class ResearchQAWorld:
             answer = _strict_majority(self.task, finals, self.protocol.agents)
         if any(self.invalid.values()):
             status, answer = "invalid", None
-        elif not complete:
+        elif not complete or any(self.missing.values()):
+            # Any required call that never produced an answer (e.g. a provider failure
+            # in an earlier round) makes the cell an error, as in swarm_core.
             status, answer = "error", None
         elif answer is None:
             status = "abstained"

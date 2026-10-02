@@ -14,7 +14,7 @@ import ipaddress
 import os
 import threading
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Annotated, Any, Dict, List, Optional
 from urllib.parse import urlparse
 
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, Query, Request
@@ -24,6 +24,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from antelligence.experiments import registry
 from antelligence.experiments.runner import execute_run, run_experiment
 from antelligence.experiments.store import EngineStore
+from antelligence.kernel.events import EventLogError
 from antelligence.provenance.bundle import replay
 from antelligence.provenance.outbox import LocalFilePublisher, ProvenanceOutbox
 
@@ -43,9 +44,11 @@ class ExperimentBody(BaseModel):
     model_config = ConfigDict(extra="forbid")
     world: str
     arms: List[str] = Field(min_length=1, max_length=MAX_ARMS)
-    cases: Optional[List[int]] = Field(default=None, min_length=1, max_length=MAX_CASES)
+    cases: Optional[List[Annotated[int, Field(ge=0, le=2**31 - 1)]]] = Field(default=None, min_length=1,
+                                                                             max_length=MAX_CASES)
     baseline: Optional[str] = None
     params: Dict[str, int] = Field(default_factory=dict)
+    force: bool = False  # re-run even if a report for this request and engine version exists
 
 
 def _local_only(request: Request) -> None:
@@ -69,6 +72,11 @@ class EngineService:
         self.publisher = LocalFilePublisher(self.data_dir / "bundles")
         self._lock = threading.Lock()  # one CPU-bound run at a time; keeps the host responsive and ordered
 
+    def verify(self, bundle: Dict[str, Any]) -> Dict[str, Any]:
+        # Replays use the same global-state-sensitive worlds as runs, so they share the lock.
+        with self._lock:
+            return replay(bundle)
+
     def run(self, body: RunRequest) -> Dict[str, Any]:
         spec = registry.RunSpec(body.world, body.arm, body.case, body.params)
         with self._lock:
@@ -79,7 +87,7 @@ class EngineService:
         request = {"world": body.world, "arms": body.arms, "cases": body.cases or list(ws.default_cases)[:MAX_CASES],
                    "baseline": body.baseline, "params": body.params}
         with self._lock:
-            return run_experiment(request, store=self.store, outbox=self.outbox)
+            return run_experiment(request, store=self.store, outbox=self.outbox, force=body.force)
 
 
 def make_router(service: EngineService) -> APIRouter:
@@ -114,6 +122,8 @@ def make_router(service: EngineService) -> APIRouter:
     def get_events(run_id: str, offset: int = Query(0, ge=0), limit: int = Query(200, ge=1, le=1000)) -> Dict[str, Any]:
         try:
             events = service.store.events(run_id, offset, limit)
+        except EventLogError as exc:
+            raise HTTPException(409, f"stored event log failed its integrity check: {exc}") from exc
         except ValueError as exc:
             raise HTTPException(422, str(exc)) from exc
         if events is None:
@@ -125,7 +135,10 @@ def make_router(service: EngineService) -> APIRouter:
         run = service.store.get_run(run_id)
         if run is None:
             raise HTTPException(404, "run not found")
-        return await run_in_threadpool(replay, run["bundle"])
+        result = await run_in_threadpool(service.verify, run["bundle"])
+        if result["reason"] == "spec_unresolvable":
+            raise HTTPException(422, f"stored run can no longer be rebuilt: {result.get('detail', '')}")
+        return result
 
     @router.post("/experiments", status_code=201)
     async def create_experiment(body: ExperimentBody) -> Dict[str, Any]:

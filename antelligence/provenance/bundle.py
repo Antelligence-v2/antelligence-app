@@ -70,15 +70,41 @@ def verify_bundle_integrity(bundle: Mapping[str, Any]) -> bool:
     return content_hash(body) == bundle.get("bundle_hash")
 
 
+# Every recorded field a replay must reproduce, beyond the trace/config hashes.
+RESULT_FIELDS = ("run_id", "arm", "scope", "event_count", "ticks", "stopped_reason", "metrics", "counters",
+                 "public_values")
+
+
 def replay(bundle: Mapping[str, Any]) -> Dict[str, Any]:
-    """Rebuild the run from its spec and compare trace hashes."""
+    """Rebuild the run from its spec and require it to reproduce the whole bundle.
+
+    Checks the trace and config hashes *and* every recorded result field
+    (metrics, counters, ticks, event count, public values, verdict), so a bundle
+    whose results were edited and re-hashed is rejected.
+    """
     from antelligence.experiments.registry import RunSpec, world
+    from antelligence.kernel.verifier import classify_episode
 
     if not verify_bundle_integrity(bundle):
         return {"replay_ok": False, "reason": "bundle_hash_mismatch"}
-    spec = RunSpec(**bundle["spec"])
-    scheduler = world(spec.world).build(spec, run_id=bundle["run_id"])
+    try:
+        spec = RunSpec(**bundle["spec"])
+        spec_world = world(spec.world)
+        scheduler = spec_world.build(spec, run_id=bundle["run_id"])
+    except (KeyError, TypeError, ValueError) as exc:
+        return {"replay_ok": False, "reason": "spec_unresolvable", "detail": str(exc)[:200]}
     result = scheduler.run()
-    ok = result.trace_hash == bundle["trace_hash"] and result.config_hash == bundle["config_hash"]
-    return {"replay_ok": ok, "reason": None if ok else "trace_mismatch", "replayed_trace_hash": result.trace_hash,
-            "expected_trace_hash": bundle["trace_hash"], "event_count": result.event_count}
+    rebuilt = build_bundle(result, spec.to_dict(), world_description=scheduler.world.describe())
+    base = {"replayed_trace_hash": result.trace_hash, "expected_trace_hash": bundle.get("trace_hash"),
+            "event_count": result.event_count}
+    if result.trace_hash != bundle.get("trace_hash") or result.config_hash != bundle.get("config_hash"):
+        return {"replay_ok": False, "reason": "trace_mismatch", **base}
+    mismatched = [field for field in RESULT_FIELDS if bundle.get(field) != rebuilt.get(field)]
+    recorded_verdict = (bundle.get("extra") or {}).get("verdict")
+    if recorded_verdict is not None:
+        goal = bool(result.metrics.get(spec_world.success_metric))
+        if classify_episode(scheduler.log, goal_reached=goal).to_dict() != recorded_verdict:
+            mismatched.append("verdict")
+    if mismatched:
+        return {"replay_ok": False, "reason": "result_mismatch", "mismatched_fields": mismatched, **base}
+    return {"replay_ok": True, "reason": None, **base}

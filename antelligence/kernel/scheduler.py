@@ -240,7 +240,15 @@ class Scheduler:
             self.log.append(ev.OBSERVED, tick, record, agent_id)
             views.append(view)
 
-        intents = await asyncio.gather(*(self._decide(view) for view in views))
+        decisions = await asyncio.gather(*(self._decide(view) for view in views))
+        # Log failures in agent order, not completion order, so the trace does not
+        # depend on which concurrent policy failed first.
+        intents = []
+        for view, (intent, failure) in zip(views, decisions):
+            if failure is not None:
+                self.policy_failures += 1
+                self.log.append(ev.POLICY_FAILED, view.tick, failure, view.agent_id)
+            intents.append(intent)
 
         # Phase 2: apply in deterministic order.
         for view, intent in zip(views, intents):
@@ -265,7 +273,7 @@ class Scheduler:
         self.world.step_environment(tick)
         self.log.append(ev.TICK_ENDED, tick, {"revision": self.world.revision, "metrics": self.world.metrics()})
 
-    async def _decide(self, view: LocalView) -> Intent:
+    async def _decide(self, view: LocalView) -> Tuple[Intent, Optional[dict]]:
         policy = self._policy_for(view.agent_id)
         try:
             result = policy.decide(view)
@@ -276,13 +284,9 @@ class Scheduler:
                     result = await result
             if not isinstance(result, Intent):
                 raise TypeError(f"policy returned {type(result).__name__}, expected Intent")
-            return result
+            return result, None
         except Exception as exc:  # fail closed: the agent does nothing this tick
-            self.policy_failures += 1
-            self.log.append(
-                ev.POLICY_FAILED, view.tick, {"error": type(exc).__name__, "message": str(exc)[:500]}, view.agent_id
-            )
-            return Intent(action=NOOP)
+            return Intent(action=NOOP), {"error": type(exc).__name__, "message": str(exc)[:500]}
 
     def _emit(self, agent_id: str, intent: Intent, view: LocalView, tick: int) -> None:
         for index, draft in enumerate(intent.emit):

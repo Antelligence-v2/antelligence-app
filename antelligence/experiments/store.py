@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional
 
 from antelligence.kernel.canonical import canonical_json
-from antelligence.kernel.events import EventLog
+from antelligence.kernel.events import EventLog, EventLogError
 
 
 class EngineStore:
@@ -54,6 +54,12 @@ class EngineStore:
         if not path.exists():
             return None
         log = EventLog.read_jsonl(path)  # verifies the hash chain on every read
+        record = self.get_run(run_id)
+        if record is not None and (len(log) != record["event_count"] or log.trace_hash != record["trace_hash"]):
+            # The chain only proves the lines that remain are unaltered; a dropped tail
+            # is caught by comparing against the run record.
+            raise EventLogError(f"event log for {run_id} is incomplete or does not match its run record "
+                                f"({len(log)} of {record['event_count']} events)")
         events = [e.to_dict() for e in log]
         return {"run_id": run_id, "total": len(events), "offset": offset, "trace_hash": log.trace_hash,
                 "events": events[offset: offset + limit]}

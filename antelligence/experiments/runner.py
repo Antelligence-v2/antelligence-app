@@ -14,6 +14,7 @@ from typing import Any, Dict, List, Optional, Sequence
 from antelligence.experiments.registry import RunSpec, world
 from antelligence.experiments.stats import paired_comparison, wilson_interval
 from antelligence.experiments.store import EngineStore
+from antelligence.experiments.version import engine_fingerprint
 from antelligence.kernel.canonical import content_hash
 from antelligence.kernel.verifier import classify_episode
 from antelligence.provenance.bundle import build_bundle
@@ -80,11 +81,18 @@ def experiment_request(world_name: str, arms: Sequence[str], cases: Sequence[int
 
 
 def run_experiment(request: Dict[str, Any], *, store: Optional[EngineStore] = None,
-                   outbox: Optional[ProvenanceOutbox] = None) -> Dict[str, Any]:
+                   outbox: Optional[ProvenanceOutbox] = None, force: bool = False) -> Dict[str, Any]:
+    """Run (or return the cached report for) an experiment.
+
+    The cache key includes the engine fingerprint, so a report is reused only if
+    no engine, world or physics source changed since it was computed. ``force``
+    re-runs and overwrites regardless.
+    """
     request = experiment_request(request["world"], request["arms"], request["cases"],
                                  params=request.get("params"), baseline=request.get("baseline"))
-    experiment_id = content_hash(request)[:16]
-    if store is not None:
+    fingerprint = engine_fingerprint()
+    experiment_id = content_hash({"request": request, "engine": fingerprint})[:16]
+    if store is not None and not force:
         cached = store.get_experiment(experiment_id)
         if cached is not None:
             return cached
@@ -123,6 +131,7 @@ def run_experiment(request: Dict[str, Any], *, store: Optional[EngineStore] = No
     }
     report = {
         "experiment_id": experiment_id,
+        "engine_fingerprint": fingerprint,
         "request": request,
         "primary_metric": metric,
         "lower_is_better": ws.lower_is_better,

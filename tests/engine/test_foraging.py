@@ -95,7 +95,10 @@ def run_arm(arm):
 
 # Golden values for the rule policies (deterministic). A change here means the
 # world or kernel semantics changed and results must be re-reviewed.
-GOLDEN_SWEEP = {"baseline": 2506, "hive_memory": 1705, "signals": 2279, "hive_memory_signals": 1701}
+# Corrected after the PR #2 review (lead L1): before the fix, sightings observed in the same tick as a
+# pickup were admitted as current, so agents chased food that was already gone. Those walks counted as
+# directed moves, which made hive_memory look like it saved 32% of sweep moves (1705); it saves ~4%.
+GOLDEN_SWEEP = {"baseline": 2506, "hive_memory": 2416, "signals": 2279, "hive_memory_signals": 2007}
 
 
 @pytest.mark.parametrize("arm", ARMS)
@@ -108,12 +111,12 @@ def test_arm_golden_results_and_verdicts(arm):
         assert verdict.verdict == SUCCESS and verdict.unsafe_applied == 0 and verdict.blocked_attempts == 0
 
 
-def test_hive_memory_beats_baseline_seed_by_seed():
+def test_hive_memory_vs_baseline_seed_by_seed():
     base, _ = run_arm("baseline")
     hive, _ = run_arm("hive_memory")
     wins = sum(hive[s].metrics["sweep_moves"] < base[s].metrics["sweep_moves"] for s in SEEDS)
     losses = sum(hive[s].metrics["sweep_moves"] > base[s].metrics["sweep_moves"] for s in SEEDS)
-    assert (wins, losses) == (17, 2)
+    assert (wins, losses) == (11, 3)
 
 
 def test_memory_arm_cites_evidence_and_records_races():

@@ -63,6 +63,19 @@ def partitioned_slice(task: Dict[str, Any], sample: str) -> Dict[str, Any]:
     }
 
 
+def _malformed_action(proposal: Dict[str, Any]) -> Optional[str]:
+    for node in proposal["nodes"]:
+        action = node["action"]
+        for key in ("op", "sample", "slot"):
+            if key in action and not isinstance(action[key], str):
+                return f"node {node['id']!r}: {key} must be a string"
+        if "revision" in action and (isinstance(action["revision"], bool) or not isinstance(action["revision"], int)):
+            return f"node {node['id']!r}: revision must be an integer"
+        if "resource" in node and not isinstance(node["resource"], (str, type(None))):
+            return f"node {node['id']!r}: resource must be a string"
+    return None
+
+
 class TaskDAGWorld:
     def __init__(self, seed: int, arm: str, *, composition: Optional[str] = None) -> None:
         if arm not in ARMS:
@@ -109,6 +122,12 @@ class TaskDAGWorld:
         except ValueError as exc:
             self.parse_errors += 1
             return Outcome(False, f"unparseable_proposal: {exc}")
+        problem = _malformed_action(proposal)
+        if problem:
+            # E15's admission gate assumes scalar action fields and crashes on e.g. a
+            # list-valued "op"; reject such proposals here instead.
+            self.parse_errors += 1
+            return Outcome(False, f"malformed_action: {problem}")
         proposal["agent"] = agent_id
         self.proposals[agent_id] = proposal
         return Outcome(True, effects={"nodes": len(proposal["nodes"])})

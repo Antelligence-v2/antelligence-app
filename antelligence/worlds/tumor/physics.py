@@ -13,15 +13,18 @@ Step order matches the legacy model cyclically::
 
 The legacy code draws from the global ``random``/``numpy.random`` streams.
 :meth:`TumorPhysics.rng` swaps in this world's private RNG state around every
-call, so concurrent runs cannot perturb each other and a seed fully determines
-the run.
+call while holding a process-wide lock, so worlds running in different threads
+cannot interleave on the global streams and a seed fully determines the run.
+Legacy ``print`` output is silenced per thread (:class:`_ThreadQuietStdout`),
+never by replacing ``sys.stdout`` for the whole process.
 """
 
 from __future__ import annotations
 
 import contextlib
-import io
 import random
+import sys
+import threading
 from typing import Dict, Iterator, List, Optional, Tuple
 
 import numpy as np
@@ -38,6 +41,48 @@ DEFAULT_PHEROMONE_PARAMS = {
     "alarm_decay": 0.231,
     "recruitment_decay": 0.099,
 }
+
+
+_GLOBAL_RNG_LOCK = threading.RLock()
+
+
+class _ThreadQuietStdout:
+    """sys.stdout proxy that drops writes only from threads inside a quiet block."""
+
+    def __init__(self, wrapped) -> None:
+        self.wrapped = wrapped
+        self._local = threading.local()
+
+    @property
+    def quiet(self) -> bool:
+        return getattr(self._local, "depth", 0) > 0
+
+    def enter(self) -> None:
+        self._local.depth = getattr(self._local, "depth", 0) + 1
+
+    def exit(self) -> None:
+        self._local.depth -= 1
+
+    def write(self, text: str) -> int:
+        return len(text) if self.quiet else self.wrapped.write(text)
+
+    def flush(self) -> None:
+        if not self.quiet:
+            self.wrapped.flush()
+
+    def __getattr__(self, name: str):
+        return getattr(self.wrapped, name)
+
+
+_STDOUT_INSTALL_LOCK = threading.Lock()
+
+
+def _quiet_stdout() -> _ThreadQuietStdout:
+    """Install the proxy once (idempotent); later redirections by others are respected."""
+    with _STDOUT_INSTALL_LOCK:
+        if not isinstance(sys.stdout, _ThreadQuietStdout):
+            sys.stdout = _ThreadQuietStdout(sys.stdout)
+        return sys.stdout
 
 
 class TumorPhysics:
@@ -91,18 +136,26 @@ class TumorPhysics:
     # ------------------------------------------------------------------ rng
     @contextlib.contextmanager
     def rng(self) -> Iterator[None]:
-        """Run legacy code on this world's private RNG streams (and quietly)."""
-        saved_py, saved_np = random.getstate(), np.random.get_state()
-        random.setstate(self._py_state)
-        np.random.set_state(self._np_state)
-        sink = contextlib.redirect_stdout(io.StringIO()) if self.quiet else contextlib.nullcontext()
-        try:
-            with sink:
+        """Run legacy code on this world's private RNG streams (and quietly).
+
+        Holds a process-wide lock for the whole swap so no other thread can use or
+        replace the global streams in between.
+        """
+        with _GLOBAL_RNG_LOCK:
+            saved_py, saved_np = random.getstate(), np.random.get_state()
+            random.setstate(self._py_state)
+            np.random.set_state(self._np_state)
+            stdout = _quiet_stdout() if self.quiet else None
+            if stdout is not None:
+                stdout.enter()
+            try:
                 yield
-        finally:
-            self._py_state, self._np_state = random.getstate(), np.random.get_state()
-            random.setstate(saved_py)
-            np.random.set_state(saved_np)
+            finally:
+                if stdout is not None:
+                    stdout.exit()
+                self._py_state, self._np_state = random.getstate(), np.random.get_state()
+                random.setstate(saved_py)
+                np.random.set_state(saved_np)
 
     # --------------------------------------------------------------- queries
     def cell(self, cell_id: int) -> Optional[TumorCell]:

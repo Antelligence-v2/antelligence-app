@@ -54,7 +54,8 @@ CREATE INDEX IF NOT EXISTS records_content ON records(scope, content_key);
 CREATE TABLE IF NOT EXISTS edges (child TEXT NOT NULL, parent TEXT NOT NULL, PRIMARY KEY (child, parent));
 CREATE INDEX IF NOT EXISTS edges_parent ON edges(parent);
 CREATE TABLE IF NOT EXISTS subjects (
-    scope TEXT NOT NULL, subject TEXT NOT NULL, rev INTEGER NOT NULL, PRIMARY KEY (scope, subject)
+    scope TEXT NOT NULL, subject TEXT NOT NULL, rev INTEGER NOT NULL, changed_tick INTEGER NOT NULL DEFAULT -1,
+    PRIMARY KEY (scope, subject)
 );
 CREATE TABLE IF NOT EXISTS contradictions (
     id TEXT PRIMARY KEY, scope TEXT NOT NULL, a TEXT NOT NULL, b TEXT NOT NULL,
@@ -161,6 +162,9 @@ class EvidenceMemory:
         if version not in (0, _SCHEMA_VERSION):
             raise EvidenceError(f"unsupported memory schema version {version}")
         self._db.executescript(_SCHEMA)
+        columns = {row[1] for row in self._db.execute("PRAGMA table_info(subjects)")}
+        if "changed_tick" not in columns:  # stores created before changed_tick existed
+            self._db.execute("ALTER TABLE subjects ADD COLUMN changed_tick INTEGER NOT NULL DEFAULT -1")
         self._db.execute(f"PRAGMA user_version={_SCHEMA_VERSION}")
         self._pending: List[dict] = []
         self.verify_integrity()
@@ -185,6 +189,12 @@ class EvidenceMemory:
         row = self._db.execute("SELECT rev FROM subjects WHERE scope=? AND subject=?", (scope, subject)).fetchone()
         return row["rev"] if row else 0
 
+    def subject_changed_at(self, scope: str, subject: str) -> Optional[int]:
+        """Tick of the subject's most recent source replacement, if any."""
+        row = self._db.execute("SELECT changed_tick FROM subjects WHERE scope=? AND subject=?",
+                               (scope, subject)).fetchone()
+        return None if row is None or row["changed_tick"] < 0 else row["changed_tick"]
+
     def replace_source(self, scope: str, subject: str, tick: int, new_rev: Optional[int] = None,
                        reason: str = "source_replaced") -> List[str]:
         """Advance ``subject`` to a new revision; invalidate everything older."""
@@ -194,9 +204,9 @@ class EvidenceMemory:
             raise StaleError(f"{subject}: revision {new_rev} is not newer than {current}")
         with self._tx():
             self._db.execute(
-                "INSERT INTO subjects(scope, subject, rev) VALUES (?,?,?) "
-                "ON CONFLICT(scope, subject) DO UPDATE SET rev=excluded.rev",
-                (scope, subject, new_rev),
+                "INSERT INTO subjects(scope, subject, rev, changed_tick) VALUES (?,?,?,?) "
+                "ON CONFLICT(scope, subject) DO UPDATE SET rev=excluded.rev, changed_tick=excluded.changed_tick",
+                (scope, subject, new_rev, tick),
             )
             rows = self._db.execute(
                 "SELECT id FROM records WHERE scope=? AND subject=? AND subject_rev<? AND status IN (?,?,?)",
@@ -216,7 +226,11 @@ class EvidenceMemory:
         tick: int,
         depends_on: Sequence[str] = (),
         subject_rev: Optional[int] = None,
+        observed_at: Optional[int] = None,
     ) -> Record:
+        """Add a record. ``observed_at`` is the tick the author observed the subject;
+        an observation made at or before the subject's last source change is stale
+        (agents observe at the start of a tick, before any action in that tick)."""
         if kind not in KINDS:
             raise ValueError(f"unknown record kind {kind!r}")
         if not scope or not author or not subject:
@@ -229,6 +243,9 @@ class EvidenceMemory:
             raise StaleError(f"{subject}: proposed revision {rev} is older than current {current}")
         if rev > current:
             raise StaleError(f"{subject}: proposed revision {rev} is ahead of current {current}")
+        changed_at = self.subject_changed_at(scope, subject)
+        if observed_at is not None and changed_at is not None and observed_at <= changed_at:
+            raise StaleError(f"{subject}: observed at tick {observed_at}, before its source changed at tick {changed_at}")
         deps = tuple(sorted(set(depends_on)))
         if len(deps) > MAX_DEPENDENCIES:
             raise ValueError(f"at most {MAX_DEPENDENCIES} dependencies")
@@ -321,7 +338,11 @@ class EvidenceMemory:
             record = self._require(winner)
             current = record.subject_rev == self.subject_rev(record.scope, record.subject)
             deps_ok = all(self._require(d).status == ADMITTED for d in record.depends_on)
-            if record.status == CONTRADICTED:
+            still_disputed = self._db.execute(
+                "SELECT 1 FROM contradictions WHERE resolved_by IS NULL AND id<>? AND (a=? OR b=?) LIMIT 1",
+                (contradiction_id, winner, winner),
+            ).fetchone() is not None
+            if record.status == CONTRADICTED and not still_disputed:
                 if current and deps_ok:
                     self._set(record, ADMITTED, tick, "won_contradiction")
                 else:
@@ -502,7 +523,7 @@ class EvidenceRecorder:
                         "pos": list(signal.pos) if signal.pos else None, "topic": signal.topic}
                 try:
                     self.memory.propose(scope=signal.scope, kind=CLAIM, author=signal.sender, subject=subject,
-                                        body=body, depends_on=deps, tick=tick)
+                                        body=body, depends_on=deps, tick=tick, observed_at=signal.emitted_at)
                 except EvidenceError as exc:
                     self.memory.note_refusal(subject, f"{type(exc).__name__}: {exc}", tick)
         return self.memory.drain_transitions()

@@ -91,11 +91,20 @@ class Cached:
             return response
 
 
+def _reservation(request: ChatRequest) -> int:
+    """Worst-case tokens for a call: estimated prompt (~4 chars/token) + max completion."""
+    prompt_chars = sum(len(m["content"]) for m in request.messages)
+    return -(-prompt_chars // 4) + request.max_tokens
+
+
 class Budgeted:
     """Hard caps on calls and tokens for one run, plus usage accounting.
 
-    The cap is checked before each call (counting in-flight calls) so a run can
-    overshoot by at most one response's tokens, never by extra calls.
+    Before each call the wrapper reserves that call's worst case (estimated
+    prompt tokens + ``max_tokens``) alongside every call still in flight, and
+    refuses the call if the reservations could exceed ``max_tokens``. Concurrent
+    calls therefore cannot overshoot the token cap; only a prompt that tokenizes
+    worse than the estimate can.
     """
 
     def __init__(self, inner: Provider, *, max_calls: Optional[int] = None, max_tokens: Optional[int] = None) -> None:
@@ -104,6 +113,7 @@ class Budgeted:
         self.max_tokens = max_tokens
         self.usage = Usage()
         self._in_flight = 0
+        self._reserved_tokens = 0
 
     def describe(self) -> Dict[str, Any]:
         # Transparent: a budget only matters when it trips, and every trip is
@@ -116,9 +126,14 @@ class Budgeted:
     async def complete(self, request: ChatRequest) -> ChatResponse:
         if self.max_calls is not None and self.usage.calls + self.usage.failed_calls + self._in_flight >= self.max_calls:
             raise BudgetExceeded(f"call budget of {self.max_calls} exhausted")
-        if self.max_tokens is not None and self.usage.total_tokens >= self.max_tokens:
-            raise BudgetExceeded(f"token budget of {self.max_tokens} exhausted")
+        reservation = _reservation(request)
+        if self.max_tokens is not None and (
+                self.usage.total_tokens + self._reserved_tokens + reservation > self.max_tokens):
+            raise BudgetExceeded(f"token budget of {self.max_tokens} cannot cover this call "
+                                 f"({reservation} reserved, {self.usage.total_tokens} used, "
+                                 f"{self._reserved_tokens} in flight)")
         self._in_flight += 1
+        self._reserved_tokens += reservation
         try:
             response = await self.inner.complete(request)
         except Exception:
@@ -126,5 +141,6 @@ class Budgeted:
             raise
         finally:
             self._in_flight -= 1
+            self._reserved_tokens -= reservation
         self.usage.add(response)
         return response
