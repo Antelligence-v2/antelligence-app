@@ -37,10 +37,13 @@ def encode_field(values: np.ndarray, stride: int = 1) -> Dict[str, Any]:
 
 
 def signal_marks(signals: Iterable[Signal], tick: int) -> List[List[Any]]:
-    """Spatial signals as compact rows: [x, y, kind, sender, ticks_left]."""
+    """Spatial signals as compact rows: [x, y, kind, sender, ticks_left] (+ z last for 3D)."""
     marks = []
     for s in signals:
         if s.pos is None or len(s.pos) < 2:
             continue
-        marks.append([round(float(s.pos[0]), 2), round(float(s.pos[1]), 2), s.kind, s.sender, s.expires_at - tick])
+        row = [round(float(s.pos[0]), 2), round(float(s.pos[1]), 2), s.kind, s.sender, s.expires_at - tick]
+        if len(s.pos) >= 3:
+            row.append(round(float(s.pos[2]), 2))
+        marks.append(row)
     return marks

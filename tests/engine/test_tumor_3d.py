@@ -72,3 +72,48 @@ def test_every_arm_runs_in_3d(arm):
     _, result = run(arm=arm, dimensionality=3, max_steps=40)
     assert result.ticks > 0
     assert result.metrics["unsafe_act_count" if "unsafe_act_count" in result.metrics else "invalid_actions"] == 0
+
+
+def test_3d_immune_cells_use_true_distance():
+    """Review fix: immune cells measured x/y only, so they attacked cells far away in z."""
+    from backend.tumor_environment import CellType, ImmuneCell, ImmuneCellType, TumorCell
+    target = TumorCell(cell_id=1, position=(0.0, 0.0, 100.0), cell_type=CellType.DIFFERENTIATED)
+    immune = ImmuneCell(cell_id=1, position=(0.0, 0.0, 0.0), cell_type=list(ImmuneCellType)[0], activation_level=1.0)
+    resistance = target.resistance_level
+    immune.update(0.1, [target])
+    assert target.resistance_level == resistance  # 100 um away vertically: no attack
+    assert immune.position[2] > 0.0  # it moves toward the target along z
+
+
+def test_3d_daughters_leave_the_parents_plane():
+    from backend.tumor_environment import CellType, TumorCell
+    w = TumorWorld(2, dimensionality=3)
+    parent = TumorCell(cell_id=0, position=(300.0, 300.0, 300.0), cell_type=CellType.DIFFERENTIATED)
+    daughter = TumorCell(cell_id=1, position=(320.0, 300.0, 300.0), cell_type=CellType.DIFFERENTIATED)
+    with w.physics.rng():
+        w.physics._place_daughter_3d(parent, daughter)
+    offset = [daughter.position[i] - parent.position[i] for i in range(3)]
+    assert math.isclose(math.hypot(*offset), 20.0, rel_tol=1e-9)
+    assert abs(offset[2]) > 1e-6
+
+
+def test_3d_repulsion_pushes_along_z():
+    w = TumorWorld(2, dimensionality=3)
+    cells = [c for c in w.physics.geometry.tumor_cells if c.is_alive][:2]
+    x, y, z = cells[0].position
+    cells[1].position = (x, y, z + 10.0)  # stacked vertically, 10 um apart
+    for other in w.physics.geometry.tumor_cells[2:]:
+        other.is_alive = False
+    w.physics._apply_cell_mechanics()
+    assert cells[1].position[2] - cells[0].position[2] > 10.0
+
+
+def test_3d_missing_substrate_gradient_has_three_components():
+    w = TumorWorld(2, dimensionality=3)
+    assert w.physics.gradient("trail_pheromone", (300.0, 300.0, 300.0)) == (0.0, 0.0, 0.0)
+
+
+def test_3d_signal_marks_carry_z():
+    scheduler, _ = run(arm="signals", dimensionality=3, max_steps=25)
+    marks = [m for f in scheduler.frames for m in f["signals"]]
+    assert marks and all(len(m) == 6 for m in marks)

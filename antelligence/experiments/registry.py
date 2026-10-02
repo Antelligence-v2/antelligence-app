@@ -113,7 +113,7 @@ def _registry() -> Dict[str, WorldSpec]:
             name="tumor", arms=tuple(TUMOR_ARMS), default_cases=tuple(range(1, 11)), baseline="rule",
             primary_metric="mean_living_cells", lower_is_better=True, success_metric="cleared",
             params={"max_steps": (150, 10, 400), "n_nanobots": (10, 1, 40), "dimensionality": (2, 2, 3)}, builder=_tumor,
-            description="Synthetic 2D glioblastoma with rule nanobots (research model, not clinical).",
+            description="Synthetic glioblastoma, 2D or 3D, with rule nanobots (research model, not clinical).",
             metric_label="average living tumor cells (lower = faster kill)",
             arm_descriptions={
                 "no_bots": "No nanobots: natural cell loss only.",

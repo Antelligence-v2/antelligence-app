@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState } from "react";
+import { Component, lazy, Suspense, useEffect, useState, type ReactNode } from "react";
 import { Pause, Play, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { Playback } from "@/features/runs/usePlayback";
@@ -13,6 +13,34 @@ import type { CameraPreset } from "./Scene3D";
 
 // three.js + React Three Fiber load only when someone opens the 3D view.
 const Scene3D = lazy(() => import("./Scene3D"));
+
+/** Can this browser create a WebGL context at all? (Checked once.) */
+let webglSupport: boolean | undefined;
+function hasWebGL(): boolean {
+  if (webglSupport === undefined) {
+    try {
+      const canvas = document.createElement("canvas");
+      webglSupport = !!(canvas.getContext("webgl2") ?? canvas.getContext("webgl"));
+    } catch {
+      webglSupport = false;
+    }
+  }
+  return webglSupport;
+}
+
+/** Keeps a 3D renderer failure inside the panel: report it and fall back to 2D. */
+class RendererBoundary extends Component<{ onFail: (message: string) => void; children: ReactNode }, { failed: boolean }> {
+  state = { failed: false };
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+  componentDidCatch(error: Error) {
+    this.props.onFail(error.message);
+  }
+  render() {
+    return this.state.failed ? null : this.props.children;
+  }
+}
 
 const Legend = ({ items }: { items: Array<[string, string]> }) => (
   <div className="flex flex-wrap gap-x-3 gap-y-1.5 text-2xs text-muted-foreground">
@@ -53,7 +81,9 @@ export function Viewport({ data, playback, selected, onSelect }: {
   const fields = ((data.scene.fields as string[] | undefined) ?? []).filter((f) => FIELD_STYLE[f]);
   const [layer, setLayer] = useState<string | null>(fields.includes("drug") ? "drug" : fields[0] ?? null);
   const is3dRun = data.scene.dimensionality === 3;
-  const [view, setView] = useState<"2d" | "3d">(is3dRun ? "3d" : "2d");
+  const webgl = hasWebGL();
+  const [view, setView] = useState<"2d" | "3d">(is3dRun && webgl ? "3d" : "2d");
+  const [renderError, setRenderError] = useState<string | null>(webgl ? null : "This browser can't create a WebGL context.");
   const [preset, setPreset] = useState<CameraPreset>("overview");
   const [autoRotate, setAutoRotate] = useState(false);
   useEffect(() => { if (layer && !fields.includes(layer)) setLayer(fields[0] ?? null); }, [fields, layer]);
@@ -65,9 +95,11 @@ export function Viewport({ data, playback, selected, onSelect }: {
       <div className="min-w-0 border-b p-3 lg:border-b-0 lg:border-r">
         <div className="mx-auto max-w-[560px]">
           {kind === "tumor" && view === "3d" ? (
-            <Suspense fallback={<Skeleton className="aspect-square w-full rounded-lg" />}>
-              <Scene3D data={data} position={position} selected={selected} onSelect={onSelect} layer={layer} preset={preset} autoRotate={autoRotate} />
-            </Suspense>
+            <RendererBoundary onFail={(message) => { setRenderError(message); setView("2d"); }}>
+              <Suspense fallback={<Skeleton className="aspect-square w-full rounded-lg" />}>
+                <Scene3D data={data} position={position} selected={selected} onSelect={onSelect} layer={layer} preset={preset} autoRotate={autoRotate} />
+              </Suspense>
+            </RendererBoundary>
           ) : (
             <SceneCanvas data={data} position={position} layer={layer} selected={selected} onSelect={onSelect} />
           )}
@@ -98,13 +130,16 @@ export function Viewport({ data, playback, selected, onSelect }: {
                 <button
                   key={v}
                   type="button"
+                  disabled={v === "3d" && !!renderError}
+                  title={v === "3d" && renderError ? `3D unavailable: ${renderError}` : undefined}
                   onClick={() => setView(v)}
-                  className={cn("h-7 flex-1 rounded px-2 text-xs font-medium uppercase transition-colors", view === v ? "bg-accent text-foreground" : "text-muted-foreground hover:text-foreground")}
+                  className={cn("h-7 flex-1 rounded px-2 text-xs font-medium uppercase transition-colors disabled:cursor-not-allowed disabled:opacity-40", view === v ? "bg-accent text-foreground" : "text-muted-foreground hover:text-foreground")}
                 >
                   {v}
                 </button>
               ))}
             </div>
+            {renderError && <p className="text-2xs text-warning">3D view unavailable ({renderError}). Showing 2D.</p>}
             <p className="text-2xs text-muted-foreground">
               {view === "3d"
                 ? `Drag to orbit, scroll to zoom, click a bot.${is3dRun ? "" : " This run is 2D, so it lies flat; launch with dimensionality 3 for a volumetric tumor."}`

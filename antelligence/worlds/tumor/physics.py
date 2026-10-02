@@ -225,7 +225,7 @@ class TumorPhysics:
 
     def gradient(self, substrate: str, pos: Tuple[float, float]) -> Tuple[float, float]:
         if self.microenv.get_substrate(substrate) is None:
-            return (0.0, 0.0)
+            return (0.0,) * self.dimensionality
         g = self.microenv.get_gradient_at(substrate, self._xyz(pos))
         return tuple(float(g[i]) for i in range(self.dimensionality))
 
@@ -270,6 +270,8 @@ class TumorPhysics:
             if cell.update_growth(env.dt, oxygen):
                 daughter = cell.divide(next_id)
                 if daughter:
+                    if self.dimensionality == 3:
+                        self._place_daughter_3d(cell, daughter)
                     new_cells.append(daughter)
                     next_id += 1
             voxel = env.position_to_voxel(cell.position)
@@ -291,7 +293,16 @@ class TumorPhysics:
         if new_cells:
             self._apply_cell_mechanics()
 
+    def _place_daughter_3d(self, parent: TumorCell, daughter: TumorCell) -> None:
+        """Legacy division offsets the daughter in x/y only; in 3D use a random 3D direction."""
+        offset = float(np.hypot(daughter.position[0] - parent.position[0], daughter.position[1] - parent.position[1]))
+        direction = np.random.normal(size=3)
+        direction /= np.linalg.norm(direction)
+        daughter.position = tuple(float(parent.position[i] + direction[i] * offset) for i in range(3))
+
     def _apply_cell_mechanics(self) -> None:
+        if self.dimensionality == 3:
+            return self._apply_cell_mechanics_3d()
         cells = self.geometry.tumor_cells
         repulsion_radius, repulsion_force = 25.0, 2.0
         for i, a in enumerate(cells):
@@ -307,6 +318,24 @@ class TumorPhysics:
                     push = repulsion_force * (repulsion_radius - distance) / repulsion_radius * 0.5
                     a.position = (a.position[0] - nx * push, a.position[1] - ny * push, a.position[2])
                     b.position = (b.position[0] + nx * push, b.position[1] + ny * push, b.position[2])
+
+    def _apply_cell_mechanics_3d(self) -> None:
+        """Same pairwise repulsion as 2D, measured and applied along x, y and z."""
+        cells = self.geometry.tumor_cells
+        repulsion_radius, repulsion_force = 25.0, 2.0
+        for i, a in enumerate(cells):
+            if not a.is_alive:
+                continue
+            for b in cells[i + 1:]:
+                if not b.is_alive:
+                    continue
+                d = [b.position[k] - a.position[k] for k in range(3)]
+                distance = (d[0] * d[0] + d[1] * d[1] + d[2] * d[2]) ** 0.5
+                if 0.1 < distance < repulsion_radius:
+                    n = [c / distance for c in d]
+                    push = repulsion_force * (repulsion_radius - distance) / repulsion_radius * 0.5
+                    a.position = tuple(a.position[k] - n[k] * push for k in range(3))
+                    b.position = tuple(b.position[k] + n[k] * push for k in range(3))
 
     def _update_immune_cells(self) -> None:
         for immune in self.geometry.immune_cells:

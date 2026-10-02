@@ -127,7 +127,8 @@ export const EventPageSchema = z.object({
 export type EventPage = z.infer<typeof EventPageSchema>;
 
 /** Visualization frames (not evidence): static scene + one snapshot per tick, tick 0 = initial state. */
-export const SignalMarkSchema = z.tuple([z.number(), z.number(), z.string(), z.string(), z.number()]);
+// [x, y, kind, sender, ticks_left] plus z for 3D runs.
+export const SignalMarkSchema = z.tuple([z.number(), z.number(), z.string(), z.string(), z.number()]).rest(z.number());
 export const FrameSchema = z.object({
   tick: z.number(),
   world: z.record(z.unknown()),

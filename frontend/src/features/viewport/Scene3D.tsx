@@ -48,6 +48,7 @@ function Cells({ frame, center }: { frame: Frame; center: number[] }) {
     m.count = cells.length;
     m.instanceMatrix.needsUpdate = true;
     if (m.instanceColor) m.instanceColor.needsUpdate = true;
+    m.computeBoundingSphere(); // keep raycasts (clicks) accurate as instances move
   }, [cells, center, palette]);
 
   return (
@@ -81,6 +82,7 @@ function Bots({ rows, center, ids, selected, onSelect }: {
     });
     m.count = rows.length;
     m.instanceMatrix.needsUpdate = true;
+    m.computeBoundingSphere(); // bots move every frame; stale bounds make clicks miss
   }, [rows, center, ids, selected]);
 
   return (
@@ -117,6 +119,38 @@ function Trails({ frames, index, center, ids, selected }: { frames: Frame[]; ind
   );
 }
 
+/** Live spatial signals ("found", "claimed", ...) as small diamonds that fade as they expire. */
+function Signals({ marks, center }: { marks: Frame["signals"]; center: number[] }) {
+  const mesh = useRef<THREE.InstancedMesh>(null);
+  const { resolvedTheme } = useTheme();
+  const palette = useMemo(() => ({ found: rgb("--primary"), claimed: rgb("--warning"), other: rgb("--info") }), [resolvedTheme]); // eslint-disable-line react-hooks/exhaustive-deps
+  const capacity = Math.max(1, marks.length);
+  useLayoutEffect(() => {
+    const m = mesh.current;
+    if (!m) return;
+    const o = new THREE.Object3D();
+    marks.forEach((s, i) => {
+      o.position.set(...toScene(center, s[0], s[1], s[5] as number | undefined));
+      o.scale.setScalar(0.5 + Math.min(1, Number(s[4]) / 20) * 0.5);
+      o.updateMatrix();
+      m.setMatrixAt(i, o.matrix);
+      const kind = s[2] as string;
+      m.setColorAt(i, kind === "claimed" ? palette.claimed : kind === "found" ? palette.found : palette.other);
+    });
+    m.count = marks.length;
+    m.instanceMatrix.needsUpdate = true;
+    if (m.instanceColor) m.instanceColor.needsUpdate = true;
+    m.computeBoundingSphere();
+  }, [marks, center, palette]);
+  if (marks.length === 0) return null;
+  return (
+    <instancedMesh key={capacity > 64 ? Math.ceil(capacity / 64) : 1} ref={mesh} args={[undefined, undefined, Math.max(64, Math.ceil(capacity / 64) * 64)]}>
+      <octahedronGeometry args={[0.035]} />
+      <meshBasicMaterial transparent opacity={0.75} toneMapped={false} />
+    </instancedMesh>
+  );
+}
+
 function Vessels({ vessels, center }: { vessels: number[][]; center: number[] }) {
   const mesh = useRef<THREE.InstancedMesh>(null);
   const { resolvedTheme } = useTheme();
@@ -131,6 +165,7 @@ function Vessels({ vessels, center }: { vessels: number[][]; center: number[] })
       m.setMatrixAt(i, o.matrix);
     });
     m.instanceMatrix.needsUpdate = true;
+    m.computeBoundingSphere();
   }, [vessels, center]);
   return (
     <instancedMesh ref={mesh} args={[undefined, undefined, Math.max(1, vessels.length)]}>
@@ -259,6 +294,7 @@ export default function Scene3D({ data, position, selected, onSelect, layer = nu
         <Boundary radius={scene.tumor_radius} is3d={is3d} />
         <Vessels vessels={scene.vessels} center={center} />
         <Cells frame={a} center={center} />
+        <Signals marks={a.signals} center={center} />
         <Trails frames={data.frames} index={index} center={center} ids={ids} selected={selected} />
         <Bots rows={bots} center={center} ids={ids} selected={selected} onSelect={onSelect} />
         <OrbitControls enableDamping dampingFactor={0.08} minDistance={1.2} maxDistance={12} autoRotate={autoRotate} autoRotateSpeed={0.8} makeDefault />
