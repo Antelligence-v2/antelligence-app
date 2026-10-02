@@ -79,9 +79,10 @@ def _foraging(arm: str, case: int, *, run_id: str, max_steps: int) -> Scheduler:
     return build(arm, case, run_id=run_id, max_steps=max_steps)
 
 
-def _tumor(arm: str, case: int, *, run_id: str, max_steps: int, n_nanobots: int) -> Scheduler:
+def _tumor(arm: str, case: int, *, run_id: str, max_steps: int, n_nanobots: int, dimensionality: int = 2) -> Scheduler:
     from antelligence.worlds.tumor import build
-    return build(arm, case, run_id=run_id, max_steps=max_steps, n_nanobots=n_nanobots)
+    extra = {"dimensionality": 3} if dimensionality == 3 else {}  # 2D runs are built exactly as before
+    return build(arm, case, run_id=run_id, max_steps=max_steps, n_nanobots=n_nanobots, **extra)
 
 
 def _task_dag(arm: str, case: int, *, run_id: str) -> Scheduler:
@@ -111,8 +112,8 @@ def _registry() -> Dict[str, WorldSpec]:
         "tumor": WorldSpec(
             name="tumor", arms=tuple(TUMOR_ARMS), default_cases=tuple(range(1, 11)), baseline="rule",
             primary_metric="mean_living_cells", lower_is_better=True, success_metric="cleared",
-            params={"max_steps": (150, 10, 400), "n_nanobots": (10, 1, 40)}, builder=_tumor,
-            description="Synthetic 2D glioblastoma with rule nanobots (research model, not clinical).",
+            params={"max_steps": (150, 10, 400), "n_nanobots": (10, 1, 40), "dimensionality": (2, 2, 3)}, builder=_tumor,
+            description="Synthetic glioblastoma, 2D or 3D, with rule nanobots (research model, not clinical).",
             metric_label="average living tumor cells (lower = faster kill)",
             arm_descriptions={
                 "no_bots": "No nanobots: natural cell loss only.",

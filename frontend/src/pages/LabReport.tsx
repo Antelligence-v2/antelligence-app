@@ -208,8 +208,11 @@ function Report({ report }: { report: Experiment }) {
   const baseline = report.request.baseline;
   const challenger = report.recommendation?.best_arm ?? Object.keys(report.comparisons_vs_baseline)[0] ?? baseline;
   const [selection, setSelection] = useState<WatchSelection>({ seed: report.request.cases[0], left: baseline, right: challenger });
+  // Each explicit "watch" remounts the panel so it starts playing from the first tick.
+  const [watchCount, setWatchCount] = useState(0);
   const watch = (next: WatchSelection) => {
     setSelection(next);
+    setWatchCount((n) => n + 1);
     document.getElementById("watch")?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
   const pick = (arm: string, seed: number) =>
@@ -236,7 +239,7 @@ function Report({ report }: { report: Experiment }) {
 
       <Recommendation report={report} onWatch={() => watch({ seed: selection.seed, left: baseline, right: challenger })} />
 
-      <Compare key={selection.seed} report={report} selection={selection} onSelection={setSelection} />
+      <Compare key={`${selection.seed}-${watchCount}`} report={report} selection={selection} onSelection={setSelection} autoplay={watchCount > 0} />
 
       <Card title="Effect vs baseline" aside={<span className="text-2xs text-muted-foreground">paired sign test · wins/losses/ties</span>}>
         <ForestPlot report={report} />

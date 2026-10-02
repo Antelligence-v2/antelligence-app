@@ -21,12 +21,13 @@ export type Playback = {
 
 /**
  * Tick playback driven by requestAnimationFrame. Keyboard: space play/pause,
- * ←/→ step (shift: 10), Home/End jump. Starts at `initial` (e.g. from the URL).
+ * ←/→ step (shift: 10), Home/End jump. Starts at `initial` (e.g. from the URL);
+ * with `autoplay` it starts playing from `initial ?? min` right away.
  */
-export function usePlayback(min: number, max: number, initial?: number): Playback {
+export function usePlayback(min: number, max: number, initial?: number, autoplay = false): Playback {
   const clamp = useCallback((t: number) => Math.min(max, Math.max(min, t)), [min, max]);
-  const [position, setPosition] = useState(() => clamp(initial ?? max));
-  const [playing, setPlaying] = useState(false);
+  const [position, setPosition] = useState(() => clamp(initial ?? (autoplay ? min : max)));
+  const [playing, setPlaying] = useState(autoplay && max > min);
   const [speed, setSpeed] = useState<number>(10);
   const raf = useRef<number>();
   const last = useRef<number>();

@@ -447,15 +447,16 @@ class ImmuneCell:
         
         # Attack target cell if close enough
         if self.target_cell:
+            # Full 3D distance (z is 0 in 2D runs, so 2D results are unchanged).
             distance = np.linalg.norm(
-                np.array(self.position[:2]) - np.array(self.target_cell.position[:2])
+                np.array(self.position[:3]) - np.array(self.target_cell.position[:3])
             )
             
             if distance < 20.0:  # Within attack range
                 self._attack_tumor_cell(self.target_cell, dt)
             else:
                 # Move toward target at migration_speed micrometers/step
-                direction = np.array(self.target_cell.position[:2]) - np.array(self.position[:2])
+                direction = np.array(self.target_cell.position[:3]) - np.array(self.position[:3])
                 norm = np.linalg.norm(direction)
                 if norm > 0:
                     direction = direction / norm
@@ -463,7 +464,7 @@ class ImmuneCell:
                     self.position = (
                         self.position[0] + step[0],
                         self.position[1] + step[1],
-                        self.position[2]
+                        self.position[2] + step[2]
                     )
     
     def _find_nearest_tumor_cell(self, tumor_cells: List[TumorCell]) -> Optional[TumorCell]:
@@ -473,7 +474,7 @@ class ImmuneCell:
             return None
         
         distances = [
-            np.linalg.norm(np.array(cell.position[:2]) - np.array(self.position[:2]))
+            np.linalg.norm(np.array(cell.position[:3]) - np.array(self.position[:3]))
             for cell in living_cells
         ]
         

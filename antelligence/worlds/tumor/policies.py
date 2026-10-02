@@ -73,10 +73,8 @@ class NanobotPolicy:
         cells = obs["cells"]
         emit: List[SignalDraft] = []
         if self.announce and cells:
-            cx = sum(c["pos"][0] for c in cells) / len(cells)
-            cy = sum(c["pos"][1] for c in cells) / len(cells)
-            emit.append(SignalDraft(kind="found", pos=(round(cx, 3), round(cy, 3)),
-                                    payload={"cells": len(cells)}, ttl=self.found_ttl))
+            centroid = tuple(round(sum(c["pos"][i] for c in cells) / len(cells), 3) for i in range(len(pos)))
+            emit.append(SignalDraft(kind="found", pos=centroid, payload={"cells": len(cells)}, ttl=self.found_ttl))
 
         if cells and obs["payload"] > 2.0:
             candidates = cells
@@ -93,7 +91,7 @@ class NanobotPolicy:
         lead = self._lead(view, pos)
         if lead is not None:
             target, cites, why = lead
-            direction = [target[0] - pos[0], target[1] - pos[1]]
+            direction = [target[i] - pos[i] if i < len(target) else 0.0 for i in range(len(pos))]
             if math.hypot(*direction) > 1e-9:
                 return Intent("move", {"direction": _unit(direction)}, emit=tuple(emit), cites=cites, rationale=why)
 
@@ -117,6 +115,8 @@ class NanobotPolicy:
 
     def _chemotaxis(self, view: LocalView) -> List[float]:
         obs = view.observation
+        if len(obs["pos"]) == 3:
+            return _chemotaxis_3d(obs, random.Random(view.seed))
         rng = random.Random(view.seed)
         gx = gy = 0.0
         for name, weight in CHEMOTAXIS_WEIGHTS.items():
@@ -138,10 +138,35 @@ class NanobotPolicy:
         return _unit([center[0] - obs["pos"][0], center[1] - obs["pos"][1]]) or [1.0, 0.0]
 
 
+def _chemotaxis_3d(obs: Dict[str, Any], rng: random.Random) -> List[float]:
+    """Same rule as 2D (weighted gradients, inertia, noise) with a z component."""
+    g = [0.0, 0.0, 0.0]
+    for name, weight in CHEMOTAXIS_WEIGHTS.items():
+        grad = obs["gradients"].get(name)
+        if grad:
+            for i in range(3):
+                g[i] += weight * grad[i]
+    if math.hypot(*g) > 0:
+        g = _unit(g)
+        prev = obs["previous_direction"]
+        d = [0.7 * g[i] + 0.3 * prev[i] + rng.gauss(0, 0.1) for i in range(3)]
+        if math.hypot(*d) > 0:
+            return _unit(d)
+    if obs["inside_tumor"]:
+        return _unit([rng.gauss(0, 1) for _ in range(3)]) or [1.0, 0.0, 0.0]  # uniform on the sphere
+    center = obs["anatomy"]["tumor_center"]
+    return _unit([center[i] - obs["pos"][i] for i in range(3)]) or [1.0, 0.0, 0.0]
+
+
 def _unit(v: List[float]) -> List[float]:
-    n = math.hypot(v[0], v[1])
-    return [v[0] / n, v[1] / n] if n > 0 else []
+    if len(v) == 2:
+        n = math.hypot(v[0], v[1])
+        return [v[0] / n, v[1] / n] if n > 0 else []
+    n = math.hypot(*v)
+    return [c / n for c in v] if n > 0 else []
 
 
 def _d(a, b) -> float:
+    if len(a) >= 3 and len(b) >= 3:
+        return math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2])
     return math.hypot(a[0] - b[0], a[1] - b[1])

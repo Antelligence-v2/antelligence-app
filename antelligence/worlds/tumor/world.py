@@ -76,7 +76,15 @@ class TumorWorld:
         hearing: float = 0.0,
         queen: bool = False,
         legacy_payload_deadlock: bool = False,
+        dimensionality: int = 2,
     ) -> None:
+        if dimensionality not in (2, 3):
+            raise ValueError("dimensionality must be 2 or 3")
+        # 3D keeps the same world size but a coarser voxel grid (31^3) and a
+        # per-volume cell density giving a cell count similar to the 2D disk.
+        self.dim = dimensionality
+        if dimensionality == 3 and cell_density == 0.001:
+            cell_density = 4e-6
         # Legacy bots returned to reload only when payload < 2.0 but could only
         # target when payload > 2.0; 20 - 6 x 3 = exactly 2.0, so after one payload
         # every bot searched forever. The engine returns at <= 2.0. Set True only
@@ -90,22 +98,23 @@ class TumorWorld:
         self.queen = queen
         self.config = dict(domain_size=domain_size, tumor_radius=tumor_radius, cell_density=cell_density,
                            vessel_density=vessel_density, chemical_pheromones=chemical_pheromones)
-        self.physics = TumorPhysics(seed=seed, **self.config)
+        self.physics = TumorPhysics(seed=seed, dimensionality=dimensionality,
+                                    voxel_size=10.0 if dimensionality == 2 else 20.0, **self.config)
         self.domain = (0.0, domain_size)
         g = self.physics.geometry
-        self.center = (float(g.center[0]), float(g.center[1]))
+        self.center = tuple(float(g.center[i]) for i in range(self.dim))
         self.tumor_radius = float(g.tumor_radius)
-        self.vessels = [(float(v.position[0]), float(v.position[1])) for v in g.vessels]
+        self.vessels = [tuple(float(v.position[i]) for i in range(self.dim)) for v in g.vessels]
         self.bodies: Dict[str, Body] = {}
         with self.physics.rng():
             for i in range(n_nanobots):
                 if self.vessels:
-                    vx, vy = random.choice(self.vessels)  # same draws as the legacy NanobotAgent
-                    offset = np.random.randn(2) * 20.0
-                    pos = np.array([vx + offset[0], vy + offset[1]])
+                    vessel = random.choice(self.vessels)  # same draws as the legacy NanobotAgent
+                    offset = np.random.randn(self.dim) * 20.0
+                    pos = np.array([vessel[k] + offset[k] for k in range(self.dim)])
                 else:
-                    pos = np.random.uniform(0, domain_size, size=2)
-                self.bodies[f"bot-{i:03d}"] = Body(position=pos)
+                    pos = np.random.uniform(0, domain_size, size=self.dim)
+                self.bodies[f"bot-{i:03d}"] = Body(position=pos, previous_direction=np.zeros(self.dim))
         self._revision = 0
         self.cleared_at: Optional[int] = None
         self._living_sum = 0
@@ -131,11 +140,19 @@ class TumorWorld:
     def describe(self) -> Dict[str, Any]:
         return {"world": "tumor", "version": 1, "seed": self.seed, "n_nanobots": self.n_nanobots,
                 "max_steps": self.max_steps, "sense_radius": self.sense_radius, "hearing": self.hearing,
-                "queen": self.queen, "legacy_payload_deadlock": self.legacy_payload_deadlock, **self.config}
+                "queen": self.queen, "legacy_payload_deadlock": self.legacy_payload_deadlock, **self.config,
+                **({"dimensionality": 3} if self.dim == 3 else {})}
 
     # ---------------------------------------------------------- visualization
     FRAME_FIELDS = ("drug", "oxygen", "trail_pheromone", "alarm_pheromone", "recruitment_pheromone")
     FRAME_STRIDE = 2  # 61x61 voxel grid -> 31x31 per frame
+
+    def _frame_stride(self) -> int:
+        return self.FRAME_STRIDE if self.dim == 2 else 1  # 3D grid is already 31 wide
+
+    def _field_plane(self, name: str) -> np.ndarray:
+        values = self.physics.microenv.get_substrate(name).concentration
+        return values[:, :, values.shape[2] // 2] if self.dim == 3 else values
 
     def _frame_fields(self) -> List[str]:
         return [name for name in self.FRAME_FIELDS if self.physics.microenv.get_substrate(name) is not None]
@@ -143,10 +160,14 @@ class TumorWorld:
     def scene(self) -> Dict[str, Any]:
         """Static layout for renderers (read-only)."""
         env = self.physics.microenv
-        shape = [len(range(0, env.nx, self.FRAME_STRIDE)), len(range(0, env.ny, self.FRAME_STRIDE))]
-        return {"kind": "tumor", "units": "um", "domain": list(self.domain), "center": list(self.center),
-                "tumor_radius": self.tumor_radius, "vessels": [[round(x, 1), round(y, 1)] for x, y in self.vessels],
-                "field_shape": shape, "field_spacing": env.dx * self.FRAME_STRIDE, "fields": self._frame_fields(),
+        stride = self._frame_stride()
+        shape = [len(range(0, env.nx, stride)), len(range(0, env.ny, stride))]
+        return {"kind": "tumor", "units": "um", "dimensionality": self.dim, "domain": list(self.domain),
+                "center": list(self.center), "tumor_radius": self.tumor_radius,
+                "vessels": [[round(c, 1) for c in v] for v in self.vessels],
+                # 3D fields are recorded as the horizontal slice through the tumor center.
+                "field_slice_z": self.center[2] if self.dim == 3 else None,
+                "field_shape": shape, "field_spacing": env.dx * stride, "fields": self._frame_fields(),
                 "bot_states": [SEARCHING, TARGETING, DELIVERING, RETURNING, RELOADING],
                 "cell_phases": ["viable", "hypoxic", "necrotic", "apoptotic"]}
 
@@ -154,12 +175,13 @@ class TumorWorld:
         """Dynamic state at the end of a tick (read-only: no RNG, no mutation)."""
         states = {s: i for i, s in enumerate((SEARCHING, TARGETING, DELIVERING, RETURNING, RELOADING))}
         phases = {"viable": 0, "hypoxic": 1, "necrotic": 2, "apoptotic": 3}
+        # Row layout is stable for 2D renderers: z (3D only) is appended last.
+        z = (lambda p: [round(float(p[2]), 1)]) if self.dim == 3 else (lambda p: [])
         bots = [[round(float(b.position[0]), 1), round(float(b.position[1]), 1), states.get(b.state, 0),
-                 round(b.payload, 1), b.target_cell] for _, b in sorted(self.bodies.items())]
-        cells = [[round(float(c.position[0]), 1), round(float(c.position[1]), 1), phases.get(c.phase.value, 0), c.cell_id]
-                 for c in self.physics.geometry.tumor_cells]
-        fields = {name: encode_field(self.physics.microenv.get_substrate(name).concentration, self.FRAME_STRIDE)
-                  for name in self._frame_fields()}
+                 round(b.payload, 1), b.target_cell, *z(b.position)] for _, b in sorted(self.bodies.items())]
+        cells = [[round(float(c.position[0]), 1), round(float(c.position[1]), 1), phases.get(c.phase.value, 0), c.cell_id,
+                  *z(c.position)] for c in self.physics.geometry.tumor_cells]
+        fields = {name: encode_field(self._field_plane(name), self._frame_stride()) for name in self._frame_fields()}
         return {"bots": bots, "cells": cells, "fields": fields}
 
     def observe(self, agent_id: str, tick: int) -> Observation:
@@ -167,9 +189,9 @@ class TumorWorld:
         if agent_id == QUEEN:
             return Observation({"role": QUEEN}, SenseQuery(pos=self.center, radius=self.domain[1] * 2))
         body = self.bodies[agent_id]
-        pos = (float(body.position[0]), float(body.position[1]))
+        pos = tuple(float(body.position[i]) for i in range(self.dim))
         cells = sorted(self.physics.cells_near(pos, self.sense_radius),
-                       key=lambda c: ((c.position[0] - pos[0]) ** 2 + (c.position[1] - pos[1]) ** 2, c.cell_id))
+                       key=lambda c: (sum((c.position[i] - pos[i]) ** 2 for i in range(self.dim)), c.cell_id))
         target = self.physics.cell(body.target_cell) if body.target_cell is not None else None
         gradients = {"oxygen": _round2(self.physics.gradient("oxygen", pos))}
         if self.config["chemical_pheromones"]:
@@ -177,18 +199,18 @@ class TumorWorld:
                 gradients[name] = _round2(self.physics.gradient(name, pos))
         data = {
             "role": "nanobot",
-            "pos": [round(pos[0], 3), round(pos[1], 3)],
+            "pos": [round(p, 3) for p in pos],
             "state": body.state,
             "payload": round(body.payload, 3),
             "max_payload": body.max_payload,
             "target": None if target is None or not target.is_alive else
-            {"id": target.cell_id, "pos": [round(target.position[0], 3), round(target.position[1], 3)]},
+            {"id": target.cell_id, "pos": [round(target.position[i], 3) for i in range(self.dim)]},
             "previous_direction": _round2(body.previous_direction),
-            "cells": [{"id": c.cell_id, "pos": [round(c.position[0], 3), round(c.position[1], 3)],
+            "cells": [{"id": c.cell_id, "pos": [round(c.position[i], 3) for i in range(self.dim)],
                        "phase": c.phase.value, "type": c.cell_type.value,
                        "resistance": round(float(c.resistance_level), 4)} for c in cells[:24]],
             "gradients": gradients,
-            "inside_tumor": _dist(pos, self.center) <= self.tumor_radius,
+            "inside_tumor": self._dist(pos, self.center) <= self.tumor_radius,
             "anatomy": {"tumor_center": list(self.center), "tumor_radius": self.tumor_radius,
                         "vessels": [list(v) for v in self.vessels]},
         }
@@ -259,10 +281,10 @@ class TumorWorld:
             self.counters["invalid_actions"] += 1
             return Outcome(False, "bad_cell_id")
         cell = self.physics.cell(cell_id)
-        pos = (body.position[0], body.position[1])
+        pos = tuple(body.position[:self.dim])
         if cell is None or not cell.is_alive:
             return Outcome(False, "no_such_living_cell")
-        if _dist(pos, cell.position) > self.sense_radius:
+        if self._dist(pos, cell.position) > self.sense_radius:
             return Outcome(False, "cell_not_sensed")
         if body.payload <= 2.0:
             return Outcome(False, "payload_too_low")
@@ -276,7 +298,7 @@ class TumorWorld:
     def _move(self, body: Body, direction: Any) -> Outcome:
         if body.state != SEARCHING:
             return Outcome(False, "busy")
-        if not (isinstance(direction, list) and len(direction) == 2
+        if not (isinstance(direction, list) and len(direction) == self.dim
                 and all(isinstance(c, (int, float)) and not isinstance(c, bool) and math.isfinite(c) for c in direction)):
             self.counters["invalid_actions"] += 1
             return Outcome(False, "bad_direction")
@@ -308,7 +330,7 @@ class TumorWorld:
         if cell is None or not cell.is_alive:
             body.target_cell, body.state = None, SEARCHING
             return Outcome(True, "target_lost")
-        direction = np.array(cell.position[:2]) - body.position
+        direction = np.array(cell.position[:self.dim]) - body.position
         distance = np.linalg.norm(direction)
         if distance < 30.0:
             body.state = DELIVERING
@@ -380,7 +402,7 @@ class TumorWorld:
     def _nearest_vessel(self, body: Body) -> Optional[int]:
         if not self.vessels:
             return None
-        distances = [_dist(body.position, v) for v in self.vessels]
+        distances = [self._dist(body.position, v) for v in self.vessels]
         return int(np.argmin(distances))
 
     def _clamp(self, body: Body) -> None:
@@ -388,14 +410,14 @@ class TumorWorld:
         lo, hi = self.domain
         body.position = np.clip(body.position, lo, hi)
         pos = body.position
-        away = _dist(pos, self.center)
+        away = self._dist(pos, self.center)
         if away <= self.tumor_radius:
             return
         on_mission = body.state in (TARGETING, DELIVERING)
         may_be_outside = body.state in (RETURNING, RELOADING) or body.payload < 10.0
         if on_mission and body.target_cell is not None:
             cell = self.physics.cell(body.target_cell)
-            if cell is not None and _dist(cell.position, self.center) <= self.tumor_radius:
+            if cell is not None and self._dist(cell.position, self.center) <= self.tumor_radius:
                 return
         if not may_be_outside and not on_mission:
             # Legacy computed center + dir_to_center * (r - 5), which lands on the
@@ -414,9 +436,16 @@ class TumorWorld:
                     body.position = pos + to_vessel / distance * body.speed * 0.5
 
 
+    def _dist(self, a, b) -> float:
+        if self.dim == 2:
+            return _dist(a, b)
+        return math.hypot(float(a[0]) - float(b[0]), float(a[1]) - float(b[1]), float(a[2]) - float(b[2]))
+
+
 def _dist(a, b) -> float:
     return math.hypot(float(a[0]) - float(b[0]), float(a[1]) - float(b[1]))
 
 
 def _round2(v) -> List[float]:
-    return [round(float(v[0]), 6), round(float(v[1]), 6)]
+    """Round a 2- or 3-component vector (name kept for the 2D-era call sites)."""
+    return [round(float(c), 6) for c in v]

@@ -41,7 +41,7 @@ def test_catalog_and_param_validation():
     names = {w["name"] for w in catalog()}
     assert names == {"foraging", "tumor", "task_dag"}
     tumor = world("tumor")
-    assert tumor.resolve_params({}) == {"max_steps": 150, "n_nanobots": 10}
+    assert tumor.resolve_params({}) == {"max_steps": 150, "n_nanobots": 10, "dimensionality": 2}
     for bad in ({"max_steps": 5}, {"n_nanobots": 0}, {"max_steps": True}, {"speed": 2}):
         with pytest.raises(ValueError):
             tumor.resolve_params(bad)
