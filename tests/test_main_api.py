@@ -378,3 +378,13 @@ print(json.dumps({"post": created.json(), "get": retrieved.json(), "status": [cr
     assert payload["get"]["run_id"] == payload["post"]["run_id"]
     assert payload["get"]["config_hash"] == payload["post"]["config_hash"]
     assert payload["get"]["proof_ok"] is False
+
+
+def test_engine_router_is_mounted_in_the_main_app():
+    from fastapi.testclient import TestClient
+    from backend import main as main_module
+
+    client = TestClient(main_module.app)
+    health = client.get("/engine/health")
+    assert health.status_code == 200
+    assert health.json()["worlds"] == ["foraging", "task_dag", "tumor"]
