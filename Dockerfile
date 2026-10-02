@@ -49,6 +49,9 @@ RUN pip install --no-cache-dir --upgrade pip \
 # Copy backend source code
 COPY backend/ ./backend/
 
+# Copy the swarm engine (backend/main.py mounts its /engine router at import time)
+COPY antelligence/ ./antelligence/
+
 # Copy blockchain client folder (make sure this folder exists before building)
 COPY blockchain/ ./blockchain/
 
