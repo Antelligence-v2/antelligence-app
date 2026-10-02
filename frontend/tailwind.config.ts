@@ -1,117 +1,99 @@
 import type { Config } from "tailwindcss";
+import defaultTheme from "tailwindcss/defaultTheme";
+
+const token = (name: string) => `hsl(var(--${name}) / <alpha-value>)`;
 
 export default {
 	darkMode: ["class"],
-	content: [
-		"./pages/**/*.{ts,tsx}",
-		"./components/**/*.{ts,tsx}",
-		"./app/**/*.{ts,tsx}",
-		"./src/**/*.{ts,tsx}",
-	],
+	content: ["./src/**/*.{ts,tsx}"],
 	prefix: "",
 	theme: {
 		container: {
 			center: true,
-			padding: '2rem',
-			screens: {
-				'2xl': '1400px'
-			}
+			padding: "2rem",
+			screens: { "2xl": "1400px" },
 		},
 		extend: {
-			colors: {
-				border: 'hsl(var(--border))',
-				input: 'hsl(var(--input))',
-				ring: 'hsl(var(--ring))',
-				background: 'hsl(var(--background))',
-				foreground: 'hsl(var(--foreground))',
-				primary: {
-					DEFAULT: 'hsl(var(--primary))',
-					foreground: 'hsl(var(--primary-foreground))'
-				},
-				secondary: {
-					DEFAULT: 'hsl(var(--secondary))',
-					foreground: 'hsl(var(--secondary-foreground))'
-				},
-				destructive: {
-					DEFAULT: 'hsl(var(--destructive))',
-					foreground: 'hsl(var(--destructive-foreground))'
-				},
-				muted: {
-					DEFAULT: 'hsl(var(--muted))',
-					foreground: 'hsl(var(--muted-foreground))'
-				},
-				accent: {
-					DEFAULT: 'hsl(var(--accent))',
-					foreground: 'hsl(var(--accent-foreground))'
-				},
-				popover: {
-					DEFAULT: 'hsl(var(--popover))',
-					foreground: 'hsl(var(--popover-foreground))'
-				},
-				card: {
-					DEFAULT: 'hsl(var(--card))',
-					foreground: 'hsl(var(--card-foreground))'
-				},
-				sidebar: {
-					DEFAULT: 'hsl(var(--sidebar-background))',
-					foreground: 'hsl(var(--sidebar-foreground))',
-					primary: 'hsl(var(--sidebar-primary))',
-					'primary-foreground': 'hsl(var(--sidebar-primary-foreground))',
-					accent: 'hsl(var(--sidebar-accent))',
-					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
-					border: 'hsl(var(--sidebar-border))',
-					ring: 'hsl(var(--sidebar-ring))'
-				},
-				simulation: {
-					'ant-rule': 'hsl(var(--ant-rule-based))',
-					'ant-llm': 'hsl(var(--ant-llm))',
-					'ant-hybrid': 'hsl(var(--ant-hybrid))',
-					'food': 'hsl(var(--food-color))',
-					'grid-cell': 'hsl(var(--grid-cell))',
-					'grid-border': 'hsl(var(--grid-border))'
-				}
+			fontFamily: {
+				sans: ["Inter Variable", ...defaultTheme.fontFamily.sans],
+				mono: ["JetBrains Mono", ...defaultTheme.fontFamily.mono],
 			},
-			backgroundImage: {
-				'gradient-primary': 'var(--gradient-primary)',
-				'gradient-simulation': 'var(--gradient-simulation)',
-				'gradient-sidebar': 'var(--gradient-sidebar)'
+			fontSize: {
+				"2xs": ["0.6875rem", { lineHeight: "1rem", letterSpacing: "0.01em" }],
+			},
+			colors: {
+				border: token("border"),
+				input: token("input"),
+				ring: token("ring"),
+				background: token("background"),
+				foreground: token("foreground"),
+				surface: {
+					1: token("card"),
+					2: token("surface-2"),
+					3: token("surface-3"),
+				},
+				primary: { DEFAULT: token("primary"), foreground: token("primary-foreground") },
+				secondary: { DEFAULT: token("secondary"), foreground: token("secondary-foreground") },
+				destructive: { DEFAULT: token("destructive"), foreground: token("destructive-foreground") },
+				muted: { DEFAULT: token("muted"), foreground: token("muted-foreground") },
+				accent: { DEFAULT: token("accent"), foreground: token("accent-foreground") },
+				popover: { DEFAULT: token("popover"), foreground: token("popover-foreground") },
+				card: { DEFAULT: token("card"), foreground: token("card-foreground") },
+				success: token("success"),
+				warning: token("warning"),
+				danger: token("danger"),
+				info: token("info"),
+				// Legacy ant-sim palette (pages removed in step 14).
+				simulation: {
+					"ant-rule": "hsl(var(--ant-rule-based))",
+					"ant-llm": "hsl(var(--ant-llm))",
+					"ant-hybrid": "hsl(var(--ant-hybrid))",
+					food: "hsl(var(--food-color))",
+					"grid-cell": "hsl(var(--grid-cell))",
+					"grid-border": "hsl(var(--grid-border))",
+				},
+			},
+			opacity: { 12: "0.12", 8: "0.08" },
+			borderRadius: {
+				xl: "calc(var(--radius) + 4px)",
+				lg: "var(--radius)",
+				md: "calc(var(--radius) - 2px)",
+				sm: "calc(var(--radius) - 4px)",
 			},
 			boxShadow: {
-				'simulation': 'var(--shadow-simulation)',
-				'card-hover': 'var(--shadow-hover)',
-				'custom': 'var(--shadow-card)'
+				e1: "0 1px 2px 0 hsl(var(--shadow-color) / 0.12)",
+				e2: "0 4px 12px -2px hsl(var(--shadow-color) / 0.18), 0 1px 3px 0 hsl(var(--shadow-color) / 0.10)",
+				e3: "0 16px 40px -8px hsl(var(--shadow-color) / 0.35), 0 2px 6px 0 hsl(var(--shadow-color) / 0.14)",
 			},
 			transitionTimingFunction: {
-				'smooth': 'cubic-bezier(0.4, 0, 0.2, 1)',
+				smooth: "cubic-bezier(0.4, 0, 0.2, 1)",
+				"out-expo": "cubic-bezier(0.16, 1, 0.3, 1)",
 			},
-			borderRadius: {
-				lg: 'var(--radius)',
-				md: 'calc(var(--radius) - 2px)',
-				sm: 'calc(var(--radius) - 4px)'
+			transitionDuration: {
+				fast: "120ms",
+				base: "180ms",
+				slow: "260ms",
 			},
 			keyframes: {
-				'accordion-down': {
-					from: {
-						height: '0'
-					},
-					to: {
-						height: 'var(--radix-accordion-content-height)'
-					}
+				"accordion-down": {
+					from: { height: "0" },
+					to: { height: "var(--radix-accordion-content-height)" },
 				},
-				'accordion-up': {
-					from: {
-						height: 'var(--radix-accordion-content-height)'
-					},
-					to: {
-						height: '0'
-					}
-				}
+				"accordion-up": {
+					from: { height: "var(--radix-accordion-content-height)" },
+					to: { height: "0" },
+				},
+				shimmer: {
+					from: { backgroundPosition: "200% 0" },
+					to: { backgroundPosition: "-200% 0" },
+				},
 			},
 			animation: {
-				'accordion-down': 'accordion-down 0.2s ease-out',
-				'accordion-up': 'accordion-up 0.2s ease-out'
-			}
-		}
+				"accordion-down": "accordion-down 0.2s ease-out",
+				"accordion-up": "accordion-up 0.2s ease-out",
+				shimmer: "shimmer 1.8s linear infinite",
+			},
+		},
 	},
 	plugins: [require("tailwindcss-animate")],
 } satisfies Config;

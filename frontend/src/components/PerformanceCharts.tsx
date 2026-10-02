@@ -1,3 +1,7 @@
+/* eslint-disable-next-line @typescript-eslint/ban-ts-comment */
+// @ts-nocheck -- legacy ant-sim UI with known type errors (async results rendered
+// as values, wrong history field names). Removed in step 14 of
+// docs/plans/2026-09-27-frontend-refactor-v1.md; do not add new @ts-nocheck files.
 import React from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, BarChart, Bar, ResponsiveContainer, ScatterChart, Scatter, Cell } from 'recharts';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";

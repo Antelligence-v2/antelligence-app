@@ -182,7 +182,7 @@ def test_api_cross_world_experiments(client):
     tumor = client.post("/engine/experiments", json={"world": "tumor", "arms": ["rule", "signals"], "cases": [1],
                                                      "params": {"max_steps": 20, "n_nanobots": 4}})
     assert forage.status_code == tumor.status_code == 201
-    assert tumor.json()["primary_metric"] == "living_cells"
+    assert tumor.json()["primary_metric"] == "mean_living_cells"
     listed = {e["experiment_id"] for e in client.get("/engine/experiments").json()}
     assert {forage.json()["experiment_id"], tumor.json()["experiment_id"]} <= listed
     assert client.get(f"/engine/experiments/{forage.json()['experiment_id']}").json() == forage.json()

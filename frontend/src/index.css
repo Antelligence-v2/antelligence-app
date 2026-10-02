@@ -1,86 +1,170 @@
+@import "@fontsource-variable/inter";
+@import "@fontsource/jetbrains-mono/400.css";
+@import "@fontsource/jetbrains-mono/500.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * Antelligence design tokens.
+ * Colors are HSL triplets so Tailwind opacity modifiers work (bg-primary/10).
+ * Light is the :root baseline; .dark (the default theme) overrides it.
+ * One accent (signal cyan). Semantic colors are reserved for verdicts/status.
+ */
+@layer base {
+  :root {
+    --background: 220 20% 98.5%;
+    --foreground: 222 22% 10%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222 22% 10%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 22% 10%;
+    --surface-2: 220 16% 96%;
+    --surface-3: 220 14% 93%;
+
+    --primary: 191 94% 28%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 14% 95%;
+    --secondary-foreground: 222 22% 12%;
+    --muted: 220 14% 95%;
+    --muted-foreground: 220 9% 42%;
+    --accent: 220 14% 94%;
+    --accent-foreground: 222 22% 10%;
+
+    --border: 220 13% 89%;
+    --input: 220 13% 86%;
+    --ring: 191 94% 28%;
+
+    --destructive: 0 72% 48%;
+    --destructive-foreground: 0 0% 100%;
+    --success: 152 64% 26%;
+    --warning: 32 95% 31%;
+    --danger: 0 74% 42%;
+    --info: 214 84% 40%;
+
+    --radius: 0.5rem;
+    --shadow-color: 222 30% 20%;
+  }
+
+  .dark {
+    --background: 222 16% 5.5%;
+    --foreground: 220 16% 92%;
+
+    --card: 222 14% 8%;
+    --card-foreground: 220 16% 92%;
+    --popover: 222 13% 10%;
+    --popover-foreground: 220 16% 92%;
+    --surface-2: 222 12% 11%;
+    --surface-3: 222 11% 14%;
+
+    --primary: 188 86% 56%;
+    --primary-foreground: 222 40% 7%;
+    --secondary: 222 11% 13%;
+    --secondary-foreground: 220 16% 92%;
+    --muted: 222 11% 12%;
+    --muted-foreground: 220 9% 58%;
+    --accent: 222 11% 14%;
+    --accent-foreground: 220 16% 94%;
+
+    --border: 222 10% 16%;
+    --input: 222 10% 19%;
+    --ring: 188 86% 56%;
+
+    --destructive: 0 74% 62%;
+    --destructive-foreground: 222 40% 7%;
+    --success: 152 58% 50%;
+    --warning: 38 92% 60%;
+    --danger: 0 74% 64%;
+    --info: 213 92% 67%;
+
+    --shadow-color: 222 50% 2%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11", "ss01";
+  }
+
+  ::selection {
+    background: hsl(var(--primary) / 0.28);
+  }
+
+  :focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+/* Quiet scrollbars that sit on the surface instead of competing with content. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--foreground) / 0.16) transparent;
+}
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--foreground) / 0.14);
+  border: 3px solid transparent;
+  background-clip: padding-box;
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--foreground) / 0.26);
+  background-clip: padding-box;
+}
+
+@layer utilities {
+  /* Numbers that line up in tables, tiles and scrubbers. */
+  .numeric {
+    font-variant-numeric: tabular-nums slashed-zero;
+    font-feature-settings: "tnum", "zero";
+  }
+  /* Hairline top highlight that gives dark surfaces a sense of depth. */
+  .surface-edge {
+    box-shadow: inset 0 1px 0 0 hsl(var(--foreground) / 0.04);
+  }
+}
+
+/* Legacy ant-sim utilities, still used by pages removed in step 14. */
 @keyframes pulse {
   0% { opacity: 0.4; transform: scale(1); }
   50% { opacity: 0.8; transform: scale(1.2); }
   100% { opacity: 0.4; transform: scale(1); }
 }
-
-/* Scientific Simulation Design System - Nature & Ant Colony Theme */
-:root {
-  --background: 45 27% 94%; /* Warm sandy beige */
-  --foreground: 25 15% 15%; /* Dark brown */
-  --card: 45 30% 96%; /* Light sandy */
-  --card-foreground: 25 15% 15%;
-  --popover: 45 30% 96%;
-  --popover-foreground: 25 15% 15%;
-  --primary: 35 60% 45%; /* Rich amber */
-  --primary-foreground: 45 27% 94%;
-  --secondary: 30 40% 85%; /* Warm light brown */
-  --secondary-foreground: 25 15% 15%;
-  --muted: 45 25% 90%; /* Muted sandy */
-  --muted-foreground: 25 20% 40%;
-  --accent: 35 50% 80%; /* Light amber */
-  --accent-foreground: 25 15% 15%;
-  --destructive: 0 70% 50%;
-  --destructive-foreground: 45 27% 94%;
-  --border: 45 25% 85%; /* Sandy border */
-  --input: 45 25% 90%;
-  --ring: 35 60% 45%;
-  --radius: 0.5rem;
-}
-
-.dark {
-  --background: 25 15% 8%; /* Dark brown */
-  --foreground: 45 25% 90%; /* Light sandy */
-  --card: 25 15% 12%; /* Darker brown */
-  --card-foreground: 45 25% 90%;
-  --popover: 25 15% 12%;
-  --popover-foreground: 45 25% 90%;
-  --primary: 35 60% 55%; /* Brighter amber for dark mode */
-  --primary-foreground: 25 15% 8%;
-  --secondary: 25 20% 18%; /* Dark brown */
-  --secondary-foreground: 45 25% 90%;
-  --muted: 25 15% 15%; /* Dark muted */
-  --muted-foreground: 45 25% 70%;
-  --accent: 35 40% 25%; /* Dark amber */
-  --accent-foreground: 45 25% 90%;
-  --destructive: 0 70% 50%;
-  --destructive-foreground: 45 25% 90%;
-  --border: 25 15% 20%; /* Dark border */
-  --input: 25 15% 15%;
-  --ring: 35 60% 55%;
-}
-
-/* Nature-themed scrollbar */
-::-webkit-scrollbar {
-  width: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: hsl(var(--muted));
-}
-
-::-webkit-scrollbar-thumb {
-  background: hsl(var(--primary));
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--primary) / 0.8);
-}
-
-/* Ant colony background pattern */
 .ant-colony-bg {
-  background-image: 
+  background-image:
     radial-gradient(circle at 20% 80%, rgba(139, 69, 19, 0.1) 0%, transparent 50%),
     radial-gradient(circle at 80% 20%, rgba(160, 82, 45, 0.1) 0%, transparent 50%),
     radial-gradient(circle at 40% 40%, rgba(210, 180, 140, 0.05) 0%, transparent 50%);
 }
-
-/* Sandy texture overlay */
 .sandy-texture {
   background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100' height='100' filter='url(%23noise)' opacity='0.1'/%3E%3C/svg%3E");
 }

@@ -23,6 +23,7 @@ from typing import Any, Dict, List, Mapping, Optional, Protocol, Tuple
 from antelligence.kernel import events as ev
 from antelligence.kernel.canonical import content_hash
 from antelligence.kernel.field import FieldFullError, SignalField
+from antelligence.kernel.frames import signal_marks
 from antelligence.kernel.signal import Signal, SignalError
 from antelligence.kernel.types import NOOP, Intent, LocalView, Outcome, Policy, World
 
@@ -126,6 +127,7 @@ class Scheduler:
         gate: Optional[IntentGate] = None,
         recorder: Optional[Recorder] = None,
         log: Optional[ev.EventLog] = None,
+        record_frames: bool = True,
     ) -> None:
         self.world = world
         self.policies = dict(policies)
@@ -143,6 +145,11 @@ class Scheduler:
         self.signals_deposited = 0
         self.signals_rejected = 0
         self._started = False
+        # Visualization frames live outside the event log (see kernel/frames.py).
+        self.record_frames = record_frames and callable(getattr(world, "snapshot", None))
+        scene = getattr(world, "scene", None)
+        self.scene: Optional[Dict[str, Any]] = scene() if self.record_frames and callable(scene) else None
+        self.frames: List[Dict[str, Any]] = []
 
     # ------------------------------------------------------------------ config
     def _policy_for(self, agent_id: str) -> Policy:
@@ -181,6 +188,7 @@ class Scheduler:
                 0,
                 {"run_id": self.config.run_id, "arm": self.config.arm, "seed": self.config.seed, "config_hash": config_hash},
             )
+            self._capture_frame(0)
         stopped = "max_ticks"
         while self.tick < self.config.max_ticks:
             if self.world.done(self.tick):
@@ -272,6 +280,15 @@ class Scheduler:
             self.log.append(ev.SIGNAL_EXPIRED, tick, {"signal_id": signal.id})
         self.world.step_environment(tick)
         self.log.append(ev.TICK_ENDED, tick, {"revision": self.world.revision, "metrics": self.world.metrics()})
+        self._capture_frame(tick)
+
+    def _capture_frame(self, tick: int) -> None:
+        """Record the world as it stands at the end of ``tick`` (0 = initial state)."""
+        if not self.record_frames:
+            return
+        # Signals deposited this tick are sensed from the next one, so show that view.
+        live = self.field.snapshot(self.config.scope, tick + 1)
+        self.frames.append({"tick": tick, "world": self.world.snapshot(), "signals": signal_marks(live, tick)})
 
     async def _decide(self, view: LocalView) -> Tuple[Intent, Optional[dict]]:
         policy = self._policy_for(view.agent_id)

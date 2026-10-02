@@ -9,7 +9,7 @@ metric with an exact sign test. Reports carry their caveats with them.
 from __future__ import annotations
 
 from collections import Counter
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Any, Callable, Dict, List, Optional, Sequence
 
 from antelligence.experiments.registry import RunSpec, world
 from antelligence.experiments.stats import paired_comparison, wilson_interval
@@ -26,6 +26,67 @@ CAVEATS = (
     "Sign-test p-values are per comparison and not corrected for multiple comparisons.",
     "Bundles are replayable provenance (trust_tier=local_replay, proof_ok=false), not cryptographic proofs.",
 )
+
+
+SIGNIFICANCE = 0.05
+
+
+def recommend(comparisons: Dict[str, Dict[str, Any]], arms_summary: Dict[str, Dict[str, Any]], *,
+              baseline: str, metric_label: str, lower_is_better: bool) -> Dict[str, Any]:
+    """Pick the strategy that works, or say that none did.
+
+    An arm counts as *better* only if it beats the baseline on more seeds than it
+    loses, the paired sign test gives p < 0.05, and it had no unsafe acts or
+    policy failures. Among better arms, the one with the largest average
+    improvement wins (ties: smaller p).
+    """
+    verdicts: Dict[str, Dict[str, Any]] = {}
+    better: List[str] = []
+    for arm, comp in comparisons.items():
+        summary = arms_summary[arm]
+        p = comp["sign_test_p"]
+        significant = p is not None and p < SIGNIFICANCE
+        if summary["unsafe_applied"] or summary["policy_failures"]:
+            verdict = "excluded"
+            reason = "had unsafe acts or failed runs"
+        elif significant and comp["wins"] > comp["losses"]:
+            verdict = "better"
+            reason = f"better on {comp['wins']} of {comp['pairs']} seeds (p = {p:.2g})"
+            better.append(arm)
+        elif significant and comp["losses"] > comp["wins"]:
+            verdict = "worse"
+            reason = f"worse on {comp['losses']} of {comp['pairs']} seeds (p = {p:.2g})"
+        else:
+            verdict = "no_clear_difference"
+            reason = ("identical on every seed" if comp["ties"] == comp["pairs"] else
+                      f"{comp['wins']} better / {comp['losses']} worse / {comp['ties']} tied, not significant")
+        verdicts[arm] = {"verdict": verdict, "reason": reason, "pct_change": comp["pct_change"],
+                         "mean_delta": comp["mean_delta"], "p": p}
+
+    def gain(arm: str) -> float:
+        delta = comparisons[arm]["mean_delta"] or 0.0
+        return -delta if lower_is_better else delta
+
+    pairs = max((c["pairs"] for c in comparisons.values()), default=0)
+    min_p = 2 * 0.5 ** pairs if pairs else None  # smallest two-sided sign-test p at this many seeds
+    underpowered = min_p is not None and min_p >= SIGNIFICANCE
+
+    if better:
+        best = max(better, key=lambda arm: (gain(arm), -(comparisons[arm]["sign_test_p"] or 1.0), arm))
+        comp = comparisons[best]
+        change = comp["pct_change"]
+        change_text = f"{change:+.0f}% {metric_label}" if change is not None else f"change in {metric_label}"
+        summary = (f"{best} works best: {change_text} vs {baseline}, better on {comp['wins']} of "
+                   f"{comp['pairs']} seeds (p = {comp['sign_test_p']:.2g}), 0 unsafe acts.")
+    elif underpowered:
+        best = None
+        summary = (f"Too few seeds to decide: with {pairs} seeds the smallest possible p is {min_p:.2g}, "
+                   f"so no difference can reach p < {SIGNIFICANCE}. Use at least 6 seeds.")
+    else:
+        best = None
+        summary = f"No strategy beat {baseline} significantly on {metric_label} across {pairs} seeds."
+    return {"best_arm": best, "baseline": baseline, "summary": summary, "significance": SIGNIFICANCE,
+            "seeds": pairs, "underpowered": underpowered, "verdicts": verdicts}
 
 
 def run_id_for(spec: RunSpec) -> str:
@@ -55,16 +116,17 @@ def execute_run(spec: RunSpec, *, store: Optional[EngineStore] = None, outbox: O
         "bundle_hash": bundle["bundle_hash"],
     }
     if store is not None:
-        store.save_run(record, bundle, scheduler.log, experiment_id=experiment_id)
+        frames = {"scene": scheduler.scene, "frames": scheduler.frames} if scheduler.frames else None
+        store.save_run(record, bundle, scheduler.log, experiment_id=experiment_id, frames=frames)
     if outbox is not None:
         outbox.enqueue(bundle)
     return {**record, "bundle": bundle}
 
 
-def experiment_request(world_name: str, arms: Sequence[str], cases: Sequence[int], *,
+def experiment_request(world_name: str, arms: Optional[Sequence[str]], cases: Sequence[int], *,
                        params: Optional[Dict[str, Any]] = None, baseline: Optional[str] = None) -> Dict[str, Any]:
     ws = world(world_name)
-    arms = list(dict.fromkeys(arms))
+    arms = list(dict.fromkeys(arms or ws.arms))  # no arms given: compare every strategy
     cases = list(dict.fromkeys(cases))
     if not arms or not cases:
         raise ValueError("at least one arm and one case are required")
@@ -81,14 +143,16 @@ def experiment_request(world_name: str, arms: Sequence[str], cases: Sequence[int
 
 
 def run_experiment(request: Dict[str, Any], *, store: Optional[EngineStore] = None,
-                   outbox: Optional[ProvenanceOutbox] = None, force: bool = False) -> Dict[str, Any]:
+                   outbox: Optional[ProvenanceOutbox] = None, force: bool = False,
+                   on_progress: Optional[Callable[[int, int], None]] = None) -> Dict[str, Any]:
     """Run (or return the cached report for) an experiment.
 
     The cache key includes the engine fingerprint, so a report is reused only if
     no engine, world or physics source changed since it was computed. ``force``
-    re-runs and overwrites regardless.
+    re-runs and overwrites regardless. ``on_progress(done, total)`` is called
+    after each run (not at all for a cached report).
     """
-    request = experiment_request(request["world"], request["arms"], request["cases"],
+    request = experiment_request(request["world"], request.get("arms"), request["cases"],
                                  params=request.get("params"), baseline=request.get("baseline"))
     fingerprint = engine_fingerprint()
     experiment_id = content_hash({"request": request, "engine": fingerprint})[:16]
@@ -98,6 +162,8 @@ def run_experiment(request: Dict[str, Any], *, store: Optional[EngineStore] = No
             return cached
     ws = world(request["world"])
     runs: Dict[str, List[Dict[str, Any]]] = {}
+    total = len(request["arms"]) * len(request["cases"])
+    done = 0
     for arm in request["arms"]:
         runs[arm] = []
         for case in request["cases"]:
@@ -105,6 +171,9 @@ def run_experiment(request: Dict[str, Any], *, store: Optional[EngineStore] = No
                                  outbox=outbox, experiment_id=experiment_id)
             record.pop("bundle")
             runs[arm].append(record)
+            done += 1
+            if on_progress is not None:
+                on_progress(done, total)
 
     metric = ws.primary_metric
     arms_summary = {}
@@ -140,6 +209,8 @@ def run_experiment(request: Dict[str, Any], *, store: Optional[EngineStore] = No
         "runs": {arm: [{k: r[k] for k in ("run_id", "spec", "trace_hash", "bundle_hash", "ticks")}
                        | {metric: r["metrics"].get(metric), "verdict": r["verdict"]["verdict"]}
                        for r in records] for arm, records in runs.items()},
+        "recommendation": recommend(comparisons, arms_summary, baseline=request["baseline"],
+                                    metric_label=ws.metric_label or metric, lower_is_better=ws.lower_is_better),
         "caveats": list(CAVEATS),
     }
     if store is not None:
