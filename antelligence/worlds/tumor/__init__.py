@@ -1,4 +1,4 @@
-"""Synthetic 2D glioblastoma world (research model, not clinical software)."""
+"""Synthetic glioblastoma world, 2D or 3D (research model, not clinical software)."""
 
 from antelligence.worlds.tumor.arms import ARMS, build, default_policy
 from antelligence.worlds.tumor.physics import TumorPhysics

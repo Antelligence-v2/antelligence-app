@@ -78,14 +78,15 @@ function Side({ report, arm, seed, position, tick, layer, winner }: {
  * Watch two arms on the same seed, side by side, under one playhead: the
  * visual counterpart of the paired comparison above.
  */
-export function Compare({ report, selection, onSelection }: {
+export function Compare({ report, selection, onSelection, autoplay = false }: {
   report: Experiment;
   selection: WatchSelection;
   onSelection: (s: WatchSelection) => void;
+  autoplay?: boolean;
 }) {
   const arms = Object.keys(report.runs);
   const maxTicks = Math.max(1, ...arms.flatMap((a) => report.runs[a].filter((r) => r.spec.case === selection.seed).map((r) => r.ticks)));
-  const playback = usePlayback(0, maxTicks, 0);
+  const playback = usePlayback(0, maxTicks, 0, autoplay);
   const fields = report.request.world === "tumor" ? Object.keys(FIELD_STYLE).filter((f) => f !== "oxygen") : [];
   const [layer, setLayer] = useState<string | null>(fields.includes("drug") ? "drug" : null);
   const left = report.runs[selection.left]?.find((r) => r.spec.case === selection.seed);

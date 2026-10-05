@@ -50,7 +50,7 @@ def _nearby_zones(agent_id: str, observation) -> list:
     """Recall is local too: only zones within RECALL_RADIUS of the bot."""
     if observation.get("role") != "nanobot":
         return []
-    x, y = observation["pos"]
+    x, y = observation["pos"][:2]  # zones are x/y columns; in 3D a zone spans the full height
     reach = int(RECALL_RADIUS // ZONE) + 1
     zx, zy = int(x // ZONE), int(y // ZONE)
     return [f"zone:{i},{j}" for i in range(zx - reach, zx + reach + 1) for j in range(zy - reach, zy + reach + 1)

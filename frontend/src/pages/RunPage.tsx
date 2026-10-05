@@ -224,8 +224,10 @@ function RunBody({ run, events }: { run: Run; events: EngineEvent[] }) {
   const [params, setParams] = useSearchParams();
   const series = useMemo(() => tickSeries(events), [events]);
   const range = tickRange(series);
-  const initial = params.get("t") !== null ? Number(params.get("t")) : undefined;
-  const playback = usePlayback(range.min, range.max, Number.isFinite(initial) ? initial : undefined);
+  // ?play=1 (set right after launching a run) replays the run from the first tick.
+  const [autoplay] = useState(() => params.get("play") === "1");
+  const initial = !autoplay && params.get("t") !== null ? Number(params.get("t")) : undefined;
+  const playback = usePlayback(range.min, range.max, Number.isFinite(initial) ? initial : undefined, autoplay);
   const meta = worldMeta(run.spec.world);
   const frames = useRunFrames(run.run_id);
   const [agent, setAgent] = useState<string | null>(null);
@@ -234,7 +236,9 @@ function RunBody({ run, events }: { run: Run; events: EngineEvent[] }) {
   useEffect(() => {
     if (playback.playing || series.length === 0) return;
     const current = params.get("t");
-    if (current !== String(playback.tick)) setParams((p) => { p.set("t", String(playback.tick)); return p; }, { replace: true });
+    if (current !== String(playback.tick) || params.has("play")) {
+      setParams((p) => { p.set("t", String(playback.tick)); p.delete("play"); return p; }, { replace: true });
+    }
   }, [playback.playing, playback.tick, series.length, params, setParams]);
 
   const now = pointAt(series, playback.tick)?.metrics ?? run.metrics;
@@ -262,7 +266,7 @@ function RunBody({ run, events }: { run: Run; events: EngineEvent[] }) {
       </div>
       <SafetyStrip run={run} />
       {frames.data && (
-        <Viewport data={frames.data} position={playback.position} tick={playback.tick} selected={agent} onSelect={setAgent} />
+        <Viewport data={frames.data} playback={playback} selected={agent} onSelect={setAgent} />
       )}
       {frames.isPending && <Skeleton className="h-[420px] rounded-xl" />}
       <Timeline run={run} series={series} events={events} playback={playback} />
