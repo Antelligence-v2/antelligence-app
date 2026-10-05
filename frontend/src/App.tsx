@@ -1,43 +1,67 @@
-import { Toaster } from "@/components/ui/toaster";
+import { lazy, Suspense } from "react";
+import { LazyMotion, MotionConfig } from "framer-motion";
+import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Index from "./pages/Index";
-import SimulationComparison from "./pages/SimulationComparison";
-import TumorSimulation from "./pages/TumorSimulation";
-import TumorHunt from "./pages/TumorHunt";
-import ExperimentLab from "./pages/ExperimentLab";
-import ResearchWorkbench from "./pages/ResearchWorkbench";
-import NotFound from "./pages/NotFound";
-import { PreviewModeBanner } from "./components/PreviewModeBanner";
+import { ThemeProvider } from "./design/theme";
+import { AppShell } from "./shell/AppShell";
+import { createQueryClient } from "./api/queries";
 
-const queryClient = new QueryClient();
+// Every page is its own chunk, so the shell paints before page code loads.
+const Landing = lazy(() => import("./pages/Landing"));
+const Worlds = lazy(() => import("./pages/Worlds"));
+const WorldLaunch = lazy(() => import("./pages/WorldLaunch"));
+const RunPage = lazy(() => import("./pages/RunPage"));
+const Lab = lazy(() => import("./pages/Lab"));
+const LabReport = lazy(() => import("./pages/LabReport"));
+const ResearchWorkbench = lazy(() => import("./pages/ResearchWorkbench"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+// Legacy pages keep their original URLs; they link to each other by path.
+const AntColony = lazy(() => import("./pages/Index"));
+const SimulationComparison = lazy(() => import("./pages/SimulationComparison"));
+const TumorSimulation = lazy(() => import("./pages/TumorSimulation"));
+const TumorHunt = lazy(() => import("./pages/TumorHunt"));
+const ExperimentLab = lazy(() => import("./pages/ExperimentLab"));
+const DesignSystem = import.meta.env.DEV ? lazy(() => import("./pages/DesignSystem")) : null;
+
+const queryClient = createQueryClient();
+const motionFeatures = () => import("./design/motion").then((m) => m.default);
 
 const App = () => (
-  <div className="dark">
+  <ThemeProvider>
+    <LazyMotion features={motionFeatures} strict>
+    <MotionConfig reducedMotion="user">
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
+      <TooltipProvider delayDuration={300}>
         <Sonner />
-        <PreviewModeBanner />
         <BrowserRouter>
           <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/comparison" element={<SimulationComparison />} />
-            <Route path="/tumor" element={<TumorSimulation />} />
-            <Route path="/tumor-hunt" element={<TumorHunt />} />
-            <Route path="/experiments" element={<ExperimentLab />} />
-            <Route path="/experiments/:id" element={<ExperimentLab />} />
-            <Route path="/research" element={<ResearchWorkbench />} />
-            <Route path="/research/:id" element={<ResearchWorkbench />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
+            <Route path="/" element={<Suspense fallback={<div className="h-dvh bg-[#0b0f0a]" />}><Landing /></Suspense>} />
+            <Route element={<AppShell />}>
+              <Route path="/worlds" element={<Worlds />} />
+              <Route path="/w/:world" element={<WorldLaunch />} />
+              <Route path="/runs/:runId" element={<RunPage />} />
+              <Route path="/lab" element={<Lab />} />
+              <Route path="/lab/:id" element={<LabReport />} />
+              <Route path="/research" element={<ResearchWorkbench />} />
+              <Route path="/research/:id" element={<ResearchWorkbench />} />
+              <Route path="/ants" element={<AntColony />} />
+              <Route path="/comparison" element={<SimulationComparison />} />
+              <Route path="/tumor" element={<TumorSimulation />} />
+              <Route path="/tumor-hunt" element={<TumorHunt />} />
+              <Route path="/experiments" element={<ExperimentLab />} />
+              <Route path="/experiments/:id" element={<ExperimentLab />} />
+              {DesignSystem && <Route path="/design" element={<DesignSystem />} />}
+              <Route path="*" element={<NotFound />} />
+            </Route>
           </Routes>
         </BrowserRouter>
       </TooltipProvider>
     </QueryClientProvider>
-  </div>
+    </MotionConfig>
+    </LazyMotion>
+  </ThemeProvider>
 );
 
 export default App;

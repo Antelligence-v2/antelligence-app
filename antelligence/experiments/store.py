@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import gzip
 import json
 import sqlite3
 import time
@@ -17,6 +18,8 @@ class EngineStore:
         self.directory = Path(directory)
         self.events_dir = self.directory / "events"
         self.events_dir.mkdir(parents=True, exist_ok=True)
+        self.frames_dir = self.directory / "frames"
+        self.frames_dir.mkdir(parents=True, exist_ok=True)
         self._db = sqlite3.connect(self.directory / "engine.sqlite3", check_same_thread=False, isolation_level=None)
         self._db.row_factory = sqlite3.Row
         self._db.executescript(
@@ -33,9 +36,17 @@ class EngineStore:
             raise ValueError("invalid run id")
         return self.events_dir / f"{run_id}.jsonl"
 
+    def _frames_path(self, run_id: str) -> Path:
+        self._events_path(run_id)  # same id validation
+        return self.frames_dir / f"{run_id}.json.gz"
+
     def save_run(self, record: Mapping[str, Any], bundle: Mapping[str, Any], log: EventLog,
-                 experiment_id: Optional[str] = None) -> None:
+                 experiment_id: Optional[str] = None, frames: Optional[Mapping[str, Any]] = None) -> None:
         log.write_jsonl(self._events_path(record["run_id"]))
+        if frames is not None:
+            # Visualization only; not part of the evidence chain (see kernel/frames.py).
+            with gzip.open(self._frames_path(record["run_id"]), "wt", encoding="utf-8") as handle:
+                json.dump({"run_id": record["run_id"], **frames}, handle, separators=(",", ":"))
         spec = record["spec"]
         self._db.execute(
             "INSERT OR REPLACE INTO runs VALUES (?,?,?,?,?,?,?,?)",
@@ -63,6 +74,13 @@ class EngineStore:
         events = [e.to_dict() for e in log]
         return {"run_id": run_id, "total": len(events), "offset": offset, "trace_hash": log.trace_hash,
                 "events": events[offset: offset + limit]}
+
+    def frames(self, run_id: str) -> Optional[Dict[str, Any]]:
+        path = self._frames_path(run_id)
+        if not path.exists():
+            return None
+        with gzip.open(path, "rt", encoding="utf-8") as handle:
+            return json.load(handle)
 
     def save_experiment(self, experiment_id: str, request: Mapping[str, Any], report: Mapping[str, Any]) -> None:
         self._db.execute("INSERT OR REPLACE INTO experiments VALUES (?,?,?,?)",

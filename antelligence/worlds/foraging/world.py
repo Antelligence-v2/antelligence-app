@@ -81,6 +81,17 @@ class ChainForagingWorld:
                 "grid": [WIDTH, HEIGHT], "view_k": VIEW_K, "agents": AGENTS, "n_food": N_FOOD,
                 "hearing": self.hearing}
 
+    def scene(self) -> Dict[str, Any]:
+        """Static layout for renderers (read-only)."""
+        return {"kind": "grid", "grid": [WIDTH, HEIGHT], "nest": list(self.nest), "view_k": VIEW_K,
+                "foods": [[f[0], f[1], self.food_index[f]] for f in self.foods]}
+
+    def snapshot(self) -> Dict[str, Any]:
+        """Dynamic state at the end of a tick (read-only)."""
+        return {"agents": [[p[0], p[1], len(self.carrying[a])] for a, p in sorted(self.positions.items())],
+                "remaining": [[f[0], f[1], self.food_index[f]] for f in self.remaining],
+                "delivered": self.delivered, "next_needed": self.next_needed}
+
     def observe(self, agent_id: str, tick: int) -> Observation:
         pos = self.positions[agent_id]
         r = VIEW_K // 2

@@ -1,6 +1,6 @@
 # Frontend Port — Plan
 
-**Status:** proposed · **Owner:** Kashyap
+**Status:** superseded by [frontend-refactor-v1](2026-09-27-frontend-refactor-v1.md) · **Owner:** Kashyap
 **Companions:** [engine kernel](2026-09-27-antelligence-engine-kernel.md) ·
 [3D visualization](2026-09-27-3d-tumor-visualization.md)
 
