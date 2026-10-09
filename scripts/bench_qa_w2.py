@@ -46,7 +46,9 @@ def infer_factory(provider, model, ledger, tier):
 def make_provider(spec):
  return OpenAICompatProvider(spec['base_url'],api_key=spec.get('api_key'),allowed_models=[spec['model']],require_model_match=True,require_stop=True,extra_body=spec.get('extra_body'))
 def main():
- ap=argparse.ArgumentParser(); ap.add_argument('--model',required=True); ap.add_argument('--tier',choices=['local','frontier'],required=True); ap.add_argument('--provider',required=True); ap.add_argument('--base-url',required=True); ap.add_argument('--api-key'); ap.add_argument('--served-model'); ap.add_argument('--limit',type=int,default=0); ap.add_argument('--seed',type=int,default=0); ap.add_argument('--smoke',action='store_true'); args=ap.parse_args()
+ ap=argparse.ArgumentParser(); ap.add_argument('--model',required=True); ap.add_argument('--tier',choices=['local','frontier'],required=True); ap.add_argument('--provider',required=True); ap.add_argument('--base-url',required=True); ap.add_argument('--api-key'); ap.add_argument('--served-model'); ap.add_argument('--limit',type=int,default=0); ap.add_argument('--seed',type=int,default=0); ap.add_argument('--smoke',action='store_true'); ap.add_argument('--protocols',default=','.join(ARMS)); args=ap.parse_args()
+ selected=tuple(x for x in args.protocols.split(',') if x)
+ if any(x not in ARMS for x in selected): raise SystemExit('unknown protocol')
  OUT.mkdir(parents=True,exist_ok=True); tasks=[t for t in load_tasks() if t['split']==('development' if args.smoke else 'evaluation')];
  if args.limit: tasks=tasks[:args.limit]
  model=args.served_model or args.model; inner=OpenAICompatProvider(args.base_url,api_key=args.api_key,allowed_models=[model],require_model_match=True,require_stop=True)
@@ -55,7 +57,7 @@ def main():
   catalog=LocalModels().catalog(); print(json.dumps({'local_catalog':catalog},sort_keys=True))
  raw=OUT/f'raw-{args.tier}-{args.model}-seed{args.seed}.jsonl'; cells=[]
  for i,t in enumerate(tasks,1):
-  for arm in ARMS:
+  for arm in selected:
    events=[]
    def emit(e): events.append(e)
    try: cell=run_task(t,[model],arm,{'temperature':0.0,'seed':args.seed,'max_tokens':512},infer,emit,lambda:False)[0]
