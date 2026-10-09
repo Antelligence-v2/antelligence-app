@@ -1,6 +1,6 @@
 # W1: chain layer moved to ZKsync Era Sepolia (2026-10-08/09)
 
-**Status: done pending funds.** Steps 1–3, 5, 7 and 8 are complete, and the full flow ran end to end on a local ZKsync node. The testnet deploy (step 4) and the testnet end-to-end run with an explorer URL (step 6) are blocked only by testnet gas. The deployer has 0 ETH on Era Sepolia (see `docs/status/BLOCKERS.md`, fork PR #16). Nothing in this document claims a testnet deployment.
+**Status: done pending funds.** Steps 1–3, 5, 7 and 8 are complete, and the full flow ran end to end on a local ZKsync node. The testnet deploy (step 4) and the testnet end-to-end run with an explorer URL (step 6) are blocked only by testnet gas. The deployer has 0 ETH on Era Sepolia (see `docs/status/BLOCKERS.md`, which is on this branch). Re-checked 2026-10-09T16:02Z: balance `0x0`, nonce `0x0`, chain `0x12c` (still unfunded). Nothing in this document claims a testnet deployment.
 
 **Where to find the evidence:**
 
