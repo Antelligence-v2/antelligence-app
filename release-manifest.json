@@ -21,7 +21,8 @@
     "deployed": false,
     "contracts_deployed": false,
     "approval_required_before_merge": true,
-    "approval_required_before_deploy": true
+    "approval_required_before_deploy": true,
+    "contracts_deployed_note": "Refers to this manifest's target network (ZKsync Era Sepolia, chain 300). Historical Base Sepolia deployments exist; see deployments.base-sepolia."
   },
   "release_scope": {
     "objective": "Phase-2 proof-chain provenance, fail-closed trust derivation, replay determinism, contract swarm-knowledge support, frontend runtime restoration, and their supporting tests/specifications.",
@@ -127,5 +128,30 @@
     "This manifest pins the code candidate at source_commit; the manifest-only successor commit is reviewed separately to avoid self-referential commit hashing.",
     "No merge, deployment, contract deployment, secret change, or production authority expansion is authorized by this manifest.",
     "Green tests and CI are evidence, not merge approval; a fresh independent exact-head zero-blocker/zero-high verdict is still required."
-  ]
+  ],
+  "deployments": {
+    "updated_at": "2026-10-09",
+    "source_of_truth": "blockchain/deployments/<network>.json (written by blockchain/scripts/deploy-zksync.js)",
+    "selected_network_default": "zksync-era-sepolia",
+    "zksync-era-sepolia": {
+      "chain_id": 300,
+      "deployed": false,
+      "status": "blocked: deployer 0xEE8a688CE7beb1bd46bd5C84bd774Efc750fB086 balance 0 wei; preflight estimate 438256700000000 wei (x1.5 margin = 657385050000000 wei)",
+      "deployments_file": null,
+      "evidence": "docs/status/2026-10-08-chain-redeploy.md"
+    },
+    "zksync-local-inmemory": {
+      "chain_id": 260,
+      "deployed": "rehearsal only (ephemeral anvil-zksync node; record not committed)",
+      "evidence": "docs/status/2026-10-08-chain-redeploy.md"
+    },
+    "base-sepolia": {
+      "chain_id": 84532,
+      "deployed": "historical",
+      "deployments_file": null,
+      "note": "Addresses with bytecode on 2026-10-08 (eth_getCode): TumorIntel 0xd1cfa5b9994e06cc18a21dc18fb9d20a3c02238b (older) and 0x925b455175eF932a9a0239090a94E593224CD8AB, ExperienceRegistry 0x58A78E337ce3D948A39475f05Ca1A2c30274CADE, ColonyMemory 0x914D72b9d49ED4Bb46FA553a01fEbbd5EEf481fA, FoodToken 0x7310fb01b393459d2f8Ab15AD4a66F5380200869. No tx/deployer/commit records; no longer referenced by code.",
+      "evidence": "docs/status/2026-10-08-truth-pass.md"
+    },
+    "proof_verifier": "none configured; MockProofVerifier intentionally not deployed, so no run can become verified_onchain"
+  }
 }

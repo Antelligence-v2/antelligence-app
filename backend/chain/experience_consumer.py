@@ -7,7 +7,7 @@ import os
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
-from chain.config import get_base_sepolia_rpc_url, get_experience_registry_address
+from chain.config import get_rpc_url, get_experience_registry_address
 
 EXPERIENCE_REGISTRY_READER_ABI = [
     {
@@ -153,7 +153,7 @@ class ChainExperienceConsumer:
             if w3 is None:
                 from web3 import Web3
 
-                rpc = rpc_url or get_base_sepolia_rpc_url()
+                rpc = rpc_url or get_rpc_url()
                 if not rpc:
                     return None
                 w3 = Web3(Web3.HTTPProvider(rpc))

@@ -5,12 +5,12 @@ from eth_account import Account
 import json
 
 from backend.chain.config import (
-    get_base_sepolia_rpc_url,
     get_food_address,
+    get_network,
     get_memory_address,
     get_private_key,
     get_tumor_intel_address,
-    resolve_rpc_url,
+    get_rpc_url,
 )
 
 # Load environment variables from .env file
@@ -45,14 +45,11 @@ def load_contract_abi(contract_name):
     return None
 
 # Get RPC URL and Private Key from environment variables
-RPC_URL = resolve_rpc_url(prefer_local=True)
+RPC_URL = get_rpc_url()
 if not RPC_URL:
-    raise ValueError("Neither CHAIN_RPC nor BASE_SEPOLIA_RPC_URL is set in .env. Please configure at least one.")
+    raise ValueError("No chain RPC configured: set ANTELLIGENCE_CHAIN (uses its public RPC) or ANTELLIGENCE_RPC_URL.")
 
-if RPC_URL == os.getenv("CHAIN_RPC") and RPC_URL != "http://127.0.0.1:8545":
-    print(f"Using local RPC: {RPC_URL}")
-else:
-    print(f"Using Base Sepolia RPC: {RPC_URL}")
+print(f"Using {get_network().name} RPC: {RPC_URL}")
 
 
 _PRIV_KEY = get_private_key()
