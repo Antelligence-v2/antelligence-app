@@ -249,8 +249,33 @@ def create_attestation_bundle(
     }
 
 
+SUBMIT_SIMULATION_ABI = [{
+    "type": "function", "name": "submitSimulation", "stateMutability": "nonpayable", "outputs": [],
+    "inputs": [{"name": "configHash", "type": "bytes32"}, {"name": "killRateBps", "type": "uint32"},
+               {"name": "nanobotCount", "type": "uint32"}, {"name": "tumorRadius", "type": "uint32"},
+               {"name": "steps", "type": "uint32"}],
+}]
+
+
+def _web3_send_submit(*, rpc_url: str, private_key: str, contract: str, args: list) -> Dict:
+    """Sign and send submitSimulation in-process (the key never reaches a subprocess argv)."""
+    from web3 import Web3
+
+    w3 = Web3(Web3.HTTPProvider(rpc_url, request_kwargs={"timeout": 60}))
+    account = w3.eth.account.from_key(private_key)
+    fn = w3.eth.contract(address=Web3.to_checksum_address(contract), abi=SUBMIT_SIMULATION_ABI) \
+        .functions.submitSimulation(bytes.fromhex(args[0][2:]), *[int(a) for a in args[1:]])
+    tx = fn.build_transaction({"from": account.address, "nonce": w3.eth.get_transaction_count(account.address),
+                               "chainId": w3.eth.chain_id})
+    signed = account.sign_transaction(tx)
+    tx_hash = w3.eth.send_raw_transaction(signed.raw_transaction)
+    receipt = w3.eth.wait_for_transaction_receipt(tx_hash, timeout=180)
+    return {"status": hex(receipt["status"]), "transactionHash": "0x" + bytes(receipt["transactionHash"]).hex().removeprefix("0x"),
+            "blockNumber": receipt["blockNumber"], "from": receipt["from"]}
+
+
 def submit_bundle_onchain(bundle: Dict, *, rpc_url: Optional[str] = None, private_key: Optional[str] = None,
-                          runner=subprocess.run) -> Dict:
+                          sender=_web3_send_submit) -> Dict:
     """Send a bundle's public values to TumorIntel.submitSimulation and record the receipt.
 
     Returns a copy of the bundle with ``onchain.submission`` (tx hash, block, explorer
@@ -270,14 +295,11 @@ def submit_bundle_onchain(bundle: Dict, *, rpc_url: Optional[str] = None, privat
     if not rpc_url or not private_key:
         raise ValueError("chain RPC and PRIVATE_KEY must be configured for a live submission")
     args = [
-        "cast", "send", contract, "submitSimulation(bytes32,uint32,uint32,uint32,uint32)",
         "0x" + normalize_config_hash(str(payload["config_hash"])),
         str(int(payload["kill_rate_bps"])), str(int(payload["nanobot_count"])),
         str(int(payload["tumor_radius"])), str(int(payload["steps"])),
-        "--rpc-url", rpc_url, "--private-key", private_key, "--json",
     ]
-    result = runner(args, capture_output=True, text=True, timeout=180, check=True)
-    receipt = json.loads(result.stdout)
+    receipt = sender(rpc_url=rpc_url, private_key=private_key, contract=contract, args=args)
     status = str(receipt.get("status", ""))
     if status not in ("1", "0x1", "true", "True"):
         raise RuntimeError(f"submitSimulation reverted (status={status!r}, tx={receipt.get('transactionHash')})")

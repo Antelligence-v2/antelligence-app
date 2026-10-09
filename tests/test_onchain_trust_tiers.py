@@ -2,7 +2,6 @@
 
 import json
 import os
-import subprocess
 import sys
 
 import pytest
@@ -45,9 +44,9 @@ def deployed(monkeypatch, tmp_path):
 def _runner(receipt):
     calls = []
 
-    def run(args, **kwargs):
-        calls.append(args)
-        return subprocess.CompletedProcess(args, 0, stdout=json.dumps(receipt), stderr="")
+    def run(**kwargs):
+        calls.append(kwargs)
+        return receipt
 
     return run, calls
 
@@ -57,9 +56,10 @@ def test_submission_keeps_the_mock_proof_tier(deployed):
                                  run_id="r1")
     run, calls = _runner({"status": "0x1", "transactionHash": "0x" + "22" * 32, "blockNumber": "0x10",
                           "from": "0x" + "cd" * 20})
-    out = submit_bundle_onchain(bundle, rpc_url="http://rpc.test", private_key="0x" + "11" * 32, runner=run)
-    assert calls[0][:4] == ["cast", "send", "0x" + "ab" * 20, "submitSimulation(bytes32,uint32,uint32,uint32,uint32)"]
-    assert calls[0][4] == "0x" + bundle["onchain"]["public_values_payload"]["config_hash"]
+    out = submit_bundle_onchain(bundle, rpc_url="http://rpc.test", private_key="0x" + "11" * 32, sender=run)
+    assert calls[0]["contract"] == "0x" + "ab" * 20
+    assert calls[0]["args"][0] == "0x" + bundle["onchain"]["public_values_payload"]["config_hash"]
+    assert calls[0]["args"][1:] == ["1250", "5", "66", "30"]
     assert out["onchain"]["chain_id"] == 300
     assert out["onchain"]["submission"]["block_number"] == 16
     assert out["onchain"]["submission"]["explorer_tx_url"] == "https://sepolia.explorer.zksync.io/tx/0x" + "22" * 32
@@ -75,7 +75,7 @@ def test_reverted_submission_raises(deployed):
                                  run_id="r1")
     run, _ = _runner({"status": "0x0", "transactionHash": "0x" + "33" * 32})
     with pytest.raises(RuntimeError, match="reverted"):
-        submit_bundle_onchain(bundle, rpc_url="http://rpc.test", private_key="0x" + "11" * 32, runner=run)
+        submit_bundle_onchain(bundle, rpc_url="http://rpc.test", private_key="0x" + "11" * 32, sender=run)
 
 
 def test_submission_refuses_when_not_deployed(monkeypatch, tmp_path):
