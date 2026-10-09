@@ -4,9 +4,11 @@ Reads SimulationSubmitted / SimulationVerified events from TumorIntel on the
 configured chain (``ANTELLIGENCE_CHAIN``, default ZKsync Era Sepolia) and ranks
 runs by claimed kill rate. Supports on-chain reading and local artifact ranking.
 
-Trust: an on-chain *submission* only records claimed public values. Such entries
-are ``unverified`` unless the contract's ``isVerified`` is true, which requires a
-configured proof verifier to have accepted a proof.
+Trust: an on-chain *submission* only records claimed public values. A submission is
+``verified_onchain`` only when TumorIntel's record for its config hash is verified **and**
+the record's ``publicValuesHash`` is the hash of exactly this submission's values (see
+``chain.onchain_record``). ``isVerified(configHash)`` alone is not enough: it is keyed by
+config hash, and ``submitSimulation`` can rewrite a verified record's values.
 
 Usage:
     python3 -m chain.leaderboard                    # Show leaderboard
@@ -25,13 +27,12 @@ from typing import Dict, List, Optional
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from chain.config import explorer_tx_url, get_network, get_rpc_url, get_tumor_intel_address, load_deployment
+from chain.onchain_record import proves, public_values_hash, read_simulation_record
 
 TUMOR_INTEL_ADDRESS = get_tumor_intel_address()
 # keccak256 of the event signatures in blockchain/contracts/TumorIntel.sol
 SIMULATION_SUBMITTED_TOPIC = "0xa21d9d52e2e6ed7649d4ed863a13b4745fffab40841d79e32b6d5a9c72334ca1"
 SIMULATION_VERIFIED_TOPIC = "0xdeb2a6c54484ae22ad3e9e0132b27c57562483e240ae7f5f4760ef83143e9390"
-IS_VERIFIED_ABI = [{"inputs": [{"name": "configHash", "type": "bytes32"}], "name": "isVerified",
-                    "outputs": [{"name": "", "type": "bool"}], "stateMutability": "view", "type": "function"}]
 
 
 def _hex(value) -> str:
@@ -51,10 +52,12 @@ def _deployment_block() -> int:
 
 def fetch_onchain_simulations(rpc_url: str, contract: Optional[str] = None, from_block: Optional[int] = None,
                               w3=None) -> List[Dict]:
-    """Decode TumorIntel SimulationSubmitted events and attach the contract's isVerified state.
+    """Decode TumorIntel SimulationSubmitted events and decide, per event, whether its values were proven.
 
     Returns one dict per submission: config_hash, submitter, kill_rate_bps, nanobot_count,
-    tumor_radius, steps, tx_hash, block_number, verified (bool, read from the contract).
+    tumor_radius, steps, tx_hash, block_number, plus
+    ``verified`` (this event's exact values are the ones a verifier accepted) and
+    ``contract_verified_flag`` (the raw per-config-hash ``verified`` bit, for diagnostics only).
     """
     contract = contract or get_tumor_intel_address()
     if not contract:
@@ -66,7 +69,7 @@ def fetch_onchain_simulations(rpc_url: str, contract: Optional[str] = None, from
     address = _W3.to_checksum_address(contract)
     logs = w3.eth.get_logs({"address": address, "fromBlock": from_block if from_block is not None else _deployment_block(),
                             "toBlock": "latest", "topics": [SIMULATION_SUBMITTED_TOPIC]})
-    reader = w3.eth.contract(address=address, abi=IS_VERIFIED_ABI)
+    records: Dict[str, Dict] = {}
     out = []
     for log in logs:
         topics = [_hex(t) for t in log["topics"]]
@@ -75,13 +78,18 @@ def fetch_onchain_simulations(rpc_url: str, contract: Optional[str] = None, from
         if len(topics) < 3 or len(words) < 4:
             continue
         config_hash = topics[1]
+        if config_hash not in records:
+            records[config_hash] = read_simulation_record(w3, address, config_hash)
+        record = records[config_hash]
+        expected = public_values_hash(config_hash, words[0], words[1], words[2], words[3])
         out.append({
             "config_hash": config_hash[2:],
             "submitter": "0x" + topics[2][-40:],
             "kill_rate_bps": words[0], "nanobot_count": words[1], "tumor_radius": words[2], "steps": words[3],
             "tx_hash": _hex(log["transactionHash"]),
             "block_number": int(log["blockNumber"]),
-            "verified": bool(reader.functions.isVerified(bytes.fromhex(config_hash[2:])).call()),
+            "verified": proves(record, expected),
+            "contract_verified_flag": record["verified"],
         })
     return out
 
@@ -90,7 +98,8 @@ def onchain_artifacts(events: List[Dict]) -> List[Dict]:
     """Leaderboard rows for on-chain submissions, with honest trust fields.
 
     A submission carries only claimed public values: no artifact, no replay, no proof.
-    It is ``verified_onchain`` only when the contract itself reports isVerified.
+    It is ``verified_onchain`` only when ``verified`` is set, i.e. a verifier accepted a proof
+    of exactly these values (see :func:`fetch_onchain_simulations`).
     """
     rows = []
     for evt in events:

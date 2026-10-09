@@ -203,7 +203,8 @@ def test_experience_writer_can_submit_with_cast_when_private_key_configured(monk
     monkeypatch.setenv("CHAIN_WRITE_ENABLED", "true")
     monkeypatch.setenv("ANTELLIGENCE_RPC_URL", "http://rpc.test")
     monkeypatch.setenv("PRIVATE_KEY", "0x" + "11" * 32)
-    monkeypatch.setenv("EXPERIENCE_REGISTRY_ADDR", "0x58A78E337ce3D948A39475f05Ca1A2c30274CADE")
+    # Prefixed override: the legacy EXPERIENCE_REGISTRY_ADDR only applies on base-sepolia.
+    monkeypatch.setenv("ANTELLIGENCE_REGISTRY_ADDR", "0x58A78E337ce3D948A39475f05Ca1A2c30274CADE")
     from chain.experience_writer import ChainStrategyWriter
 
     calls = []

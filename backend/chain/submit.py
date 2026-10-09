@@ -26,6 +26,8 @@ from typing import Dict, Optional, Tuple
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from chain.config import (
+    ChainConfigError,
+    assert_rpc_matches_network,
     explorer_tx_url,
     get_chain_id,
     get_network,
@@ -257,16 +259,31 @@ SUBMIT_SIMULATION_ABI = [{
 }]
 
 
-def _web3_send_submit(*, rpc_url: str, private_key: str, contract: str, args: list) -> Dict:
+def preflight_signing_target(w3, contract: str) -> int:
+    """Before signing anything: the RPC must serve the selected testnet and the contract must exist there.
+
+    A call to an address without code "succeeds" on EVM chains, so without the code check a
+    wrong RPC or a stale address would still return status 1 and be recorded as a submission.
+    """
+    from web3 import Web3
+
+    chain_id = assert_rpc_matches_network(w3)
+    if not w3.eth.get_code(Web3.to_checksum_address(contract)):
+        raise ChainConfigError(f"no contract code at {contract} on {get_network().name}; refusing to sign")
+    return chain_id
+
+
+def _web3_send_submit(*, rpc_url: str, private_key: str, contract: str, args: list, w3=None) -> Dict:
     """Sign and send submitSimulation in-process (the key never reaches a subprocess argv)."""
     from web3 import Web3
 
-    w3 = Web3(Web3.HTTPProvider(rpc_url, request_kwargs={"timeout": 60}))
+    w3 = w3 or Web3(Web3.HTTPProvider(rpc_url, request_kwargs={"timeout": 60}))
+    chain_id = preflight_signing_target(w3, contract)
     account = w3.eth.account.from_key(private_key)
     fn = w3.eth.contract(address=Web3.to_checksum_address(contract), abi=SUBMIT_SIMULATION_ABI) \
         .functions.submitSimulation(bytes.fromhex(args[0][2:]), *[int(a) for a in args[1:]])
     tx = fn.build_transaction({"from": account.address, "nonce": w3.eth.get_transaction_count(account.address),
-                               "chainId": w3.eth.chain_id})
+                               "chainId": chain_id})
     signed = account.sign_transaction(tx)
     tx_hash = w3.eth.send_raw_transaction(signed.raw_transaction)
     receipt = w3.eth.wait_for_transaction_receipt(tx_hash, timeout=180)

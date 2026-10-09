@@ -87,7 +87,8 @@ def main() -> int:
         "public_values_submitted": payload,
         "submission": tx,
         "readback": {"event": onchain, "values_match_bundle": readback_ok,
-                     "contract_isVerified": onchain["verified"]},
+                     "contract_isVerified": onchain["contract_verified_flag"],
+                     "values_proven_onchain": onchain["verified"]},
         "leaderboard_entry": {k: leaderboard[k] for k in ("kill_rate", "nanobot_count", "steps", "trust_tier",
                                                           "verified_onchain", "proof_stage")},
         "replay": {"integrity_ok": verification["integrity"]["ok"],
@@ -106,7 +107,8 @@ def main() -> int:
     summary = {k: result[k] for k in ("submission", "readback", "replay", "trust")}
     summary["readback"] = {k: v for k, v in summary["readback"].items() if k != "event"}
     print(json.dumps(summary, indent=2, default=str))
-    ok = readback_ok and not onchain["verified"] and result["replay"]["replay_ok"] and result["replay"]["integrity_ok"]
+    ok = (readback_ok and not onchain["verified"] and not onchain["contract_verified_flag"]
+          and result["replay"]["replay_ok"] and result["replay"]["integrity_ok"])
     return 0 if ok else 1
 
 

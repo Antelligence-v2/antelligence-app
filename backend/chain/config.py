@@ -10,10 +10,12 @@ live, so submission, verification, the leaderboard and runtime clients agree.
   If the file does not exist the network has no deployment and addresses are ``""``.
 * Explicit per-contract env overrides (``ANTELLIGENCE_TUMOR_INTEL_ADDR`` etc.) still
   win, for local experiments.
-* RPC: ``ANTELLIGENCE_RPC_URL`` or ``CHAIN_RPC``, then the network's own env var
-  (e.g. ``ZKSYNC_SEPOLIA_RPC_URL``), then the network's public RPC, but only when the
-  network was selected explicitly via ``ANTELLIGENCE_CHAIN``. With no explicit
+* RPC: ``ANTELLIGENCE_RPC_URL``, then the network's own env var (e.g.
+  ``ZKSYNC_SEPOLIA_RPC_URL``), then legacy ``CHAIN_RPC`` (ignored when it is the old
+  local-Hardhat default ``http://127.0.0.1:8545``), then the network's public RPC, but only
+  when the network was selected explicitly via ``ANTELLIGENCE_CHAIN``. With no explicit
   selection and no RPC configured, chain access stays off (offline by default).
+  Signing paths call ``assert_rpc_matches_network`` so a mismatched RPC fails loudly.
 
 History: earlier Base Sepolia deployments (TumorIntel ``0xd1cf…238b``, later
 ``0x925b…D8AB``) are recorded in ``docs/status/2026-10-08-truth-pass.md``; they have
@@ -114,8 +116,23 @@ def load_deployment(network: Optional[Network] = None) -> Optional[Dict[str, Any
     return record
 
 
+# The unprefixed names (TUMOR_INTEL_ADDR, FOOD_ADDR, ...) are what every pre-ZKsync .env holds,
+# and they hold Base Sepolia addresses. They only mean something on that network.
+LEGACY_ADDRESS_NETWORK = "base-sepolia"
+
+
 def get_contract_address(name: str) -> str:
-    override = _first_env(*CONTRACT_ENV.get(name, ()))
+    """Address of ``name`` on the selected network.
+
+    ``ANTELLIGENCE_*_ADDR`` overrides always win (local experiments). Legacy unprefixed
+    overrides are honoured only on Base Sepolia, where they came from; elsewhere a stale
+    ``.env`` would otherwise silently point a ZKsync backend at Base Sepolia addresses.
+    Otherwise the deployments file decides.
+    """
+    prefixed, legacy = CONTRACT_ENV.get(name, (None, None))
+    override = _first_env(prefixed) if prefixed else None
+    if not override and legacy and get_network().name == LEGACY_ADDRESS_NETWORK:
+        override = _first_env(legacy)
     if override:
         return override
     record = load_deployment()
@@ -127,14 +144,51 @@ def get_contract_address(name: str) -> str:
     return ""
 
 
+# The value env.example.txt, docker-compose-ecr.yml, setup-ec2.sh and deploy-new-ip.sh have
+# always put in CHAIN_RPC: the old local Hardhat node. It never pointed at a ZKsync network, and
+# the pre-ZKsync resolver ignored it for the same reason, so it must not outrank a real RPC.
+LEGACY_LOCAL_CHAIN_RPC = {"http://127.0.0.1:8545", "http://localhost:8545"}
+
+
 def get_rpc_url() -> str:
+    """RPC for the selected network.
+
+    Order: ``ANTELLIGENCE_RPC_URL``; the network's own variable (e.g. ``ZKSYNC_SEPOLIA_RPC_URL``);
+    legacy ``CHAIN_RPC`` unless it is the old local-Hardhat default; then the network's public
+    RPC, but only when ``ANTELLIGENCE_CHAIN`` was set explicitly (offline by default). Whatever
+    is returned, :func:`assert_rpc_matches_network` refuses to sign if it serves another chain.
+    """
     network = get_network()
-    explicit = _first_env("ANTELLIGENCE_RPC_URL", "CHAIN_RPC", network.rpc_env)
+    explicit = _first_env("ANTELLIGENCE_RPC_URL", network.rpc_env)
     if explicit:
         return explicit
+    legacy = _first_env("CHAIN_RPC")
+    if legacy and legacy.rstrip("/") not in LEGACY_LOCAL_CHAIN_RPC:
+        return legacy
     if _first_env("ANTELLIGENCE_CHAIN"):
         return network.public_rpc_url
     return ""
+
+
+def assert_rpc_matches_network(w3) -> int:
+    """Refuse to act unless the connected RPC serves the selected network, and that network is a testnet.
+
+    The deployments file, explorer URLs and recorded ``chain_id`` all come from
+    ``ANTELLIGENCE_CHAIN``; the RPC comes from environment variables. If the two disagree, a
+    signed transaction would land on a chain the records do not describe (or, with a mainnet
+    RPC, spend real funds). Returns the verified chain id.
+    """
+    network = get_network()
+    actual = int(w3.eth.chain_id)
+    if actual != network.chain_id:
+        raise ChainConfigError(
+            f"RPC serves chain {actual}, but ANTELLIGENCE_CHAIN selects {network.name} (chain {network.chain_id}); "
+            "refusing to continue. Fix ANTELLIGENCE_RPC_URL / CHAIN_RPC / "
+            f"{network.rpc_env}."
+        )
+    if not network.is_testnet:
+        raise ChainConfigError(f"{network.name} is not a testnet; this backend only signs on testnets")
+    return actual
 
 
 def get_private_key() -> str:

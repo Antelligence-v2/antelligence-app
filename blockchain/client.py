@@ -5,6 +5,7 @@ from eth_account import Account
 import json
 
 from backend.chain.config import (
+    assert_rpc_matches_network,
     get_food_address,
     get_network,
     get_memory_address,
@@ -66,7 +67,9 @@ if not w3.is_connected():
     raise ConnectionError(f"Failed to connect to Ethereum node at {RPC_URL}. Please check your RPC URL and network connection.")
 else:
     print(f"Successfully connected to Ethereum node at {RPC_URL}")
-    print(f"Current Chain ID: {w3.eth.chain_id}")
+    # The addresses below come from the selected network's deployments file; signing against
+    # any other chain would write to whatever (if anything) lives at those addresses there.
+    print(f"Current Chain ID: {assert_rpc_matches_network(w3)}")
 
 # Load account from private key
 try:
