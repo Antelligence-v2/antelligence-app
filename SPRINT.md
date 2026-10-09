@@ -40,7 +40,7 @@ Goal: Connect the Python simulation to the Solidity contracts for provenance.
 
 - [x] IPFS pinning utility: hash simulation artifacts, pin to IPFS, return CID (backend/chain/ipfs.py, 11 tests, supports Pinata/local/dry-run)
 - [x] Verification CLI: `python3 -m chain.verify <run_hash>` fetches CID, recomputes metrics, checks tolerance (8 tests)
-- [x] Deploy ExperienceRegistry + TumorIntel to Base Sepolia testnet — TumorIntel at `0xd1cfa5b9994e06cc18a21dc18fb9d20a3c02238b`, SP1 Gateway wired
+- [x] Deploy ExperienceRegistry + TumorIntel to Base Sepolia testnet — originally TumorIntel at `0xd1cfa5b9994e06cc18a21dc18fb9d20a3c02238b`; later redeployed, backend default `0x925b455175eF932a9a0239090a94E593224CD8AB` (both have code on Base Sepolia; see truth-pass §4)
 - [x] Submission CLI: `python3 -m chain.submit` creates attestation bundle (IPFS + on-chain data), ready for ZK proof submission (3 tests)
 - [x] Leaderboard service: reads on-chain events, ranks policies by attested performance (6 tests, CLI with table + JSON output)
 
@@ -62,11 +62,23 @@ Goal: Automated experiment sweeps with reproducible, on-chain-attested results.
 - [x] Attestation bot: re-runs k% of submissions for reproducibility spot-checks (attestation_bot.py, tested 2/2 pass)
 - [x] Streamlit dashboard: live leaderboard from on-chain data (dashboard.py with 3 tabs)
 
-## Phase 6 — API & Developer Experience [CURRENT]
+## Phase 6 — API & Developer Experience [COMPLETE — verified 2026-10-08]
 Goal: Make the simulation usable by external services and improve developer ergonomics.
+Evidence: `uv run --extra test pytest tests/test_api_server.py tests/test_cli.py tests/test_visualize.py tests/test_config.py tests/test_e2e.py -q` → 64 passed (see `docs/status/2026-10-08-truth-pass.md`).
 
-- [ ] REST API server: create `backend/api_server.py` using FastAPI with POST /simulate (takes config JSON, returns run_id + metrics), GET /runs/{run_id} (returns stored results), GET /health. Add `tests/test_api_server.py` with 5+ tests using TestClient. Add `api-server` entry to pyproject.toml scripts.
-- [ ] Unified CLI: create `backend/cli.py` using argparse with subcommands: `simulate --steps N --bots N --output results.json`, `benchmark --runs N --output benchmark.json`, `leaderboard --limit 10`. Add `tests/test_cli.py` with 3+ tests using subprocess. Add `cli` entry to pyproject.toml scripts.
-- [ ] Colony heatmap: create `backend/visualize.py` with `render_pheromone_heatmap(biofvm, output_path)` that saves a matplotlib PNG of the trail pheromone field at current timestep, and `render_kill_rate_chart(results_list, output_path)` bar chart. Add `tests/test_visualize.py` with 3+ mock-based tests (no display required, just file output).
-- [ ] Config schema: create `backend/config.py` with a pydantic `SimulationConfig` dataclass (fields: num_bots, grid_size, steps, pheromone_params, queen_enabled, seed). Add `load_config(path)` and `save_config(config, path)` functions. Add `tests/test_config.py` with 5+ tests including JSON roundtrip and validation errors.
-- [ ] End-to-end integration test: create `tests/test_e2e.py` with a single test `test_full_simulation_pipeline` that runs a 10-step simulation (2 bots, 5x5 grid), checks metrics are non-null, verifies pheromone field has non-zero values after step 3, and asserts kill_rate is a float between 0 and 1.
+- [x] REST API server: `backend/api_server.py` (FastAPI: POST /simulate, GET /runs/{run_id}, GET /runs/{run_id}/config-trace, GET /health); `tests/test_api_server.py` (31 tests); script entry `antelligence-api` in pyproject.toml.
+- [x] Unified CLI: `backend/cli.py` with `simulate`, `benchmark`, `leaderboard` subcommands; `tests/test_cli.py`; script entry `antelligence` in pyproject.toml (named `antelligence`, not `cli`).
+- [x] Colony heatmap: `backend/visualize.py` with `render_pheromone_heatmap` and `render_kill_rate_chart`; `tests/test_visualize.py` (8 tests).
+- [x] Config schema: `backend/config.py` with pydantic `SimulationConfig` (num_bots, grid_size, steps, pheromone_params, queen_enabled, seed), `load_config`, `save_config`; `tests/test_config.py`.
+- [x] End-to-end integration test: `tests/test_e2e.py::test_full_simulation_pipeline`.
+
+Also landed since this file was last updated (upstream PR #3, merged 2026-10-05): the `antelligence/` engine (kernel, providers, worlds foraging/task_dag/tumor/research_qa, experiments, provenance, /engine API). Full suite at W0: 905 passed, 2 skipped (BraTS/TCGA data absent).
+
+## Phase 7 — 48h goal 2026-10-08 [CURRENT]
+Source of truth: operator goal file `GOAL-antelligence-48h.md` (overrides this file where they conflict).
+
+- [x] Sync fork `main` with upstream `main` (fork PR #15, operator merges)
+- [x] W0 truth pass: `docs/status/2026-10-08-truth-pass.md`, this file reconciled
+- [ ] W1 chain layer on ZKsync Era Sepolia: zksolc compile + tests, `blockchain/scripts/deploy-zksync.js`, `blockchain/deployments/zksync-era-sepolia.json`, backend chain config driven by the deployments file, one tumor run submitted and read back with explorer URL, privacy audit, `docs/research/chain-options-20261008.md`, `docs/status/2026-10-08-chain-redeploy.md` (deploy blocked on testnet gas — see `docs/status/BLOCKERS.md`)
+- [ ] W2 preregistered SLM-vs-frontier benchmark: `docs/research/slm-vs-frontier-20261008/` (PREREGISTRATION.md, bundles, results.csv, REPORT.md)
+- [ ] W3 sprint report: `docs/status/2026-10-08-sprint-report.md`, delivered to the operator's notification channel
