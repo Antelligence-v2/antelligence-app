@@ -135,9 +135,25 @@
     "selected_network_default": "zksync-era-sepolia",
     "zksync-era-sepolia": {
       "chain_id": 300,
-      "deployed": false,
-      "status": "blocked: deployer 0xEE8a688CE7beb1bd46bd5C84bd774Efc750fB086 balance 0 wei; preflight estimate 438256700000000 wei (x1.5 margin = 657385050000000 wei)",
-      "deployments_file": null,
+      "deployed": true,
+      "deployed_at_utc": "2026-10-09T18:13:24.720Z",
+      "deployer": "0xF822f19C0FEc804f002e9087523677195a3C96cE",
+      "deployments_file": "blockchain/deployments/zksync-era-sepolia.json",
+      "git_commit": "7eef6781370d291426dc70f70aedf59c9a6c105b",
+      "compiler": {
+        "zksolc": "1.5.15",
+        "solc": "zkVM-0.8.24-1.0.2"
+      },
+      "contracts": {
+        "FoodToken": "0xA2B81529f67BEA1f536Ce97D31fe389Bdba54330",
+        "ColonyMemory": "0x5e204425CDECebA8134B51522ff839a99De79363",
+        "TumorIntel": "0x90445eDC246d83FA42D700584796216E6510e317",
+        "ExperienceRegistry": "0x2d77EE763987ab6131Ad5e9627C22EFE1FB29c3b"
+      },
+      "e2e_evidence": "docs/status/e2e-zksync-era-sepolia.json",
+      "e2e_submission_tx": "0xf0cf992598bd4324808270ebb426f44a0beac7fa874ade35563ee71d3b94150f",
+      "trust_tier": "proof_staged (mock SP1 adapter; never verified_onchain). ZKsync proves chain state, not simulation correctness.",
+      "proof_verifier": "none; MockProofVerifier not deployed",
       "evidence": "docs/status/2026-10-08-chain-redeploy.md"
     },
     "zksync-local-inmemory": {

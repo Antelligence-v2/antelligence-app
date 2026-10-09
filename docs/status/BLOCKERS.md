@@ -2,7 +2,13 @@
 
 Newest first. Each entry records what was tried, the exact error, and what the operator must do.
 
-## 2026-10-09: ZKsync Era Sepolia deployer still unfunded (W1 steps 4-6)
+## 2026-10-09: ZKsync Era Sepolia gas blocker RESOLVED
+
+- **Status:** RESOLVED 2026-10-09. The operator funded a new deployer, `0xF822f19C0FEc804f002e9087523677195a3C96cE` (0.095 ETH on chain 300). The four contracts were deployed and one end-to-end run completed (`docs/status/2026-10-08-chain-redeploy.md` §3a, `docs/status/e2e-zksync-era-sepolia.json`). Gas spent: 217,173,950,000,000 wei.
+- The old deployer `0xEE8a688CE7beb1bd46bd5C84bd774Efc750fB086` and its key are retired. Nothing uses them any more.
+- The entries below are kept as history.
+
+## 2026-10-09 (history): ZKsync Era Sepolia deployer still unfunded (W1 steps 4-6)
 
 - **Status:** open since 2026-10-08 (more than 60 min, now about a day). Steps 4 (testnet deploy) and 6 (testnet end-to-end run with explorer URL) cannot run.
 - **Re-check, 2026-10-09T16:02Z** (`https://sepolia.era.zksync.dev`, block tag `latest`), address `0xEE8a688CE7beb1bd46bd5C84bd774Efc750fB086`:
@@ -16,7 +22,7 @@ Newest first. Each entry records what was tried, the exact error, and what the o
   2. Authorise the **Base Sepolia fallback**. The same key held about 0.008 ETH there at the 2026-10-08 check.
 - **Not tried, by rule:** faucets and captchas. No new accounts were created.
 
-## 2026-10-08: ZKsync Era Sepolia deployer has no gas (W1 step 4)
+## 2026-10-08 (history, resolved 2026-10-09): ZKsync Era Sepolia deployer has no gas (W1 step 4)
 
 - **Status:** open. W1 continues locally: plugin, zksolc compile, tests on the in-memory node, deploy script, privacy audit and options note.
 - **Deployer (public address):** `0xEE8a688CE7beb1bd46bd5C84bd774Efc750fB086`. This address is derived from the only deployer key configured for the repo (`.env` `PRIVATE_KEY`, never printed).

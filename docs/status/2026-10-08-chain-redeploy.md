@@ -1,6 +1,6 @@
 # W1: chain layer moved to ZKsync Era Sepolia (2026-10-08/09)
 
-**Status: done pending funds.** Steps 1–3, 5, 7 and 8 are complete, and the full flow ran end to end on a local ZKsync node. The testnet deploy (step 4) and the testnet end-to-end run with an explorer URL (step 6) are blocked only by testnet gas. The deployer has 0 ETH on Era Sepolia (see `docs/status/BLOCKERS.md`, which is on this branch). Re-checked 2026-10-09T16:02Z: balance `0x0`, nonce `0x0`, chain `0x12c` (still unfunded). Nothing in this document claims a testnet deployment.
+**Status: done.** Deployed to ZKsync Era Sepolia (chain 300) and run end to end on 2026-10-09. Funded deployer: `0xF822f19C0FEc804f002e9087523677195a3C96cE` (the earlier deployer `0xEE8a…B086` and its key are retired). The simulation proof is still a mock, so the run is `proof_staged`.
 
 **Where to find the evidence:**
 
@@ -57,7 +57,26 @@ Python suite after the backend rewiring: `PYTHON_DOTENV_DISABLED=1 uv run --extr
 
 On the local node the actual spend was 0.0001977 ETH, against an estimate of 0.000353 ETH.
 
-**To deploy once funded** (the only remaining operator step):
+## 3a. Testnet deployment (ZKsync Era Sepolia, chain 300, 2026-10-09)
+
+Deployer `0xF822f19C0FEc804f002e9087523677195a3C96cE`; balance before 95,000,000,000,000,000 wei (0.095 ETH). Built from commit `7eef6781370d291426dc70f70aedf59c9a6c105b` (zksolc 1.5.15, solc zkVM-0.8.24-1.0.2). Record: `blockchain/deployments/zksync-era-sepolia.json`. MockProofVerifier was not deployed.
+
+| Contract | Address | Deploy tx | Block | Gas used | Explorer |
+|---|---|---|---|---|---|
+| FoodToken | `0xA2B81529f67BEA1f536Ce97D31fe389Bdba54330` | `0x008401902d6d928297757f663702760f6d1c1a31fe78198ca4c50e53cb8f1549` | 8668193 | 1627725 | [address](https://sepolia.explorer.zksync.io/address/0xA2B81529f67BEA1f536Ce97D31fe389Bdba54330) / [tx](https://sepolia.explorer.zksync.io/tx/0x008401902d6d928297757f663702760f6d1c1a31fe78198ca4c50e53cb8f1549) |
+| ColonyMemory | `0x5e204425CDECebA8134B51522ff839a99De79363` | `0x13152cf23b806dd97820b6be471af380a7be002cfa17c53c8d1ec0ef99ff157d` | 8668194 | 1132677 | [address](https://sepolia.explorer.zksync.io/address/0x5e204425CDECebA8134B51522ff839a99De79363) / [tx](https://sepolia.explorer.zksync.io/tx/0x13152cf23b806dd97820b6be471af380a7be002cfa17c53c8d1ec0ef99ff157d) |
+| TumorIntel | `0x90445eDC246d83FA42D700584796216E6510e317` | `0xb3edbad44f09861e93afbaa9960d9c90436c6bdaf3dab533247f303c176d2ffb` | 8668195 | 2563211 | [address](https://sepolia.explorer.zksync.io/address/0x90445eDC246d83FA42D700584796216E6510e317) / [tx](https://sepolia.explorer.zksync.io/tx/0xb3edbad44f09861e93afbaa9960d9c90436c6bdaf3dab533247f303c176d2ffb) |
+| ExperienceRegistry | `0x2d77EE763987ab6131Ad5e9627C22EFE1FB29c3b` | `0xf557209bf7baccff12ca156ca214441c3b450f7d227e85a49f5727563035744e` | 8668196 | 3250693 | [address](https://sepolia.explorer.zksync.io/address/0x2d77EE763987ab6131Ad5e9627C22EFE1FB29c3b) / [tx](https://sepolia.explorer.zksync.io/tx/0xf557209bf7baccff12ca156ca214441c3b450f7d227e85a49f5727563035744e) |
+
+`eth_getCode` on every address returned non-empty EraVM bytecode (FoodToken 16,928 B; ColonyMemory 11,296 B; TumorIntel 27,104 B; ExperienceRegistry 39,264 B), and every deploy receipt has status `0x1`.
+
+**Testnet gas spent:** 95,000,000,000,000,000 - 94,782,826,050,000,000 = **217,173,950,000,000 wei (0.000217 ETH)** for the four deploys plus the end-to-end submission (the deploy alone cost 214,357,650,000,000 wei against an estimate of 438,165,250,000,000).
+
+**Testnet end-to-end run** (`docs/status/e2e-zksync-era-sepolia.json`): `submitSimulation` tx `0xf0cf992598bd4324808270ebb426f44a0beac7fa874ade35563ee71d3b94150f`, block 8668197, status `0x1`, [explorer](https://sepolia.explorer.zksync.io/tx/0xf0cf992598bd4324808270ebb426f44a0beac7fa874ade35563ee71d3b94150f). Read back through the leaderboard decoder: exact match to the bundle, `isVerified == false`, leaderboard `trust_tier: unverified`, `proof_stage: submitted_onchain`. Replay: integrity, public values and replay all pass (kill_rate 100.0 vs 100.0, deliveries 12 vs 12). Bundle tier **`proof_staged`** (`is_mock: true`). Two separate statements: ZKsync's validity proofs cover the chain's state transition; they say nothing about whether the simulation was honest, and the simulation proof is a mock.
+
+**Privacy re-check (§6):** the submission tx input is 164 bytes: the 4-byte selector plus exactly five 32-byte words (`configHash`, `killRateBps`, `nanobotCount`, `tumorRadius`, `steps`). The `SimulationSubmitted` log carries the indexed hash and submitter plus integer words. No raw simulation data, patient data or free text was written; this matches the `TumorIntel.submitSimulation` row of the §6 table. The caveats there (tumorRadius from patient geometry, unsalted configHash) still apply and do not bite for this synthetic run.
+
+**Deploy command (used)** :
 
 ```bash
 cd blockchain && CI=1 PATH=/opt/homebrew/opt/node@22/bin:$PATH \
@@ -92,7 +111,7 @@ cd .. && ANTELLIGENCE_CHAIN=zksync-era-sepolia ANTELLIGENCE_ENV_FILE=... \
 | Leaderboard entry | `trust_tier: unverified`, `verified_onchain: false`, `proof_stage: submitted_onchain` |
 | Replay (`verify_artifact`, replay on) | integrity ✓, public values ✓, proof-bundle schema ✓, **replay ✓** (kill_rate 100.0 claimed vs 100.0 recomputed; deliveries 12 vs 12; 0.0% deviation) |
 | Bundle trust tier | **`proof_staged`**, `proof_bundle.is_mock: true`, `onchain_ok: false` |
-| Explorer URL | **None. A local node has no explorer.** The testnet run is blocked on gas. |
+| Explorer URL | None for the local run (no explorer). The testnet run is in §3a with an explorer URL. |
 
 **Trust tiers, kept separate:**
 
@@ -148,8 +167,8 @@ The headline: no chain choice fixes the mock simulation proof. It also flags tha
 
 ## Done-when checklist (goal W1)
 
-- [ ] Deployments file exists: **blocked on gas**. The script and the file format are proven on chain 260.
-- [ ] One run visible on ZKsync Era Sepolia with an explorer URL: **blocked on gas**. Proven end to end on chain 260.
+- [x] Deployments file exists: `blockchain/deployments/zksync-era-sepolia.json` (§3a).
+- [x] One run visible on ZKsync Era Sepolia with an explorer URL (§3a); trust tier `proof_staged`.
 - [x] Replay check passes (§5).
 - [x] Privacy audit written (§6). Result: the attestation path is clean; three contracts expose raw or free-text writes, gated off.
 - [x] Options note written (§7).

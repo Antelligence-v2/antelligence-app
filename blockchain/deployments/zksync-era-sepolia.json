@@ -1,0 +1,95 @@
+{
+  "schema": "antelligence.deployment/v1",
+  "network": "zksync-era-sepolia",
+  "chain_id": 300,
+  "vm": "EraVM",
+  "deployer": "0xF822f19C0FEc804f002e9087523677195a3C96cE",
+  "deployed_at_utc": "2026-10-09T18:13:24.720Z",
+  "git_commit": "7eef6781370d291426dc70f70aedf59c9a6c105b",
+  "git_tree_dirty_for_blockchain_dir": true,
+  "compiler": {
+    "zksolc": "1.5.15",
+    "solc": "zkVM-0.8.24-1.0.2",
+    "zksolc_settings": {
+      "optimizer": {
+        "enabled": true,
+        "mode": "3"
+      },
+      "compilerPath": "/Users/operator/Library/Caches/hardhat-nodejs/compilers-v2/zksolc/zksolc-v1.5.15",
+      "missingLibrariesPath": "./.zksolc-libraries-cache/missingLibraryDependencies.json",
+      "areLibrariesMissing": false,
+      "experimental": {},
+      "codegen": "yul",
+      "libraries": {},
+      "enableEraVMExtensions": false,
+      "forceEVMLA": false
+    },
+    "solc_optimizer": {
+      "enabled": true,
+      "mode": "3"
+    },
+    "via_ir": true
+  },
+  "gas": {
+    "balance_before_wei": "95000000000000000",
+    "balance_after_wei": "94785642350000000",
+    "spent_wei": "214357650000000",
+    "estimated_deploy_fee_wei": "438165250000000"
+  },
+  "proof_verifier": {
+    "address": null,
+    "note": "No proof verifier is configured on TumorIntel. verifySimulation() reverts, so no run can become verified on-chain from this deployment. MockProofVerifier was intentionally not deployed."
+  },
+  "contracts": [
+    {
+      "name": "FoodToken",
+      "address": "0xA2B81529f67BEA1f536Ce97D31fe389Bdba54330",
+      "deploy_tx_hash": "0x008401902d6d928297757f663702760f6d1c1a31fe78198ca4c50e53cb8f1549",
+      "block_number": 8668193,
+      "deployer": "0xF822f19C0FEc804f002e9087523677195a3C96cE",
+      "is_mock": false,
+      "constructor_args": [
+        "0xF822f19C0FEc804f002e9087523677195a3C96cE"
+      ],
+      "gas_used": "1627725",
+      "explorer_address_url": "https://sepolia.explorer.zksync.io/address/0xA2B81529f67BEA1f536Ce97D31fe389Bdba54330",
+      "explorer_tx_url": "https://sepolia.explorer.zksync.io/tx/0x008401902d6d928297757f663702760f6d1c1a31fe78198ca4c50e53cb8f1549"
+    },
+    {
+      "name": "ColonyMemory",
+      "address": "0x5e204425CDECebA8134B51522ff839a99De79363",
+      "deploy_tx_hash": "0x13152cf23b806dd97820b6be471af380a7be002cfa17c53c8d1ec0ef99ff157d",
+      "block_number": 8668194,
+      "deployer": "0xF822f19C0FEc804f002e9087523677195a3C96cE",
+      "is_mock": false,
+      "constructor_args": [],
+      "gas_used": "1132677",
+      "explorer_address_url": "https://sepolia.explorer.zksync.io/address/0x5e204425CDECebA8134B51522ff839a99De79363",
+      "explorer_tx_url": "https://sepolia.explorer.zksync.io/tx/0x13152cf23b806dd97820b6be471af380a7be002cfa17c53c8d1ec0ef99ff157d"
+    },
+    {
+      "name": "TumorIntel",
+      "address": "0x90445eDC246d83FA42D700584796216E6510e317",
+      "deploy_tx_hash": "0xb3edbad44f09861e93afbaa9960d9c90436c6bdaf3dab533247f303c176d2ffb",
+      "block_number": 8668195,
+      "deployer": "0xF822f19C0FEc804f002e9087523677195a3C96cE",
+      "is_mock": false,
+      "constructor_args": [],
+      "gas_used": "2563211",
+      "explorer_address_url": "https://sepolia.explorer.zksync.io/address/0x90445eDC246d83FA42D700584796216E6510e317",
+      "explorer_tx_url": "https://sepolia.explorer.zksync.io/tx/0xb3edbad44f09861e93afbaa9960d9c90436c6bdaf3dab533247f303c176d2ffb"
+    },
+    {
+      "name": "ExperienceRegistry",
+      "address": "0x2d77EE763987ab6131Ad5e9627C22EFE1FB29c3b",
+      "deploy_tx_hash": "0xf557209bf7baccff12ca156ca214441c3b450f7d227e85a49f5727563035744e",
+      "block_number": 8668196,
+      "deployer": "0xF822f19C0FEc804f002e9087523677195a3C96cE",
+      "is_mock": false,
+      "constructor_args": [],
+      "gas_used": "3250693",
+      "explorer_address_url": "https://sepolia.explorer.zksync.io/address/0x2d77EE763987ab6131Ad5e9627C22EFE1FB29c3b",
+      "explorer_tx_url": "https://sepolia.explorer.zksync.io/tx/0xf557209bf7baccff12ca156ca214441c3b450f7d227e85a49f5727563035744e"
+    }
+  ]
+}

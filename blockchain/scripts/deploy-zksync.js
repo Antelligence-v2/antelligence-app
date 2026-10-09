@@ -114,6 +114,8 @@ async function main() {
       address,
       deploy_tx_hash: receipt.hash,
       block_number: receipt.blockNumber,
+      deployer: wallet.address,
+      is_mock: false,
       constructor_args: c.args(wallet.address),
       gas_used: receipt.gasUsed.toString(),
       explorer_address_url: target.explorer ? `${target.explorer}/address/${address}` : null,
