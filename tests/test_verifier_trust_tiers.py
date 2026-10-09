@@ -55,10 +55,24 @@ def test_verify_artifact_trust_tier_for_onchain():
         config={"tumor_radius": 150, "nanobot_count": 10},
         metrics={"kill_rate": 45.5, "deliveries": 30},
     )
+    from tests._onchain_proof import proven_onchain
+
+    with patch("chain.verify.check_onchain_verification", side_effect=proven_onchain(artifact)):
+        result = verify_artifact(artifact, tolerance_pct=100.0, replay=False)
+
+    assert result["trust_tier"] == "verified_onchain"
+
+
+def test_verify_artifact_flag_without_matching_values_is_not_verified_onchain():
+    """isVerified(configHash) alone is not evidence about this artifact's numbers."""
+    artifact = create_simulation_artifact(
+        config={"tumor_radius": 150, "nanobot_count": 10},
+        metrics={"kill_rate": 45.5, "deliveries": 30},
+    )
     with patch("chain.verify.check_onchain_verification", return_value={"ok": True, "verified": True}):
         result = verify_artifact(artifact, tolerance_pct=100.0, replay=False)
-    
-    assert result["trust_tier"] == "verified_onchain"
+
+    assert result["trust_tier"] != "verified_onchain"
 
 def test_verify_artifact_lifecycle_stage_alone_cannot_promote_trust():
     """A self-declared lifecycle stage is not proof evidence."""

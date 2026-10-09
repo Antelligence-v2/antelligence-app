@@ -20,6 +20,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from chain.config import get_rpc_url, get_tumor_intel_address
 from chain.ipfs import compute_artifact_hash
+from chain.onchain_record import proves, public_values_hash_from_encoded, read_simulation_record
 from chain.proof_spec import (
     PROGRAM_VERSION,
     PROOF_ARTIFACT_VERSION,
@@ -32,6 +33,7 @@ from chain.proof_spec import (
     compute_transport_commitment,
     decode_public_values_payload,
     encode_public_values_payload,
+    normalize_config_hash,
     validate_public_values_payload,
 )
 from simulation_replay import replay_artifact_metrics
@@ -535,31 +537,68 @@ def verify_proof_bundle_schema(record: dict) -> Dict:
 
 
 def check_onchain_verification(config_hash: str) -> Dict:
-    """Check whether the current TumorIntel contract marks a config hash as verified."""
+    """Read TumorIntel's record for a config hash.
+
+    Returns ``verified`` (the contract's per-config-hash flag) and the full ``record``,
+    including ``public_values_hash``. The flag alone never makes an artifact
+    ``verified_onchain``: :func:`onchain_binding` must also show that the proven public
+    values are this artifact's.
+    """
     rpc_url = get_rpc_url()
     contract = get_tumor_intel_address()
     if not rpc_url or not contract:
         return {"ok": False, "reason": "missing chain config"}
     try:
-        import subprocess
-        result = subprocess.run(
-            [
-                "cast",
-                "call",
-                contract,
-                "isVerified(bytes32)(bool)",
-                f"0x{config_hash}",
-                "--rpc-url",
-                rpc_url,
-            ],
-            capture_output=True,
-            text=True,
-            timeout=15,
-            check=True,
-        ).stdout.strip()
-        return {"ok": True, "verified": result.lower() in {"true", "0x1", "1"}, "raw": result}
+        from web3 import Web3
+
+        w3 = Web3(Web3.HTTPProvider(rpc_url, request_kwargs={"timeout": 15}))
+        record = read_simulation_record(w3, contract, config_hash)
+        return {"ok": True, "verified": record["verified"], "record": record, "raw": record["verified"]}
     except Exception as exc:
         return {"ok": False, "reason": str(exc)}
+
+
+def onchain_binding(artifact: dict, onchain: Optional[Dict]) -> Dict:
+    """Decide whether an accepted on-chain proof is about *this* artifact.
+
+    All of these must hold:
+
+    * the artifact carries ABI-encoded public values (``onchain.public_values``);
+    * their config hash is the artifact's ``config_hash``;
+    * their ``kill_rate_bps`` is the artifact's headline ``metrics.kill_rate`` (percentage
+      points, scaled the way ``create_attestation_bundle`` scales it);
+    * TumorIntel's record is verified and its ``publicValuesHash`` equals keccak256 of
+      exactly those public values.
+
+    ``isVerified(configHash)`` alone proves nothing about an artifact: the flag is keyed by
+    config hash, any other artifact can reuse that hash, and ``submitSimulation`` can rewrite
+    a verified record's values.
+    """
+    if not onchain or not onchain.get("ok") or not onchain.get("verified"):
+        return {"ok": False, "reason": "no verified on-chain record"}
+    public_values = (artifact.get("onchain") or {}).get("public_values")
+    if not public_values:
+        return {"ok": False, "reason": "artifact has no encoded public values to bind to the proof"}
+    try:
+        decoded = decode_public_values_payload(public_values)
+    except Exception as exc:  # noqa: BLE001
+        return {"ok": False, "reason": f"artifact public values do not decode: {exc}"}
+    try:
+        artifact_config_hash = normalize_config_hash(str(artifact.get("config_hash", "")))
+    except ValueError:
+        return {"ok": False, "reason": "artifact config_hash is not a 32-byte hash"}
+    if decoded["config_hash"] != artifact_config_hash:
+        return {"ok": False, "reason": "public values are for a different config hash"}
+    kill_rate = (artifact.get("metrics") or {}).get("kill_rate")
+    if kill_rate is None or abs(int(float(kill_rate) * 100) - decoded["kill_rate_bps"]) > 1:
+        return {"ok": False, "reason": "artifact metrics.kill_rate does not match the public values"}
+    expected = public_values_hash_from_encoded(public_values)
+    record = onchain.get("record") or {}
+    return {
+        "ok": proves(record, expected),
+        "expected_public_values_hash": expected,
+        "stored_public_values_hash": record.get("public_values_hash"),
+    }
 
 
 def _derive_trust_tier(verification_status: Dict, proof_bundle: Dict | None, proof_lifecycle: Dict | None) -> str:
@@ -585,7 +624,10 @@ def verify_artifact(artifact: dict, tolerance_pct: float = 5.0, replay: bool = T
         replay_result = verify_artifact_replay(artifact, tolerance_pct=tolerance_pct)
 
     onchain = check_onchain_verification(artifact.get("config_hash", "")) if integrity["ok"] else None
-    onchain_verified = bool(onchain and onchain.get("ok") and onchain.get("verified"))
+    binding = onchain_binding(artifact, onchain) if onchain and onchain.get("ok") and onchain.get("verified") else None
+    onchain_verified = bool(binding and binding["ok"])
+    if onchain is not None:
+        onchain = dict(onchain, binding=binding)
 
     prior_status = artifact.get("verification_status", {}) if isinstance(artifact.get("verification_status"), dict) else {}
     verification_status = {

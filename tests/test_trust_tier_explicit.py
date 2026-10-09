@@ -83,9 +83,10 @@ class TestTrustTierExplicit:
         }
         
         import chain.verify
-        
-        def mock_check(config_hash):
-            return {"ok": True, "verified": True, "raw": "0x1"}
+        from tests._onchain_proof import proven_onchain
+
+        # The chain must prove this artifact's own public values, not merely flag its config hash.
+        mock_check = proven_onchain(artifact)
         def mock_integrity(artifact):
             return {"ok": True, "checks": []}
         def mock_pv_schema(artifact):
