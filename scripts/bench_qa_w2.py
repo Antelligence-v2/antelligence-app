@@ -55,6 +55,8 @@ def main():
  budget=Budgeted(inner); infer=infer_factory(budget,model,LEDGER,args.tier)
  if args.tier=='local':
   catalog=LocalModels().catalog(); print(json.dumps({'local_catalog':catalog},sort_keys=True))
+ if args.tier=='frontier' and args.provider=='claude':
+  raise SystemExit('Use the subscription adapter to run Claude; this OpenAI-compatible harness refuses an unconfigured frontier endpoint.')
  raw=OUT/f'raw-{args.tier}-{args.model}-seed{args.seed}.jsonl'; cells=[]
  for i,t in enumerate(tasks,1):
   for arm in selected:
