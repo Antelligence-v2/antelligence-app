@@ -58,7 +58,7 @@ ROSTER: Dict[str, Dict[str, Any]] = {
 QA_ARMS = ("single", "independent_vote", "signal_board", "evidence_exchange", "evidence_isolated", "solo_refine")
 QA_TEMPERATURE = 0.7
 QA_MAX_TOKENS = 512
-RUN = {"split": None, "smoke": None}  # set once in main_async; stamped on every ledger row
+RUN = {"split": None, "smoke": None, "variant": "prereg"}  # set once in main_async; stamped on every ledger row
 
 
 def utc() -> str:
@@ -179,7 +179,7 @@ class Meter:
             self.failed_calls += 1
             self.errors.append(f"{type(exc).__name__}: {exc}"[:240])
             append(LEDGER, {"timestamp_utc": utc(), "workstream": "W2", "world": self.world, "tier": spec["tier"],
-                            "split": RUN["split"], "smoke": RUN["smoke"],
+                            "split": RUN["split"], "smoke": RUN["smoke"], "variant": RUN["variant"],
                             "billing": spec["billing"], "model_key": self.key, "model_requested": request.model,
                             "model_served": None, "ok": False, "error": f"{type(exc).__name__}: {exc}"[:240],
                             "request_hash": request.request_hash})
@@ -197,7 +197,7 @@ class Meter:
             self.cached_calls += 1
             return response
         append(LEDGER, {"timestamp_utc": utc(), "workstream": "W2", "world": self.world, "tier": spec["tier"],
-                        "split": RUN["split"], "smoke": RUN["smoke"],
+                        "split": RUN["split"], "smoke": RUN["smoke"], "variant": RUN["variant"],
                         "billing": spec["billing"], "model_key": self.key, "model_requested": request.model,
                         "model_served": response.model, "ok": True, "prompt_tokens": response.prompt_tokens,
                         "completion_tokens": response.completion_tokens, "latency_s": round(response.elapsed_s, 3),
@@ -222,7 +222,7 @@ def done_keys(cells_path: Path) -> set:
 
 
 async def run_cell(key: str, world: str, arm: str, seed: int, task: Dict[str, Any], cache: Cached,
-                   cells_path: Path, bundles_path: Path) -> Dict[str, Any]:
+                   cells_path: Path, bundles_path: Path, max_tokens: int = QA_MAX_TOKENS) -> Dict[str, Any]:
     spec = ROSTER[key]
     meter = Meter(cache, key, world)
     model = spec["model"]
@@ -231,7 +231,7 @@ async def run_cell(key: str, world: str, arm: str, seed: int, task: Dict[str, An
         task_id = task["task_id"]
         run_id = f"w2-{safe(key)}-{arm}-s{seed}-{safe(task_id)}"
         scheduler = qa_build(task, arm, lambda agent: QAPolicy(meter, model, temperature=QA_TEMPERATURE,
-                                                                max_tokens=QA_MAX_TOKENS), seed=seed, run_id=run_id)
+                                                                max_tokens=max_tokens), seed=seed, run_id=run_id)
         domain = task["domain"]
     elif world == "task_dag":
         from antelligence.worlds.task_dag import LLMPlanner, build as dag_build
@@ -304,6 +304,19 @@ def plan(args: argparse.Namespace) -> List[Dict[str, Any]]:
     return jobs
 
 
+def resolve_out(out_dir: Optional[str]) -> Path:
+    """Output dir for cells/bundles/raw/run-log; default is the preregistered OUT."""
+    if not out_dir:
+        return OUT
+    path = Path(out_dir)
+    return path if path.is_absolute() else ROOT / path
+
+
+def variant_name(max_tokens: int) -> str:
+    """Ledger variant tag: preregistered run vs a max_tokens sensitivity run."""
+    return "prereg" if max_tokens == QA_MAX_TOKENS else f"sens-maxtok{max_tokens}"
+
+
 def prior_frontier_spend() -> float:
     total = 0.0
     if LEDGER.exists():
@@ -324,9 +337,11 @@ async def main_async(args: argparse.Namespace) -> None:
     else:
         RUN["split"] = f"fixtures:{','.join(map(str, args.fixtures or []))or 'default'}"
     RUN["smoke"] = bool(args.smoke)
-    cells_path = OUT / "cells" / f"{tag}{key}.jsonl"
-    bundles_path = OUT / "bundles" / f"{tag}{key}.jsonl"
-    raw_path = OUT / "raw" / f"{tag}{key}-{args.world}.jsonl"
+    out = resolve_out(args.out_dir)
+    RUN["variant"] = variant_name(args.max_tokens)
+    cells_path = out / "cells" / f"{tag}{key}.jsonl"
+    bundles_path = out / "bundles" / f"{tag}{key}.jsonl"
+    raw_path = out / "raw" / f"{tag}{key}-{args.world}.jsonl"
     spend = FrontierSpend(args.frontier_cap_usd, prior_frontier_spend()) if spec["billing"] != "local" else None
     provider = HTTPProvider(key, spend)
     cache = Cached(provider, raw_path)
@@ -335,9 +350,9 @@ async def main_async(args: argparse.Namespace) -> None:
     todo = [j for j in jobs if (args.world, j["arm"], j["seed"],
                                 j["task"].get("task_id") or (f"e15-fixture-{j['task']['fixture']}" if args.world == "task_dag"
                                                              else f"e13-seed-{j['task']['fixture']}")) not in finished]
-    run_log = OUT / "run-log.jsonl"
+    run_log = out / "run-log.jsonl"
     append(run_log, {"timestamp_utc": utc(), "event": "start", "model_key": key, "world": args.world,
-                     "smoke": args.smoke, "planned": len(jobs), "already_done": len(jobs) - len(todo),
+                     "smoke": args.smoke, "max_tokens": args.max_tokens, "planned": len(jobs), "already_done": len(jobs) - len(todo),
                      "resumed": len(jobs) != len(todo), "argv": sys.argv[1:],
                      "frontier_spent_before": None if spend is None else round(spend.spent, 6)})
     semaphore = asyncio.Semaphore(args.cell_concurrency)
@@ -351,7 +366,7 @@ async def main_async(args: argparse.Namespace) -> None:
                 return
             try:
                 cell = await run_cell(key, args.world, job["arm"], job["seed"], job["task"], cache,
-                                      cells_path, bundles_path)
+                                      cells_path, bundles_path, args.max_tokens)
                 counter["done"] += 1
                 counter["fail"] += cell["status"] in ("error", "completed_with_failures")
             except Exception as exc:  # harness fault: record, never drop silently
@@ -382,6 +397,10 @@ def main() -> None:
     parser.add_argument("--max-steps", type=int, default=60)
     parser.add_argument("--cell-concurrency", type=int, default=3)
     parser.add_argument("--frontier-cap-usd", type=float, default=12.0)
+    parser.add_argument("--max-tokens", type=int, default=QA_MAX_TOKENS,
+                        help="research_qa completion cap (default: preregistered 512)")
+    parser.add_argument("--out-dir", default=None,
+                        help="output dir for cells/bundles/raw/run-log (default: preregistered OUT); ledger stays shared")
     parser.add_argument("--smoke", action="store_true", help="development split only")
     args = parser.parse_args()
     if args.world == "research_qa":

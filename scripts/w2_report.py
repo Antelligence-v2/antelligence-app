@@ -7,6 +7,7 @@ Run after w2_analyze.py.
 """
 from __future__ import annotations
 
+import argparse
 import csv
 import hashlib
 import json
@@ -14,7 +15,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-OUT = ROOT / "docs/research/slm-vs-frontier-20261008"
+DEFAULT_OUT = ROOT / "docs/research/slm-vs-frontier-20261008"
+OUT = DEFAULT_OUT
 # Counterfactual price for hosted qwen/qwen3.8-27b on Nous (USD per token), from /v1/models on 2026-10-08.
 QWEN_HOSTED_IN, QWEN_HOSTED_OUT = 0.0000000235, 0.00000435
 
@@ -84,6 +86,12 @@ def headline(primary):
 
 
 def main() -> None:
+    global OUT
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--out-dir", default=None, help="analyze this dir (default: preregistered OUT)")
+    args = parser.parse_args()
+    if args.out_dir:
+        OUT = Path(args.out_dir) if Path(args.out_dir).is_absolute() else ROOT / args.out_dir
     rows = list(csv.DictReader((OUT / "results.csv").open()))
     comp = json.loads((OUT / "comparisons.json").read_text())
     qa = [r for r in rows if r["world"] == "research_qa"]

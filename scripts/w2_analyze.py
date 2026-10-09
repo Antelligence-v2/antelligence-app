@@ -12,6 +12,7 @@ and missing (requested but never written) cells are all failures in ``accuracy``
 """
 from __future__ import annotations
 
+import argparse
 import csv
 import json
 import random
@@ -24,7 +25,8 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from antelligence.experiments.stats import paired_comparison, sign_test_p, wilson_interval  # noqa: E402
 
-OUT = ROOT / "docs/research/slm-vs-frontier-20261008"
+DEFAULT_OUT = ROOT / "docs/research/slm-vs-frontier-20261008"
+OUT = DEFAULT_OUT
 Z_ONE_SIDED_95 = 1.6448536269514722
 BOOT_REPS = 10_000
 BOOT_SEED = 20261008
@@ -246,6 +248,12 @@ def write_csv(path: Path, rows: List[dict]) -> None:
 
 
 def main() -> None:
+    global OUT
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--out-dir", default=None, help="analyze this dir (default: preregistered OUT)")
+    args = parser.parse_args()
+    if args.out_dir:
+        OUT = Path(args.out_dir) if Path(args.out_dir).is_absolute() else ROOT / args.out_dir
     cells, duplicates = dedupe(load_cells())
     requested = requested_from_runlog()
     rows = summarize(cells, requested)
