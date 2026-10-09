@@ -1,0 +1,1 @@
+tier,model_id,seed,domain,variant,protocol,task_count,completed_count,correct_count,error_count,abstained_count,invalid_count,coverage,task_success_rate,answered_accuracy,wilson_lower_95,call_count,prompt_tokens,completion_tokens,elapsed_s,usage_complete,gate
