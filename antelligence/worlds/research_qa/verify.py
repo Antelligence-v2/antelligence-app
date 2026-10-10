@@ -24,7 +24,12 @@ from dataclasses import dataclass, field
 from decimal import Decimal, InvalidOperation
 from typing import Any, Dict, List, Mapping, Optional, Tuple
 
-from backend.source_calculation import SourceCalculationError, _rounded_text, compute_source_calculation
+from backend.source_calculation import (
+    _SOURCE_TOKEN_RE,
+    SourceCalculationError,
+    _rounded_text,
+    compute_source_calculation,
+)
 
 from antelligence.kernel.aggregate import FAILED, UNVERIFIED, VERIFIED
 
@@ -75,6 +80,30 @@ def _check_quotes(claim: Mapping[str, Any], passages: Mapping[str, str]) -> _Che
     return PASS, "all quotes verbatim"
 
 
+def _with_currency(plan: Mapping[str, Any], passages: Mapping[str, str]) -> Mapping[str, Any]:
+    """Restore a dropped currency sign: an operand ``644.2`` binds to the source token ``$ 644.2``.
+
+    Tables write amounts as ``$ 644.2``; models often quote the number alone. The sign does not change
+    the value, so the operand is rewritten to the unique source token in the same passage that is that
+    number plus a ``$`` prefix. Anything else (percent signs, signs, parentheses) must still match exactly.
+    """
+    operands = plan.get("operands")
+    if not isinstance(operands, list):
+        return plan
+    fixed = []
+    for operand in operands:
+        quote, text = (operand.get("quote"), passages.get(operand.get("evidence_id"))) \
+            if isinstance(operand, Mapping) else (None, None)
+        if isinstance(quote, str) and isinstance(text, str) and not quote.lstrip().startswith("$"):
+            tokens = {m.group() for m in _SOURCE_TOKEN_RE.finditer(text)}
+            if quote not in tokens:
+                dollar = {t for t in tokens if t.startswith("$") and t[1:].strip() == quote.strip()}
+                if len(dollar) == 1:
+                    operand = {**operand, "quote": dollar.pop()}
+        fixed.append(operand)
+    return {**plan, "operands": fixed}
+
+
 def _check_calculation(claim: Mapping[str, Any], evidence: List[Mapping[str, Any]]) -> _Check:
     plan = claim.get("calculation")
     if plan is None:
@@ -82,6 +111,7 @@ def _check_calculation(claim: Mapping[str, Any], evidence: List[Mapping[str, Any
     if not isinstance(plan, Mapping):
         return "fail", "calculation must be an object"
     try:
+        plan = _with_currency(plan, {e["id"]: e["text"] for e in evidence})
         computed = compute_source_calculation({**plan, "brief": ""}, {"evidence": evidence})["answer"]
         if computed is None:
             return "fail", "calculation abstains"
