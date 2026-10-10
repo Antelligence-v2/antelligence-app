@@ -55,24 +55,27 @@ def vllm_args(model: str) -> List[str]:
     return parts + ["--default-chat-template-kwargs", '{"enable_thinking":false}']
 
 
-def start_script(model: str) -> str:
+def start_script(model: str, log_token: str = "logs") -> str:
     """Container command: vLLM on :8000; its log, with the key redacted, served read-only on :8001.
 
-    RunPod has no log API, so a crash-looping server is otherwise invisible. Only /logs is served.
+    RunPod has no log API, so a crash-looping server is otherwise invisible. The proxy URL is public, so
+    the log sits under an unguessable directory (``log_token``, a per-pod secret) and the key is redacted.
     After vLLM exits the container stays up so the log can be read; ``down`` terminates it.
     """
     serve = " ".join(shlex.quote(a) for a in ["vllm", "serve", *vllm_args(model)])
-    return ("mkdir -p /logs && (python3 -m http.server 8001 --directory /logs >/dev/null 2>&1 &) && "
-            f"{{ {serve} 2>&1 | sed -u \"s/$VLLM_API_KEY/[redacted]/g\" > /logs/vllm.log; }}; "
-            "echo \"vllm exited\" >> /logs/vllm.log; sleep infinity")
+    log = f"/srv/{log_token}/vllm.log"
+    # An empty index.html stops http.server from listing /srv (which would reveal the token).
+    return (f"mkdir -p /srv/{log_token} && : > /srv/index.html && (python3 -m http.server 8001 --directory /srv >/dev/null 2>&1 &) && "
+            f"{{ {serve} 2>&1 | sed -u \"s/$VLLM_API_KEY/[redacted]/g\" > {log}; }}; "
+            f"echo \"vllm exited\" >> {log}; sleep infinity")
 
 
-def deploy_payload(model: str, api_secret: str, gpu: str) -> Dict[str, Any]:
+def deploy_payload(model: str, api_secret: str, gpu: str, log_token: str = "logs") -> Dict[str, Any]:
     """REST body for one on-demand pod. Pure: builds, never sends."""
     return {"name": f"colony-v2-{model}", "imageName": VLLM_IMAGE, "gpuTypeIds": [gpu], "gpuCount": 1,
             "containerDiskInGb": CONTAINER_DISK_GB, "volumeInGb": 0, "ports": ["8000/http", "8001/http"],
             "env": {"VLLM_API_KEY": api_secret}, "dockerEntrypoint": ["bash", "-c"],
-            "dockerStartCmd": [start_script(model)]}
+            "dockerStartCmd": [start_script(model, log_token)]}
 
 
 def rest(method: str, path: str, body: Optional[Dict[str, Any]] = None) -> httpx.Response:
@@ -140,9 +143,9 @@ def cmd_up(args: argparse.Namespace) -> int:
         if info and info.get("desiredStatus") == "RUNNING":
             sys.exit(f"pod {state['pod_id']} ({state['model']}) is still running; run `down` first (one pod at a time)")
         print("stale state file (pod gone); replacing it")
-    api_secret = secrets.token_urlsafe(32)
+    api_secret, log_token = secrets.token_urlsafe(32), secrets.token_hex(16)
     for gpu in GPU_TYPES:
-        r = rest("POST", "/pods", deploy_payload(args.model, api_secret, gpu))
+        r = rest("POST", "/pods", deploy_payload(args.model, api_secret, gpu, log_token))
         pod = r.json() if r.status_code in (200, 201) else None
         if pod and pod.get("id"):
             break
@@ -154,7 +157,7 @@ def cmd_up(args: argparse.Namespace) -> int:
              "hf": spec["hf"], "revision": spec["revision"], "image": VLLM_IMAGE, "gpu": gpu,
              "cost_per_hr": pod.get("costPerHr"), "created_utc": datetime.now(timezone.utc).isoformat(),
              "base_url": f"https://{pod['id']}-8000.proxy.runpod.net/v1",
-             "log_url": f"https://{pod['id']}-8001.proxy.runpod.net/vllm.log"}
+             "log_url": f"https://{pod['id']}-8001.proxy.runpod.net/{log_token}/vllm.log"}
     save_state(state)
     print(f"pod {pod['id']} on {gpu} at ${pod.get('costPerHr')}/hr; base_url {state['base_url']}")
     if args.wait:
@@ -172,7 +175,7 @@ def cmd_status(_: argparse.Namespace) -> int:
     info = pod_info(state["pod_id"])
     print(json.dumps({"pod_id": state["pod_id"], "model": state["model"], "gpu": state["gpu"],
                       "desiredStatus": (info or {}).get("desiredStatus", "GONE"), "base_url": state["base_url"],
-                      "log_url": state.get("log_url")}))
+                      "log_url": "(in state file)" if state.get("log_url") else None}))
     print(spend_line(state))
     return 0
 

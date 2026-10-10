@@ -229,12 +229,14 @@ def test_pod_payload_is_pinned_and_secret_free_of_hf_token():
     body = pod.deploy_payload("qwen", "SECRET123", "NVIDIA L40S")
     assert body["imageName"] == pod.VLLM_IMAGE and ":" in body["imageName"] and not body["imageName"].endswith(":latest")
     script = body["dockerStartCmd"][0]
-    assert body["dockerEntrypoint"] == ["bash", "-c"] and script.startswith("mkdir -p /logs")
+    assert body["dockerEntrypoint"] == ["bash", "-c"] and script.startswith("mkdir -p /srv/logs")
+    tokened = pod.deploy_payload("qwen", "S", "NVIDIA L40S", "f00dcafe")["dockerStartCmd"][0]
+    assert ": > /srv/index.html" in tokened and "/srv/f00dcafe/vllm.log" in tokened and "--directory /srv " in tokened  # log only under the secret dir
     assert "SECRET123" not in script and body["env"] == {"VLLM_API_KEY": "SECRET123"}  # key never on the command line
     assert "--served-model-name Qwen/Qwen3.8-27B-FP8" in script and "--seed 0" in script and "--max-model-len 8192" in script
     assert "--revision 017b9c7af6b5689d5dd426a76e0bc077eb5ca20a" in script
     assert "'{\"enable_thinking\":false}'" in script  # shell-quoted once, so vLLM receives valid JSON
-    assert 's/$VLLM_API_KEY/[redacted]/g' in script and "--directory /logs" in script
+    assert 's/$VLLM_API_KEY/[redacted]/g' in script and "--directory /srv" in script
     assert (body["containerDiskInGb"], body["ports"], body["gpuTypeIds"]) == (80, ["8000/http", "8001/http"], ["NVIDIA L40S"])
     assert "HF_TOKEN" not in json.dumps(body) and "HUGGING" not in json.dumps(body).upper()
     assert set(pod.POD_MODELS) == {"qwen", "phi", "gemma"}
@@ -246,11 +248,11 @@ def test_start_script_runs_under_bash_and_passes_the_json_flag_intact(tmp_path):
     fake = tmp_path / "vllm"
     fake.write_text('#!/bin/sh\nfor a in "$@"; do echo "ARG:$a"; done\n')
     fake.chmod(0o755)
-    script = pod.start_script("qwen").replace("/logs", f"{tmp_path}/logs").replace("sleep infinity", "true").replace(
+    script = pod.start_script("qwen", "tok").replace("/srv", f"{tmp_path}/srv").replace("sleep infinity", "true").replace(
         "(python3 -m http.server", "(true || python3 -m http.server")
     env = {"PATH": f"{tmp_path}:/usr/bin:/bin", "VLLM_API_KEY": "k3y"}
     subprocess.run(["bash", "-c", script], env=env, check=True, timeout=20)
-    log = (tmp_path / "logs/vllm.log").read_text()
+    log = (tmp_path / "srv/tok/vllm.log").read_text()
     assert 'ARG:{"enable_thinking":false}' in log and "ARG:serve" in log and "vllm exited" in log
 
 
