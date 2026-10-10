@@ -230,7 +230,7 @@ def test_pod_payload_is_pinned_and_secret_free_of_hf_token():
     inp = body["variables"]["input"]
     assert inp["imageName"] == pod.VLLM_IMAGE and ":" in inp["imageName"] and not inp["imageName"].endswith(":latest")
     assert "--api-key SECRET123" in inp["dockerArgs"] and "--served-model-name Qwen/Qwen3.8-27B-FP8" in inp["dockerArgs"]
-    assert "--seed 0" in inp["dockerArgs"] and "--max-model-len 8192" in inp["dockerArgs"] and "--revision" not in inp["dockerArgs"]
+    assert "--seed 0" in inp["dockerArgs"] and "--max-model-len 8192" in inp["dockerArgs"] and "--revision 017b9c7af6b5689d5dd426a76e0bc077eb5ca20a" in inp["dockerArgs"] and "enable_thinking" in inp["dockerArgs"]
     assert (inp["cloudType"], inp["containerDiskInGb"], inp["ports"], inp["gpuTypeId"]) == ("ALL", 80, "8000/http", "NVIDIA L40S")
     assert "env" not in inp
     assert "HF_TOKEN" not in json.dumps(body) and "HUGGING" not in json.dumps(body).upper()

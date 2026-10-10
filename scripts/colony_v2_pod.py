@@ -22,18 +22,20 @@ import httpx
 
 GRAPHQL_URL = "https://api.runpod.io/graphql"
 STATE_PATH = Path("~/.config/antelligence/colony-v2-pod.json").expanduser()
-# VERIFY BEFORE FIRST RUN: confirm this tag exists on Docker Hub and that it supports every model
-# below (Qwen3.8 FP8 and Gemma 4 may need a newer release). Never use ``latest``.
-VLLM_IMAGE = "vllm/vllm-openai:v0.11.0"
+# Verified 2026-10-10: the tag exists and its model registry has every architecture below. Never use ``latest``.
+VLLM_IMAGE = "vllm/vllm-openai:v0.30.0"  # 2026-09-22; registry has Qwen3_5/Gemma4/Phi3 architectures
 GPU_TYPES = ("NVIDIA L40S", "NVIDIA A40")  # first choice, then fallback
 CONTAINER_DISK_GB = 80
 MAX_WALL_HOURS = 2.0
 # key -> HF repo (also the served name, so the response-model identity check pins the weights).
-# revision: pin an HF commit hash before the first run (recorded in every cell).
+# revision: HF commit hashes pinned 2026-10-10 (recorded in every cell).
 POD_MODELS: Dict[str, Dict[str, Optional[str]]] = {
-    "qwen": {"hf": "Qwen/Qwen3.8-27B-FP8", "served": "Qwen/Qwen3.8-27B-FP8", "revision": None},
-    "phi": {"hf": "microsoft/Phi-4-mini-instruct", "served": "microsoft/Phi-4-mini-instruct", "revision": None},
-    "gemma": {"hf": "google/gemma-4-E4B-it", "served": "google/gemma-4-E4B-it", "revision": None},
+    "qwen": {"hf": "Qwen/Qwen3.8-27B-FP8", "served": "Qwen/Qwen3.8-27B-FP8",
+             "revision": "017b9c7af6b5689d5dd426a76e0bc077eb5ca20a"},
+    "phi": {"hf": "microsoft/Phi-4-mini-instruct", "served": "microsoft/Phi-4-mini-instruct",
+             "revision": "cfbefacb99257ffa30c83adab238a50856ac3083"},
+    "gemma": {"hf": "google/gemma-4-E4B-it", "served": "google/gemma-4-E4B-it",
+             "revision": "ee0ef6023621cff504d758262d4e04895a5af4a2"},
 }
 # Not a pod model: Claude Haiku 5.5 via the Nous inference API.
 HAIKU_NOUS_ID = "anthropic/claude-haiku-5.5"
@@ -45,6 +47,9 @@ def docker_args(model: str, api_secret: str) -> str:
              "--max-model-len", "8192", "--gpu-memory-utilization", "0.92", "--seed", "0"]
     if spec["revision"]:
         parts += ["--revision", spec["revision"]]
+    # Qwen3.8's template thinks by default and would spend the 512-token answer budget on it; answer directly.
+    # Gemma 4's template already defaults to no thinking; Phi-4-mini has none. Same setting for every seat.
+    parts += ["--default-chat-template-kwargs", "'{\"enable_thinking\":false}'"]
     return " ".join(str(p) for p in parts)
 
 
