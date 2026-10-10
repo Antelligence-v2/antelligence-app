@@ -33,6 +33,7 @@ if _backend_dir not in sys.path:
 from backend.config import PheromoneParams, SimulationConfig  # noqa: E402
 from backend.run_store import SQLiteRunStore  # noqa: E402
 from backend.runtime_factory import run_simulation  # noqa: E402
+from chain.ipfs import compute_artifact_hash  # noqa: E402
 from chain.proof_adapter import create_proof_bundle  # noqa: E402
 
 # Import simulation model at module level so tests can patch backend.api_server.TumorNanobotModel
@@ -78,6 +79,8 @@ class SimulateResponse(BaseModel):
     run_id: str
     status: str
     metrics: Dict[str, Any]
+    config_hash: str
+    metrics_hash: str
     provenance: Dict[str, Any]
 
 
@@ -85,7 +88,9 @@ class RunResponse(BaseModel):
     run_id: str
     status: str
     config: Dict[str, Any]
+    config_hash: str
     metrics: Dict[str, Any]
+    metrics_hash: str
     provenance: Optional[Dict[str, Any]] = None
 
 
@@ -276,7 +281,14 @@ def simulate(request: SimulateRequest) -> SimulateResponse:
     _RUNS[run_id] = entry
     RUN_STORE.save_run(run_id, entry["status"], entry["config"], entry["metrics"], entry["provenance"])
 
-    return SimulateResponse(run_id=run_id, status="completed", metrics=metrics, provenance=provenance)
+    return SimulateResponse(
+        run_id=run_id,
+        status="completed",
+        metrics=metrics,
+        config_hash=compute_artifact_hash(entry["config"]),
+        metrics_hash=compute_artifact_hash(metrics),
+        provenance=provenance,
+    )
 
 
 @app.get("/runs/{run_id}", response_model=RunResponse, tags=["simulation"])
@@ -310,7 +322,9 @@ def get_run(run_id: str) -> RunResponse:
             run_id=run_id,
             status=entry["status"],
             config=entry["config"],
+            config_hash=compute_artifact_hash(entry["config"]),
             metrics=entry["metrics"],
+            metrics_hash=compute_artifact_hash(entry["metrics"]),
             provenance=None,
         )
     required_provenance_fields = {
@@ -338,7 +352,9 @@ def get_run(run_id: str) -> RunResponse:
         run_id=run_id,
         status=entry["status"],
         config=entry["config"],
+        config_hash=compute_artifact_hash(entry["config"]),
         metrics=entry["metrics"],
+        metrics_hash=compute_artifact_hash(entry["metrics"]),
         provenance=provenance,
     )
 
