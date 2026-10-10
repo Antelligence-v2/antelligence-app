@@ -26,6 +26,11 @@ Sprint 1's answer was no for same-model colonies. The pilot (`pilot-independence
   - *Amended 2026-10-10, before any evaluation-split call.* The draft said 512. In the 2-task development plumbing check, Haiku hit 512 on 3 of 6 replies whose visible JSON was only about 300 characters, because Nous counts hidden reasoning tokens as output. A 512 cap would measure that budget, not the model. The new cap is the same for every seat, and tokens are reported per arm. The seed is fixed per (item, seat, sample index).
 - **Output limit:** a reply cut off at the token limit is a format failure (§5), not a wrong answer.
 
+- **Verifier amendment** (2026-10-10, before any evaluation-split call).
+  - Problem: in Haiku's development cells, 65 of 145 FinQA calculations were marked *failed*. Each quoted the right number but without the table's `$ ` prefix (`644.2` for `$ 644.2`).
+  - Fix: the verifier now restores a dropped currency sign when exactly one `$` token in that passage has that number. Percent signs, signs and parentheses must still match exactly.
+  - Re-scoring: development cells are re-verified from the cached replies, with no new calls.
+
 ## 3. Data
 
 - **Source:** `backend/research_fixtures/tasks.json`, sha256 recorded by the run script at start.
