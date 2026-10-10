@@ -1,0 +1,90 @@
+[
+  {
+    "label": "a1 small signal_board vs small single",
+    "scale_items": "included",
+    "pairs": 180,
+    "treatment_acc": 0.75,
+    "baseline_acc": 0.7889,
+    "treatment_wins": 4,
+    "baseline_wins": 11,
+    "sign_test_p": 0.11846923828125,
+    "note": "exploratory, post hoc, uncorrected; lenient scoring"
+  },
+  {
+    "label": "a1 small signal_board vs small single",
+    "scale_items": "excluded",
+    "pairs": 174,
+    "treatment_acc": 0.7759,
+    "baseline_acc": 0.8046,
+    "treatment_wins": 4,
+    "baseline_wins": 9,
+    "sign_test_p": 0.266845703125,
+    "note": "exploratory, post hoc, uncorrected; lenient scoring"
+  },
+  {
+    "label": "a2 small evidence_exchange vs small single",
+    "scale_items": "included",
+    "pairs": 180,
+    "treatment_acc": 0.5056,
+    "baseline_acc": 0.7889,
+    "treatment_wins": 8,
+    "baseline_wins": 59,
+    "sign_test_p": 1.016748503966658e-10,
+    "note": "exploratory, post hoc, uncorrected; lenient scoring"
+  },
+  {
+    "label": "a2 small evidence_exchange vs small single",
+    "scale_items": "excluded",
+    "pairs": 174,
+    "treatment_acc": 0.523,
+    "baseline_acc": 0.8046,
+    "treatment_wins": 8,
+    "baseline_wins": 57,
+    "sign_test_p": 3.1632431884368734e-10,
+    "note": "exploratory, post hoc, uncorrected; lenient scoring"
+  },
+  {
+    "label": "b1 small signal_board vs frontier-strong single",
+    "scale_items": "included",
+    "pairs": 180,
+    "treatment_acc": 0.75,
+    "baseline_acc": 0.9167,
+    "treatment_wins": 3,
+    "baseline_wins": 33,
+    "sign_test_p": 2.2721360437572002e-07,
+    "note": "exploratory, post hoc, uncorrected; lenient scoring"
+  },
+  {
+    "label": "b1 small signal_board vs frontier-strong single",
+    "scale_items": "excluded",
+    "pairs": 174,
+    "treatment_acc": 0.7759,
+    "baseline_acc": 0.9483,
+    "treatment_wins": 3,
+    "baseline_wins": 33,
+    "sign_test_p": 2.2721360437572002e-07,
+    "note": "exploratory, post hoc, uncorrected; lenient scoring"
+  },
+  {
+    "label": "b2 small evidence_exchange vs frontier-strong single",
+    "scale_items": "included",
+    "pairs": 180,
+    "treatment_acc": 0.5056,
+    "baseline_acc": 0.9167,
+    "treatment_wins": 1,
+    "baseline_wins": 75,
+    "sign_test_p": 2.0381730293306602e-21,
+    "note": "exploratory, post hoc, uncorrected; lenient scoring"
+  },
+  {
+    "label": "b2 small evidence_exchange vs frontier-strong single",
+    "scale_items": "excluded",
+    "pairs": 174,
+    "treatment_acc": 0.523,
+    "baseline_acc": 0.9483,
+    "treatment_wins": 1,
+    "baseline_wins": 75,
+    "sign_test_p": 2.0381730293306602e-21,
+    "note": "exploratory, post hoc, uncorrected; lenient scoring"
+  }
+]
