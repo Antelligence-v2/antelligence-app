@@ -32,8 +32,9 @@ MAX_WALL_HOURS = 2.0
 # key -> HF repo (also the served name, so the response-model identity check pins the weights).
 # revision: HF commit hashes pinned 2026-10-10 (recorded in every cell).
 POD_MODELS: Dict[str, Dict[str, Optional[str]]] = {
+    # Hybrid (Mamba) layers: one cache block per running sequence; 184 fit on an L40S, the default 256 do not.
     "qwen": {"hf": "Qwen/Qwen3.8-27B-FP8", "served": "Qwen/Qwen3.8-27B-FP8",
-             "revision": "017b9c7af6b5689d5dd426a76e0bc077eb5ca20a"},
+             "revision": "017b9c7af6b5689d5dd426a76e0bc077eb5ca20a", "max_num_seqs": "64"},
     "phi": {"hf": "microsoft/Phi-4-mini-instruct", "served": "microsoft/Phi-4-mini-instruct",
              "revision": "cfbefacb99257ffa30c83adab238a50856ac3083"},
     "gemma": {"hf": "google/gemma-4-E4B-it", "served": "google/gemma-4-E4B-it",
@@ -50,6 +51,8 @@ def vllm_args(model: str) -> List[str]:
              "--gpu-memory-utilization", "0.92", "--seed", "0"]
     if spec["revision"]:
         parts += ["--revision", spec["revision"]]
+    if spec.get("max_num_seqs"):
+        parts += ["--max-num-seqs", spec["max_num_seqs"]]
     # Qwen3.8's template thinks by default and would spend the answer budget on it; answer directly.
     # Gemma 4's template already defaults to no thinking; Phi-4-mini has none. Same setting for every seat.
     return parts + ["--default-chat-template-kwargs", '{"enable_thinking":false}']
