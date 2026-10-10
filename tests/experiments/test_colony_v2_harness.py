@@ -227,19 +227,36 @@ def test_haiku_call_cap_persists_via_ledger(tmp_path, no_network):
 # ----------------------------------------------------------------------- pod
 def test_pod_payload_is_pinned_and_secret_free_of_hf_token():
     body = pod.deploy_payload("qwen", "SECRET123", "NVIDIA L40S")
-    inp = body["variables"]["input"]
-    assert inp["imageName"] == pod.VLLM_IMAGE and ":" in inp["imageName"] and not inp["imageName"].endswith(":latest")
-    assert "--api-key SECRET123" in inp["dockerArgs"] and "--served-model-name Qwen/Qwen3.8-27B-FP8" in inp["dockerArgs"]
-    assert "--seed 0" in inp["dockerArgs"] and "--max-model-len 8192" in inp["dockerArgs"] and "--revision 017b9c7af6b5689d5dd426a76e0bc077eb5ca20a" in inp["dockerArgs"] and "enable_thinking" in inp["dockerArgs"]
-    assert (inp["cloudType"], inp["containerDiskInGb"], inp["ports"], inp["gpuTypeId"]) == ("ALL", 80, "8000/http", "NVIDIA L40S")
-    assert "env" not in inp
+    assert body["imageName"] == pod.VLLM_IMAGE and ":" in body["imageName"] and not body["imageName"].endswith(":latest")
+    script = body["dockerStartCmd"][0]
+    assert body["dockerEntrypoint"] == ["bash", "-c"] and script.startswith("mkdir -p /logs")
+    assert "SECRET123" not in script and body["env"] == {"VLLM_API_KEY": "SECRET123"}  # key never on the command line
+    assert "--served-model-name Qwen/Qwen3.8-27B-FP8" in script and "--seed 0" in script and "--max-model-len 8192" in script
+    assert "--revision 017b9c7af6b5689d5dd426a76e0bc077eb5ca20a" in script
+    assert "'{\"enable_thinking\":false}'" in script  # shell-quoted once, so vLLM receives valid JSON
+    assert 's/$VLLM_API_KEY/[redacted]/g' in script and "--directory /logs" in script
+    assert (body["containerDiskInGb"], body["ports"], body["gpuTypeIds"]) == (80, ["8000/http", "8001/http"], ["NVIDIA L40S"])
     assert "HF_TOKEN" not in json.dumps(body) and "HUGGING" not in json.dumps(body).upper()
     assert set(pod.POD_MODELS) == {"qwen", "phi", "gemma"}
 
 
+def test_start_script_runs_under_bash_and_passes_the_json_flag_intact(tmp_path):
+    import subprocess
+
+    fake = tmp_path / "vllm"
+    fake.write_text('#!/bin/sh\nfor a in "$@"; do echo "ARG:$a"; done\n')
+    fake.chmod(0o755)
+    script = pod.start_script("qwen").replace("/logs", f"{tmp_path}/logs").replace("sleep infinity", "true").replace(
+        "(python3 -m http.server", "(true || python3 -m http.server")
+    env = {"PATH": f"{tmp_path}:/usr/bin:/bin", "VLLM_API_KEY": "k3y"}
+    subprocess.run(["bash", "-c", script], env=env, check=True, timeout=20)
+    log = (tmp_path / "logs/vllm.log").read_text()
+    assert 'ARG:{"enable_thinking":false}' in log and "ARG:serve" in log and "vllm exited" in log
+
+
 def test_pod_revision_pin_and_state_file_mode(tmp_path, monkeypatch):
     monkeypatch.setitem(pod.POD_MODELS["phi"], "revision", "abc123")
-    assert "--revision abc123" in pod.docker_args("phi", "k")
+    assert "--revision" in pod.vllm_args("phi") and "abc123" in pod.vllm_args("phi")
     monkeypatch.setattr(pod, "STATE_PATH", tmp_path / "sub/state.json")
     pod.save_state({"pod_id": "p"})
     assert (tmp_path / "sub/state.json").stat().st_mode & 0o777 == 0o600 and pod.load_state() == {"pod_id": "p"}

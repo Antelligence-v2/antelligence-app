@@ -12,6 +12,7 @@ import argparse
 import json
 import os
 import secrets
+import shlex
 import sys
 import time
 from datetime import datetime, timezone
@@ -21,6 +22,7 @@ from typing import Any, Dict, List, Optional
 import httpx
 
 GRAPHQL_URL = "https://api.runpod.io/graphql"
+REST_URL = "https://rest.runpod.io/v1"
 STATE_PATH = Path("~/.config/antelligence/colony-v2-pod.json").expanduser()
 # Verified 2026-10-10: the tag exists and its model registry has every architecture below. Never use ``latest``.
 VLLM_IMAGE = "vllm/vllm-openai:v0.30.0"  # 2026-09-22; registry has Qwen3_5/Gemma4/Phi3 architectures
@@ -41,26 +43,44 @@ POD_MODELS: Dict[str, Dict[str, Optional[str]]] = {
 HAIKU_NOUS_ID = "anthropic/claude-haiku-5.5"
 
 
-def docker_args(model: str, api_secret: str) -> str:
+def vllm_args(model: str) -> List[str]:
+    """``vllm serve`` arguments. The API key is NOT here: vLLM reads it from env VLLM_API_KEY."""
     spec = POD_MODELS[model]
-    parts = ["--model", spec["hf"], "--served-model-name", spec["served"], "--api-key", api_secret,
-             "--max-model-len", "8192", "--gpu-memory-utilization", "0.92", "--seed", "0"]
+    parts = [spec["hf"], "--served-model-name", spec["served"], "--max-model-len", "8192",
+             "--gpu-memory-utilization", "0.92", "--seed", "0"]
     if spec["revision"]:
         parts += ["--revision", spec["revision"]]
-    # Qwen3.8's template thinks by default and would spend the 512-token answer budget on it; answer directly.
+    # Qwen3.8's template thinks by default and would spend the answer budget on it; answer directly.
     # Gemma 4's template already defaults to no thinking; Phi-4-mini has none. Same setting for every seat.
-    parts += ["--default-chat-template-kwargs", "'{\"enable_thinking\":false}'"]
-    return " ".join(str(p) for p in parts)
+    return parts + ["--default-chat-template-kwargs", '{"enable_thinking":false}']
+
+
+def start_script(model: str) -> str:
+    """Container command: vLLM on :8000; its log, with the key redacted, served read-only on :8001.
+
+    RunPod has no log API, so a crash-looping server is otherwise invisible. Only /logs is served.
+    After vLLM exits the container stays up so the log can be read; ``down`` terminates it.
+    """
+    serve = " ".join(shlex.quote(a) for a in ["vllm", "serve", *vllm_args(model)])
+    return ("mkdir -p /logs && (python3 -m http.server 8001 --directory /logs >/dev/null 2>&1 &) && "
+            f"{{ {serve} 2>&1 | sed -u \"s/$VLLM_API_KEY/[redacted]/g\" > /logs/vllm.log; }}; "
+            "echo \"vllm exited\" >> /logs/vllm.log; sleep infinity")
 
 
 def deploy_payload(model: str, api_secret: str, gpu: str) -> Dict[str, Any]:
-    """GraphQL request body for one on-demand pod. Pure: builds, never sends."""
-    query = ("mutation Deploy($input: PodFindAndDeployOnDemandInput!) { podFindAndDeployOnDemand(input: $input) "
-             "{ id costPerHr machine { gpuDisplayName } } }")
-    variables = {"input": {"name": f"colony-v2-{model}", "cloudType": "ALL", "gpuCount": 1, "gpuTypeId": gpu,
-                           "imageName": VLLM_IMAGE, "containerDiskInGb": CONTAINER_DISK_GB, "volumeInGb": 0,
-                           "ports": "8000/http", "dockerArgs": docker_args(model, api_secret)}}
-    return {"query": query, "variables": variables}
+    """REST body for one on-demand pod. Pure: builds, never sends."""
+    return {"name": f"colony-v2-{model}", "imageName": VLLM_IMAGE, "gpuTypeIds": [gpu], "gpuCount": 1,
+            "containerDiskInGb": CONTAINER_DISK_GB, "volumeInGb": 0, "ports": ["8000/http", "8001/http"],
+            "env": {"VLLM_API_KEY": api_secret}, "dockerEntrypoint": ["bash", "-c"],
+            "dockerStartCmd": [start_script(model)]}
+
+
+def rest(method: str, path: str, body: Optional[Dict[str, Any]] = None) -> httpx.Response:
+    key = os.environ.get("RUNPOD_API_KEY")
+    if not key:
+        sys.exit("RUNPOD_API_KEY is not set (load it from ~/.hermes/.env)")
+    return httpx.request(method, REST_URL + path, json=body, headers={"Authorization": f"Bearer {key}"},
+                         timeout=60.0, follow_redirects=False, trust_env=False)
 
 
 def gql(query: str, variables: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
@@ -87,9 +107,8 @@ def save_state(state: Dict[str, Any]) -> None:
 
 
 def pod_info(pod_id: str) -> Optional[Dict[str, Any]]:
-    out = gql("query($i: PodFilter) { pod(input: $i) { id desiredStatus costPerHr runtime { uptimeInSeconds } } }",
-              {"i": {"podId": pod_id}})
-    return (out.get("data") or {}).get("pod")
+    r = rest("GET", f"/pods/{pod_id}")
+    return r.json() if r.status_code == 200 else None
 
 
 def spend_line(state: Dict[str, Any]) -> str:
@@ -123,18 +142,19 @@ def cmd_up(args: argparse.Namespace) -> int:
         print("stale state file (pod gone); replacing it")
     api_secret = secrets.token_urlsafe(32)
     for gpu in GPU_TYPES:
-        out = gql(**deploy_payload(args.model, api_secret, gpu))
-        pod = (out.get("data") or {}).get("podFindAndDeployOnDemand")
-        if pod:
+        r = rest("POST", "/pods", deploy_payload(args.model, api_secret, gpu))
+        pod = r.json() if r.status_code in (200, 201) else None
+        if pod and pod.get("id"):
             break
-        print(f"{gpu} unavailable: {str((out.get('errors') or [{}])[0].get('message'))[:120]}")
+        print(f"{gpu} unavailable: HTTP {r.status_code} {r.text[:160]}")
     else:
         sys.exit("no GPU available")
     spec = POD_MODELS[args.model]
     state = {"pod_id": pod["id"], "api_secret": api_secret, "model": args.model, "served": spec["served"],
              "hf": spec["hf"], "revision": spec["revision"], "image": VLLM_IMAGE, "gpu": gpu,
              "cost_per_hr": pod.get("costPerHr"), "created_utc": datetime.now(timezone.utc).isoformat(),
-             "base_url": f"https://{pod['id']}-8000.proxy.runpod.net/v1"}
+             "base_url": f"https://{pod['id']}-8000.proxy.runpod.net/v1",
+             "log_url": f"https://{pod['id']}-8001.proxy.runpod.net/vllm.log"}
     save_state(state)
     print(f"pod {pod['id']} on {gpu} at ${pod.get('costPerHr')}/hr; base_url {state['base_url']}")
     if args.wait:
@@ -151,7 +171,8 @@ def cmd_status(_: argparse.Namespace) -> int:
         return 0
     info = pod_info(state["pod_id"])
     print(json.dumps({"pod_id": state["pod_id"], "model": state["model"], "gpu": state["gpu"],
-                      "desiredStatus": (info or {}).get("desiredStatus", "GONE"), "base_url": state["base_url"]}))
+                      "desiredStatus": (info or {}).get("desiredStatus", "GONE"), "base_url": state["base_url"],
+                      "log_url": state.get("log_url")}))
     print(spend_line(state))
     return 0
 
@@ -161,9 +182,9 @@ def cmd_down(_: argparse.Namespace) -> int:
     if not state:
         print("no pod recorded")
         return 0
-    out = gql("mutation($i: PodTerminateInput!) { podTerminate(input: $i) }", {"i": {"podId": state["pod_id"]}})
-    if out.get("errors") and pod_info(state["pod_id"]):
-        sys.exit(f"terminate failed: {str(out['errors'][0].get('message'))[:200]}; pod may still be billing")
+    r = rest("DELETE", f"/pods/{state['pod_id']}")
+    if r.status_code not in (200, 204) and pod_info(state["pod_id"]):
+        sys.exit(f"terminate failed: HTTP {r.status_code} {r.text[:200]}; pod may still be billing")
     print(f"terminated {state['pod_id']} |", spend_line(state))
     STATE_PATH.unlink()
     return 0
