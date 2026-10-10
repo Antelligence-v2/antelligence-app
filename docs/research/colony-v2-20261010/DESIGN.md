@@ -4,15 +4,15 @@ Status: **design for review** (2026-10-10), before any code. Goal: v3 Track 1, s
 
 ## 0. What the pilot already tells us
 
-This was measured offline from the stored Sprint 1 (W2) cells, with no new model calls. The pilot script lands in the first Track 1 PR together with its output file.
+This was measured offline from the stored Sprint 1 (W2) cells, with no new model calls, using `scripts/colony_v2_pilot_independence.py`. The numbers are in `pilot-independence.json`; the intervals are 95% bootstrap intervals over items.
 
 **Three copies of one model, voting (`independent_vote`, temperature 0.7).** An error means wrong or abstained, scored against the gold answer.
 
 | Model | Items | Error correlation ρ between voters | Effective independent agents |
 |---|---|---|---|
-| Haiku 5.5 | 172 | 0.88, 0.88, 0.92 | **1.08** |
-| Sonnet 5.5 | 41 | 0.81, 1.00, 0.81 | **1.09** |
-| Qwen3.8-27B | 153 | 0.67, 0.56, 0.63 | **1.34** |
+| Haiku 5.5 | 172 | 0.88, 0.88, 0.92 | **1.08** (1.01–1.19) |
+| Sonnet 5.5 | 41 | 0.81, 1.00, 0.81 | **1.09** (1.00–3.00, few items) |
+| Qwen3.8-27B | 153 | 0.67, 0.56, 0.63 | **1.34** (1.19–1.61) |
 
 **Three different models, one call each, on the same 180 items (`single`).**
 
@@ -22,7 +22,9 @@ This was measured offline from the stored Sprint 1 (W2) cells, with no new model
 | Haiku × Qwen | 0.29 |
 | Sonnet × Qwen | 0.26 |
 
-Together these three behave like **2.05** independent agents.
+Together these three behave like **2.05** independent agents (95% interval 1.77–2.41).
+
+**Rate-adjusted, they behave like 1.77** (95% interval 1.45–2.22). That adjustment, defined in §7, removes the part of the apparent independence that comes only from the models having different error rates. It accounts for roughly a quarter of the raw gain.
 
 **Reading.** Sprint 1's teams were one agent counted three times, so voting could not help. That is the measured reason for the Q&A null. A mixed-model colony starts with about twice the independence. Two caveats:
 - The cross-model numbers use strict scoring, so Sonnet's format failures count as errors.

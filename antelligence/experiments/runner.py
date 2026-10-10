@@ -16,6 +16,7 @@ from antelligence.experiments.stats import paired_comparison, wilson_interval
 from antelligence.experiments.store import EngineStore
 from antelligence.experiments.version import engine_fingerprint
 from antelligence.kernel.canonical import content_hash
+from antelligence.kernel.independence import errors_from_runs, independence
 from antelligence.kernel.verifier import classify_episode
 from antelligence.provenance.bundle import build_bundle
 from antelligence.provenance.outbox import ProvenanceOutbox
@@ -25,6 +26,8 @@ CAVEATS = (
     "Worlds are synthetic research models; tumor results are not clinical evidence.",
     "Sign-test p-values are per comparison and not corrected for multiple comparisons.",
     "Bundles are replayable provenance (trust_tier=local_replay, proof_ok=false), not cryptographic proofs.",
+    "Independence (n_eff) treats each world-rejected or gate-blocked action as an error; it is a point "
+    "estimate pooled over cases (use kernel.independence for bootstrap intervals).",
 )
 
 
@@ -120,7 +123,7 @@ def execute_run(spec: RunSpec, *, store: Optional[EngineStore] = None, outbox: O
         store.save_run(record, bundle, scheduler.log, experiment_id=experiment_id, frames=frames)
     if outbox is not None:
         outbox.enqueue(bundle)
-    return {**record, "bundle": bundle}
+    return {**record, "bundle": bundle, "agent_errors": errors_from_runs([(run_id, scheduler.log)])}
 
 
 def experiment_request(world_name: str, arms: Optional[Sequence[str]], cases: Sequence[int], *,
@@ -162,6 +165,7 @@ def run_experiment(request: Dict[str, Any], *, store: Optional[EngineStore] = No
             return cached
     ws = world(request["world"])
     runs: Dict[str, List[Dict[str, Any]]] = {}
+    errors: Dict[str, Dict[str, Dict[str, int]]] = {}
     total = len(request["arms"]) * len(request["cases"])
     done = 0
     for arm in request["arms"]:
@@ -170,6 +174,8 @@ def run_experiment(request: Dict[str, Any], *, store: Optional[EngineStore] = No
             record = execute_run(RunSpec(request["world"], arm, case, request["params"]), store=store,
                                  outbox=outbox, experiment_id=experiment_id)
             record.pop("bundle")
+            for agent, row in record.pop("agent_errors").items():
+                errors.setdefault(arm, {}).setdefault(agent, {}).update(row)
             runs[arm].append(record)
             done += 1
             if on_progress is not None:
@@ -192,6 +198,7 @@ def run_experiment(request: Dict[str, Any], *, store: Optional[EngineStore] = No
             "blocked_attempts": sum(r["verdict"]["blocked_attempts"] for r in records),
             "concurrent_blocks": sum(r["verdict"]["concurrent_blocks"] for r in records),
             "policy_failures": sum(r["verdict"]["policy_failures"] for r in records),
+            "independence": (independence(errors[arm], bootstrap=0).to_dict() if errors.get(arm) else None),
         }
     base = [r["metrics"].get(metric) for r in runs[request["baseline"]]]
     comparisons = {

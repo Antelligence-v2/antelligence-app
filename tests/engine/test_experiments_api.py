@@ -220,3 +220,15 @@ def test_task_dag_experiment_reproduces_the_merge_result():
     assert report["arms"]["swarm_partitioned"]["successes"] == 0
     assert comps["swarm_partitioned"]["losses"] == 16 and comps["swarm_partitioned_merged"]["ties"] == 20
     assert execute_run(RunSpec("task_dag", "swarm_partitioned_merged", 101))["bundle"]["metrics"]["success"] is True
+
+
+def test_every_arm_reports_error_independence(tmp_path):
+    report = run_experiment({"world": "foraging", "arms": ["baseline", "hive_memory"], "cases": [101, 102]},
+                            store=EngineStore(tmp_path))
+    for arm in ("baseline", "hive_memory"):
+        ind = report["arms"][arm]["independence"]
+        assert ind is not None and ind["agents"] and ind["items"] > 0
+        n_eff = ind["n_eff"]
+        assert n_eff == "inf" or 0 < n_eff
+        assert set(ind) >= {"rho", "rho_adjusted", "double_fault", "n_eff_rate_adjusted", "flags"}
+    assert any("Independence" in c for c in report["caveats"])
