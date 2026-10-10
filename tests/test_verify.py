@@ -234,7 +234,9 @@ class TestReplayVerification:
             "verification_status": bundle["verification_status"],
         }
 
-        monkeypatch.setattr("chain.verify.check_onchain_verification", lambda config_hash: {"ok": True, "verified": True, "raw": "true"})
+        from tests._onchain_proof import proven_onchain
+
+        monkeypatch.setattr("chain.verify.check_onchain_verification", proven_onchain(artifact))
         result = verify_artifact(artifact, tolerance_pct=100.0, replay=False)
 
         assert result["proof_bundle"]["ok"] is True

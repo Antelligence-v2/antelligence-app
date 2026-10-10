@@ -1,0 +1,273 @@
+{
+  "schema": "antelligence.chain-e2e/v1",
+  "created_utc": "2026-10-09T18:13:57.539142+00:00",
+  "chain": {
+    "network": "zksync-era-sepolia",
+    "chain_id": 300,
+    "explorer_url": "https://sepolia.explorer.zksync.io",
+    "deployments_file": "blockchain/deployments/zksync-era-sepolia.json",
+    "tumor_intel_address": "0x90445eDC246d83FA42D700584796216E6510e317"
+  },
+  "simulation": {
+    "config": {
+      "num_bots": 5,
+      "grid_size": 20,
+      "steps": 30,
+      "pheromone_params": {
+        "trail_diffusion": 1e-06,
+        "alarm_diffusion": 5e-06,
+        "recruitment_diffusion": 2e-06,
+        "trail_decay": 0.0693,
+        "alarm_decay": 0.231,
+        "recruitment_decay": 0.099
+      },
+      "queen_enabled": false,
+      "seed": 20261008,
+      "nanobot_count": 5,
+      "tumor_radius": 66
+    },
+    "metrics_kill_rate_fraction": 1.0,
+    "run_id": "e2e-zksync-era-sepolia-20261008"
+  },
+  "public_values_submitted": {
+    "config_hash": "6b1c83d4343d42b575166cdc5f18fee0032b0e9885a38a06c44a5351fd98e74b",
+    "kill_rate_bps": 10000,
+    "nanobot_count": 5,
+    "tumor_radius": 66,
+    "steps": 30
+  },
+  "submission": {
+    "method": "submitSimulation(bytes32,uint32,uint32,uint32,uint32)",
+    "tx_hash": "0xf0cf992598bd4324808270ebb426f44a0beac7fa874ade35563ee71d3b94150f",
+    "block_number": 8668197,
+    "from": "0xF822f19C0FEc804f002e9087523677195a3C96cE",
+    "explorer_tx_url": "https://sepolia.explorer.zksync.io/tx/0xf0cf992598bd4324808270ebb426f44a0beac7fa874ade35563ee71d3b94150f",
+    "note": "Public values recorded on-chain. This is not proof verification; trust tier unchanged."
+  },
+  "readback": {
+    "event": {
+      "config_hash": "6b1c83d4343d42b575166cdc5f18fee0032b0e9885a38a06c44a5351fd98e74b",
+      "submitter": "0xf822f19c0fec804f002e9087523677195a3c96ce",
+      "kill_rate_bps": 10000,
+      "nanobot_count": 5,
+      "tumor_radius": 66,
+      "steps": 30,
+      "tx_hash": "0xf0cf992598bd4324808270ebb426f44a0beac7fa874ade35563ee71d3b94150f",
+      "block_number": 8668197,
+      "verified": false
+    },
+    "values_match_bundle": true,
+    "contract_isVerified": false
+  },
+  "leaderboard_entry": {
+    "kill_rate": 100.0,
+    "nanobot_count": 5,
+    "steps": 30,
+    "trust_tier": "unverified",
+    "verified_onchain": false,
+    "proof_stage": "submitted_onchain"
+  },
+  "replay": {
+    "integrity_ok": true,
+    "public_values_ok": true,
+    "proof_bundle_schema_ok": true,
+    "replay_ok": true,
+    "tolerance": {
+      "ok": true,
+      "checks": [
+        {
+          "metric": "kill_rate",
+          "claimed": 100.0,
+          "recomputed": 100.0,
+          "deviation_pct": 0.0,
+          "ok": true
+        },
+        {
+          "metric": "deliveries",
+          "claimed": 12,
+          "recomputed": 12,
+          "deviation_pct": 0.0,
+          "ok": true
+        }
+      ],
+      "tolerance_pct": 5.0
+    },
+    "verify_trust_tier": "proof_staged"
+  },
+  "trust": {
+    "bundle_trust_tier": "proof_staged",
+    "proof_is_mock": true,
+    "onchain_ok": false,
+    "note": "ZKsync's validity proofs cover the chain's state transition, not this simulation. The simulation proof is a mock SP1 adapter bundle: proof_staged, never verified_onchain."
+  },
+  "bundle": {
+    "ok": true,
+    "ipfs": {
+      "ok": true,
+      "cid": null,
+      "artifact_hash": "6922021df15912901db7c5ce111f7210babd74b07288a8f0c2c4f178fc2ecc97",
+      "config_hash": "6b1c83d4343d42b575166cdc5f18fee0032b0e9885a38a06c44a5351fd98e74b",
+      "backend": "dry-run",
+      "artifact": {
+        "version": "1.0",
+        "type": "antelligence-simulation-v2",
+        "run_id": "e2e-zksync-era-sepolia-20261008",
+        "timestamp": "2026-10-09T18:13:46.883964+00:00",
+        "config": {
+          "num_bots": 5,
+          "grid_size": 20,
+          "steps": 30,
+          "pheromone_params": {
+            "trail_diffusion": 1e-06,
+            "alarm_diffusion": 5e-06,
+            "recruitment_diffusion": 2e-06,
+            "trail_decay": 0.0693,
+            "alarm_decay": 0.231,
+            "recruitment_decay": 0.099
+          },
+          "queen_enabled": false,
+          "seed": 20261008,
+          "nanobot_count": 5,
+          "tumor_radius": 66
+        },
+        "metrics": {
+          "total_deliveries": 12,
+          "total_drug_delivered": 36.0,
+          "cells_killed": 12,
+          "hypoxic_cells": 0,
+          "viable_cells": 0,
+          "necrotic_cells": 0,
+          "apoptotic_cells": 12,
+          "total_api_calls": 0,
+          "food_collected_by_llm": 0,
+          "food_collected_by_rule": 12,
+          "deliveries_by_llm": 0,
+          "deliveries_by_rule": 12,
+          "kill_rate": 100.0,
+          "step_count": 30,
+          "total_cells": 12,
+          "living_cells": 0
+        },
+        "config_hash": "6b1c83d4343d42b575166cdc5f18fee0032b0e9885a38a06c44a5351fd98e74b",
+        "metrics_hash": "55d2646d1ad703d4aaeef4c051290a2abc06f5c205581d402462c1eb0c532ee5",
+        "artifact_hash": "6922021df15912901db7c5ce111f7210babd74b07288a8f0c2c4f178fc2ecc97"
+      }
+    },
+    "onchain": {
+      "contract": "0x90445eDC246d83FA42D700584796216E6510e317",
+      "network": "zksync-era-sepolia",
+      "chain_id": 300,
+      "config_hash": "6b1c83d4343d42b575166cdc5f18fee0032b0e9885a38a06c44a5351fd98e74b",
+      "kill_rate_bps": 10000,
+      "nanobot_count": 5,
+      "tumor_radius": 66,
+      "steps": 30,
+      "public_values": "0x6b1c83d4343d42b575166cdc5f18fee0032b0e9885a38a06c44a5351fd98e74b000000000000000000000000000000000000000000000000000000000000271000000000000000000000000000000000000000000000000000000000000000050000000000000000000000000000000000000000000000000000000000000042000000000000000000000000000000000000000000000000000000000000001e",
+      "public_values_payload": {
+        "config_hash": "6b1c83d4343d42b575166cdc5f18fee0032b0e9885a38a06c44a5351fd98e74b",
+        "kill_rate_bps": 10000,
+        "nanobot_count": 5,
+        "tumor_radius": 66,
+        "steps": 30
+      },
+      "public_values_schema_version": "public-values-v1",
+      "program_version": "tumor-intel-proof-v1",
+      "public_values_metadata": {
+        "schema_version": "public-values-v1",
+        "program_version": "tumor-intel-proof-v1",
+        "fields": [
+          "config_hash",
+          "kill_rate_bps",
+          "nanobot_count",
+          "tumor_radius",
+          "steps"
+        ],
+        "abi_types": [
+          "bytes32",
+          "uint32",
+          "uint32",
+          "uint32",
+          "uint32"
+        ]
+      },
+      "simulation_commitments": {
+        "config_hash": "6b1c83d4343d42b575166cdc5f18fee0032b0e9885a38a06c44a5351fd98e74b",
+        "metrics_hash": "55d2646d1ad703d4aaeef4c051290a2abc06f5c205581d402462c1eb0c532ee5",
+        "artifact_hash": "6922021df15912901db7c5ce111f7210babd74b07288a8f0c2c4f178fc2ecc97"
+      },
+      "submission": {
+        "method": "submitSimulation(bytes32,uint32,uint32,uint32,uint32)",
+        "tx_hash": "0xf0cf992598bd4324808270ebb426f44a0beac7fa874ade35563ee71d3b94150f",
+        "block_number": 8668197,
+        "from": "0xF822f19C0FEc804f002e9087523677195a3C96cE",
+        "explorer_tx_url": "https://sepolia.explorer.zksync.io/tx/0xf0cf992598bd4324808270ebb426f44a0beac7fa874ade35563ee71d3b94150f",
+        "note": "Public values recorded on-chain. This is not proof verification; trust tier unchanged."
+      }
+    },
+    "verification_status": {
+      "schema_ok": true,
+      "integrity_ok": true,
+      "replay_ok": false,
+      "proof_ok": false,
+      "onchain_ok": false
+    },
+    "proof_lifecycle": {
+      "stage": "submitted_onchain",
+      "proof_system": "sp1+groth16",
+      "is_final": false,
+      "note": "Public values submitted on-chain. No verifier is configured, so verifySimulation() cannot run; the simulation proof remains a mock adapter bundle.",
+      "trust_tier": "non-production"
+    },
+    "status": "ready_for_submission",
+    "next_step": "Submit simulation metadata on-chain, then generate SP1+Groth16 proof and call verifySimulation(publicValues, proofBytes).",
+    "proof_bundle": {
+      "run_id": "e2e-zksync-era-sepolia-20261008",
+      "artifact_hash": "6922021df15912901db7c5ce111f7210babd74b07288a8f0c2c4f178fc2ecc97",
+      "config_hash": "6b1c83d4343d42b575166cdc5f18fee0032b0e9885a38a06c44a5351fd98e74b",
+      "public_values": "0x6b1c83d4343d42b575166cdc5f18fee0032b0e9885a38a06c44a5351fd98e74b000000000000000000000000000000000000000000000000000000000000271000000000000000000000000000000000000000000000000000000000000000050000000000000000000000000000000000000000000000000000000000000042000000000000000000000000000000000000000000000000000000000000001e",
+      "proof_bytes": "0x6b1c83d4343d42b575166cdc5f18fee0032b0e9885a38a06c44a5351fd98e74b",
+      "proof_system": "sp1+groth16",
+      "proof_format": "groth16",
+      "proof_origin": "sp1-groth16-adapter",
+      "proof_artifact_version": "proof-bundle-v1",
+      "public_values_schema_version": "public-values-v1",
+      "prover_status": "adapter-boundary",
+      "is_mock": true,
+      "program_version": "tumor-intel-proof-v1",
+      "proof_boundary_version": "sp1-groth16-adapter-v2",
+      "trace_commitment": "6922021df15912901db7c5ce111f7210babd74b07288a8f0c2c4f178fc2ecc97",
+      "witness_commitment": "6b1c83d4343d42b575166cdc5f18fee0032b0e9885a38a06c44a5351fd98e74b",
+      "verifier_contract": null,
+      "adapter": {
+        "boundary_version": "sp1-groth16-adapter-v2",
+        "prover": "sp1",
+        "verifier": "groth16",
+        "mode": "mock",
+        "status": "adapter-boundary",
+        "expected_verifier_call": "verifyProof(bytes,bytes)",
+        "proof_transport": "opaque-bytes",
+        "cryptographic_verification": false,
+        "public_values_commitment": "8301813802ba65c9eb84e10ecffe6ec49fc8e607d1db3b827700d2e79a52d136",
+        "proof_bytes_commitment": "9c18c9007e03f7f2062710de28ec0ff798f8579992027dbcc886e3a496c67b43",
+        "note": "Staged adapter boundary only. proof_bytes preserves the future opaque SP1/Groth16 transport shape but is not cryptographic output yet."
+      },
+      "transport_metadata": {
+        "artifact_version": "proof-bundle-v1",
+        "proof_system": "sp1+groth16",
+        "proof_format": "groth16",
+        "proof_origin": "sp1-groth16-adapter",
+        "prover_status": "adapter-boundary",
+        "is_mock": true,
+        "program_version": "tumor-intel-proof-v1",
+        "public_values_schema_version": "public-values-v1",
+        "proof_boundary_version": "sp1-groth16-adapter-v2",
+        "public_values_bytes": 160,
+        "proof_bytes_length": 32,
+        "public_values_commitment": "8301813802ba65c9eb84e10ecffe6ec49fc8e607d1db3b827700d2e79a52d136",
+        "proof_bytes_commitment": "9c18c9007e03f7f2062710de28ec0ff798f8579992027dbcc886e3a496c67b43",
+        "transport_commitment": "95590b366cb89a89aaa5c1183663a61bb81b1f22a9f377a165a76360a15d98b3"
+      }
+    },
+    "trust_tier": "proof_staged"
+  }
+}
