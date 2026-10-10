@@ -1,0 +1,15 @@
+0e0db11809b0ad5e6479312a87c4fc2b1e163a289fcabbf9cfc36d2630a0f012  docs/research/slm-vs-frontier-20261008/sensitivity-maxtok2048/bundles/claude-haiku-5.5.jsonl
+e0772bae992687a7bce2f5a3053350b8df9475c50c529aa1ef81ddeb0e2731eb  docs/research/slm-vs-frontier-20261008/sensitivity-maxtok2048/bundles/claude-sonnet-5.5.jsonl
+9bf68578ff28c62b4f8ae01588bb19de52703634c01c507632d82f0582b5ef49  docs/research/slm-vs-frontier-20261008/sensitivity-maxtok2048/bundles/qwen38-27b-q3k.jsonl
+bff9305dfe9875fb57531abeae094df5c4621fdefb32bcced54aa6e7b51a337a  docs/research/slm-vs-frontier-20261008/sensitivity-maxtok2048/cells/claude-haiku-5.5.jsonl
+c9af1f398664c60a4f37000decfb218eb5428544be74c4cbc621a892a4537f88  docs/research/slm-vs-frontier-20261008/sensitivity-maxtok2048/cells/claude-sonnet-5.5.jsonl
+5505517bfbed95d5cdbf658f09460bc784fab6d68f9b26efd51dac257ac369a3  docs/research/slm-vs-frontier-20261008/sensitivity-maxtok2048/cells/qwen38-27b-q3k.jsonl
+38d8e586ddc6f105449fd63589c6c97649608d20a8119d2b323878a6603c7622  docs/research/slm-vs-frontier-20261008/sensitivity-maxtok2048/comparisons.json
+f8ea8463c395471e80b8f02a76b93ffc54cc69533be642dd171f8c1c76a27586  docs/research/slm-vs-frontier-20261008/sensitivity-maxtok2048/eval-task-ids.json
+8ad07d808bd14441fee1e5ca789343d3f83042f70452e1575cc2732065f63ca1  docs/research/slm-vs-frontier-20261008/sensitivity-maxtok2048/raw/claude-haiku-5.5-research_qa.jsonl
+9c2ebfa8ef1019ed0e18c64de72ef0a7b7144eabbf7d02b89b91d83b41238c53  docs/research/slm-vs-frontier-20261008/sensitivity-maxtok2048/raw/claude-sonnet-5.5-research_qa.jsonl
+acab4379685ca7b79aa35365b7ff58840dda06142468d13246812e0ad466bae8  docs/research/slm-vs-frontier-20261008/sensitivity-maxtok2048/raw/qwen38-27b-q3k-research_qa.jsonl
+542ba041d77bf8bd179244a3d335968f0dd40cd22b93ac32d204d1006c15dba8  docs/research/slm-vs-frontier-20261008/sensitivity-maxtok2048/results-by-seed.csv
+c7dca73ad103b8d011b64f709a21449650beac98fbef663e1a5dbbbbd075f9f0  docs/research/slm-vs-frontier-20261008/sensitivity-maxtok2048/results.csv
+9a6e55d6b7fe83c48f7cb41be41e58ca1caddc14de94807a36c20cdf49a315c1  docs/research/slm-vs-frontier-20261008/sensitivity-maxtok2048/run-log.jsonl
+adc84d34a337b0502c5c774bf9224e71e232807203856b74e81c970b7a872792  docs/research/slm-vs-frontier-20261008/sensitivity-maxtok2048/usage-summary.json
