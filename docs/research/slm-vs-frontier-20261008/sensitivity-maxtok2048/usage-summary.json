@@ -1,0 +1,29 @@
+{
+  "filter": "workstream == W2 and not smoke",
+  "first_evaluation_call_utc": "2026-10-09T03:15:18.501741+00:00",
+  "providers": {
+    "local|qwen38-27b-q3k": {
+      "calls": 7075,
+      "cost": 0.0,
+      "failed": 476,
+      "in": 5132098,
+      "out": 752654
+    },
+    "nous-credits|claude-haiku-5.5": {
+      "calls": 7199,
+      "cost": 1.569893200000006,
+      "failed": 956,
+      "in": 7506502,
+      "out": 1638486
+    },
+    "nous-credits|claude-sonnet-5.5": {
+      "calls": 2199,
+      "cost": 8.567689999999997,
+      "failed": 16,
+      "in": 2662960,
+      "out": 324177
+    }
+  },
+  "source": "ledger/goal-2026-10-08-usage.jsonl",
+  "source_sha256": "6d20b97985a7f8fd2c9bcd7851c453adf5d2ace84a70ebd9efde95b8c291cc80"
+}

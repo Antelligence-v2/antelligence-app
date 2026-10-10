@@ -61,5 +61,5 @@ Raising the per-reply cap from 512 to 2048 tokens (arms single, evidence_exchang
 - **Foraging is uninformative**: 256-token cap truncations (Haiku idle for most steps), Qwen emitting float coordinates that the validator rejects. No re-run was done.
 - **Sonnet's non-single arms have repeat 0 only (n=60)**, versus n=180 for Haiku and Qwen, so intervals and paired tests are not comparable across models for those arms.
 - **Cost-per-correct is understated** for Haiku and Qwen: truncated responses (and their tokens) are not stored in `raw/`.
-- **Frontier models were billed through Nous credits.** Total frontier spend from the ledger (`ledger/goal-2026-10-08-usage.jsonl`, non-smoke, Nous-billed rows): **$10.1376** (Sonnet $8.5677 + Haiku $1.5699; cap $12), of which the D2 sensitivity run is roughly $3.2 by cell accounting.
+- **Frontier models were billed through Nous credits.** Total frontier spend from the operator-local usage ledger (non-smoke, Nous-billed rows; aggregated in `usage-summary.json`): **$10.1376** (Sonnet $8.5677 + Haiku $1.5699; cap $12), of which the D2 sensitivity run is roughly $3.2 by cell accounting.
 - One small model, quantized to Q3_K; PubMedQA/FinQA are public, so contamination is unknown; 60 tasks. Nothing here is clinical or financial evidence.

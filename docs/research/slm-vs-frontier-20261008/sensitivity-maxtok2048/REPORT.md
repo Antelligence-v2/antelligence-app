@@ -1,6 +1,6 @@
 # REPORT: small local models vs frontier models on the Antelligence engine
 
-Generated 2026-10-10T03:36:10+00:00 by `scripts/w2_report.py` from `results.csv` and `comparisons.json` (produced by `scripts/w2_analyze.py`). Design: `PREREGISTRATION.md` (committed before the first evaluation call; first evaluation call in the ledger: `2026-10-09T03:15:18.501741+00:00`).
+Generated 2026-10-10T17:20:59+00:00 by `scripts/w2_report.py` from `results.csv` and `comparisons.json` (produced by `scripts/w2_analyze.py`). Design: `PREREGISTRATION.md` (committed before the first evaluation call; first evaluation call in the usage ledger: `2026-10-09T03:15:18.501741+00:00`).
 
 ## Headline
 
@@ -87,7 +87,7 @@ Accuracy = correct / requested. Wilson = one-sided 95% lower bound on accuracy. 
 | World | Model | Arm | Fixtures req | Missing | Successes | Success rate | Wilson LB | Failed calls | Prompt tok | Output tok | Cost |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 
-## Usage (physical calls, from `ledger/goal-2026-10-08-usage.jsonl`, W2 non-smoke rows)
+## Usage (physical calls, W2 non-smoke rows; aggregated in `usage-summary.json` from the operator-local ledger)
 
 | Billing | Model | Calls | Failed calls | Prompt tok | Output tok | Cost |
 |---|---|---|---|---|---|---|
@@ -113,4 +113,4 @@ Accuracy = correct / requested. Wilson = one-sided 95% lower bound on accuracy. 
 
 ## Raw evidence
 
-Hashes of every raw file are in `MANIFEST.sha256` (cells, bundles, raw responses, run log, ledger). Raw responses are request-hash keyed, so every cell can be replayed offline through the engine with `antelligence.providers.Cached(..., offline=True)`.
+Hashes of every raw file are in `MANIFEST.sha256` (cells, bundles, raw responses, run log, usage summary). Raw responses are request-hash keyed, so every cell can be replayed offline through the engine with `antelligence.providers.Cached(..., offline=True)`.

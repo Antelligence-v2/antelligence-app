@@ -12,4 +12,4 @@ acab4379685ca7b79aa35365b7ff58840dda06142468d13246812e0ad466bae8  docs/research/
 542ba041d77bf8bd179244a3d335968f0dd40cd22b93ac32d204d1006c15dba8  docs/research/slm-vs-frontier-20261008/sensitivity-maxtok2048/results-by-seed.csv
 c7dca73ad103b8d011b64f709a21449650beac98fbef663e1a5dbbbbd075f9f0  docs/research/slm-vs-frontier-20261008/sensitivity-maxtok2048/results.csv
 9a6e55d6b7fe83c48f7cb41be41e58ca1caddc14de94807a36c20cdf49a315c1  docs/research/slm-vs-frontier-20261008/sensitivity-maxtok2048/run-log.jsonl
-6d20b97985a7f8fd2c9bcd7851c453adf5d2ace84a70ebd9efde95b8c291cc80  ledger/goal-2026-10-08-usage.jsonl
+adc84d34a337b0502c5c774bf9224e71e232807203856b74e81c970b7a872792  docs/research/slm-vs-frontier-20261008/sensitivity-maxtok2048/usage-summary.json

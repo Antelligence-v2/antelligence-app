@@ -15,6 +15,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+LEDGER = "ledger/goal-2026-10-08-usage.jsonl"
 DEFAULT_OUT = ROOT / "docs/research/slm-vs-frontier-20261008"
 OUT = DEFAULT_OUT
 # Counterfactual price for hosted qwen/qwen3.8-27b on Nous (USD per token), from /v1/models on 2026-10-08.
@@ -96,19 +97,30 @@ def main() -> None:
     comp = json.loads((OUT / "comparisons.json").read_text())
     qa = [r for r in rows if r["world"] == "research_qa"]
     other = [r for r in rows if r["world"] != "research_qa"]
-    ledger_rows = [json.loads(l) for l in (ROOT / "ledger/goal-2026-10-08-usage.jsonl").read_text().splitlines()
-                   if l.strip()]
-    w2 = [r for r in ledger_rows if r.get("workstream") == "W2" and not r.get("smoke")]
-    per_provider = {}
-    for r in w2:
-        k = (r["billing"], r["model_key"])
-        d = per_provider.setdefault(k, {"calls": 0, "failed": 0, "in": 0, "out": 0, "cost": 0.0})
-        d["calls"] += 1
-        d["failed"] += 0 if r.get("ok") else 1
-        d["in"] += int(r.get("prompt_tokens") or 0)
-        d["out"] += int(r.get("completion_tokens") or 0)
-        d["cost"] += float(r.get("cost_usd") or 0)
-    first_eval = min((r["timestamp_utc"] for r in w2 if r.get("split") == "evaluation"), default="none")
+    # The per-call usage ledger is operator-local (never committed). When it is present we
+    # aggregate it into usage-summary.json, which is committed; otherwise we read that summary.
+    ledger_path = ROOT / LEDGER
+    summary_path = OUT / "usage-summary.json"
+    if ledger_path.exists():
+        ledger_rows = [json.loads(l) for l in ledger_path.read_text().splitlines() if l.strip()]
+        w2 = [r for r in ledger_rows if r.get("workstream") == "W2" and not r.get("smoke")]
+        providers = {}
+        for r in w2:
+            k = f'{r["billing"]}|{r["model_key"]}'
+            d = providers.setdefault(k, {"calls": 0, "failed": 0, "in": 0, "out": 0, "cost": 0.0})
+            d["calls"] += 1
+            d["failed"] += 0 if r.get("ok") else 1
+            d["in"] += int(r.get("prompt_tokens") or 0)
+            d["out"] += int(r.get("completion_tokens") or 0)
+            d["cost"] += float(r.get("cost_usd") or 0)
+        first_eval = min((r["timestamp_utc"] for r in w2 if r.get("split") == "evaluation"), default="none")
+        summary_path.write_text(json.dumps({
+            "source": LEDGER, "source_sha256": sha256(ledger_path),
+            "filter": "workstream == W2 and not smoke", "first_evaluation_call_utc": first_eval,
+            "providers": providers}, indent=2, sort_keys=True) + "\n")
+    summary = json.loads(summary_path.read_text())
+    first_eval = summary["first_evaluation_call_utc"]
+    per_provider = {tuple(k.split("|", 1)): v for k, v in summary["providers"].items()}
     runlog = [json.loads(l) for l in (OUT / "run-log.jsonl").read_text().splitlines() if l.strip()]
     starts = [r for r in runlog if r.get("event") == "start" and not r.get("smoke")]
     ends = [r for r in runlog if r.get("event") == "end" and not r.get("smoke")]
@@ -129,7 +141,7 @@ def main() -> None:
         L.append("")
     L.append(f"Generated {datetime.now(timezone.utc).isoformat(timespec='seconds')} by `scripts/w2_report.py` from "
              "`results.csv` and `comparisons.json` (produced by `scripts/w2_analyze.py`). Design: `PREREGISTRATION.md` "
-             f"(committed before the first evaluation call; first evaluation call in the ledger: `{first_eval}`).")
+             f"(committed before the first evaluation call; first evaluation call in the usage ledger: `{first_eval}`).")
     L.append("")
     L.append("## Headline")
     L.append("")
@@ -205,7 +217,7 @@ def main() -> None:
             L.append(f"| {o['world']} | {o['model']} | {o['treatment']} vs {o['baseline']} | {o['pairs']} | "
                      f"{o['treatment_successes']}/{o['baseline_successes']} | {pval(o['sign_test_p'])} |")
         L.append("")
-    L.append("## Usage (physical calls, from `ledger/goal-2026-10-08-usage.jsonl`, W2 non-smoke rows)")
+    L.append("## Usage (physical calls, W2 non-smoke rows; aggregated in `usage-summary.json` from the operator-local ledger)")
     L.append("")
     L.append("| Billing | Model | Calls | Failed calls | Prompt tok | Output tok | Cost |")
     L.append("|---|---|---|---|---|---|---|")
@@ -244,7 +256,7 @@ def main() -> None:
     L.append("")
     L.append("## Raw evidence")
     L.append("")
-    L.append("Hashes of every raw file are in `MANIFEST.sha256` (cells, bundles, raw responses, run log, ledger). "
+    L.append("Hashes of every raw file are in `MANIFEST.sha256` (cells, bundles, raw responses, run log, usage summary). "
              "Raw responses are request-hash keyed, so every cell can be replayed offline through the engine with "
              "`antelligence.providers.Cached(..., offline=True)`.")
     (OUT / "REPORT.md").write_text("\n".join(L) + "\n")
@@ -252,7 +264,7 @@ def main() -> None:
     manifest = []
     for path in sorted(list(OUT.rglob("*.jsonl")) + [OUT / "results.csv", OUT / "results-by-seed.csv",
                                                      OUT / "comparisons.json", OUT / "eval-task-ids.json",
-                                                     ROOT / "ledger/goal-2026-10-08-usage.jsonl"]):
+                                                     OUT / "usage-summary.json"]):
         if path.exists():
             manifest.append(f"{sha256(path)}  {path.relative_to(ROOT)}")
     (OUT / "MANIFEST.sha256").write_text("\n".join(manifest) + "\n")

@@ -63,14 +63,14 @@ Raising the per-reply cap from 512 to 2048 tokens (arms single, evidence_exchang
 - **Foraging is uninformative**: 256-token cap truncations (Haiku idle for most steps), Qwen emitting float coordinates that the validator rejects. No re-run was done.
 - **Sonnet's non-single arms have repeat 0 only (n=60)**, versus n=180 for Haiku and Qwen, so intervals and paired tests are not comparable across models for those arms.
 - **Cost-per-correct is understated** for Haiku and Qwen: truncated responses (and their tokens) are not stored in `raw/`.
-- **Frontier models were billed through Nous credits.** Total frontier spend from the ledger (`ledger/goal-2026-10-08-usage.jsonl`, non-smoke, Nous-billed rows): **$10.1376** (Sonnet $8.5677 + Haiku $1.5699; cap $12), of which the D2 sensitivity run is roughly $3.2 by cell accounting.
+- **Frontier models were billed through Nous credits.** Total frontier spend from the operator-local usage ledger (non-smoke, Nous-billed rows; aggregated in `usage-summary.json`): **$10.1376** (Sonnet $8.5677 + Haiku $1.5699; cap $12), of which the D2 sensitivity run is roughly $3.2 by cell accounting.
 - One small model, quantized to Q3_K; PubMedQA/FinQA are public, so contamination is unknown; 60 tasks. Nothing here is clinical or financial evidence.
 
 ---
 
 # Preregistered results (auto-generated)
 
-Generated 2026-10-10T03:39:31+00:00 by `scripts/w2_report.py` from `results.csv` and `comparisons.json` (produced by `scripts/w2_analyze.py`). Design: `PREREGISTRATION.md` (committed before the first evaluation call; first evaluation call in the ledger: `2026-10-09T03:15:18.501741+00:00`).
+Generated 2026-10-10T17:20:59+00:00 by `scripts/w2_report.py` from `results.csv` and `comparisons.json` (produced by `scripts/w2_analyze.py`). Design: `PREREGISTRATION.md` (committed before the first evaluation call; first evaluation call in the usage ledger: `2026-10-09T03:15:18.501741+00:00`).
 
 ## Headline
 
@@ -208,7 +208,7 @@ Accuracy = correct / requested. Wilson = one-sided 95% lower bound on accuracy. 
 | foraging | claude-haiku-5.5 | hive_memory_signals vs baseline | 5 | 0/0 | — |
 | foraging | qwen38-27b-q3k | hive_memory_signals vs baseline | 5 | 0/1 | 1 |
 
-## Usage (physical calls, from `ledger/goal-2026-10-08-usage.jsonl`, W2 non-smoke rows)
+## Usage (physical calls, W2 non-smoke rows; aggregated in `usage-summary.json` from the operator-local ledger)
 
 | Billing | Model | Calls | Failed calls | Prompt tok | Output tok | Cost |
 |---|---|---|---|---|---|---|
@@ -234,4 +234,4 @@ Accuracy = correct / requested. Wilson = one-sided 95% lower bound on accuracy. 
 
 ## Raw evidence
 
-Hashes of every raw file are in `MANIFEST.sha256` (cells, bundles, raw responses, run log, ledger). Raw responses are request-hash keyed, so every cell can be replayed offline through the engine with `antelligence.providers.Cached(..., offline=True)`.
+Hashes of every raw file are in `MANIFEST.sha256` (cells, bundles, raw responses, run log, usage summary). Raw responses are request-hash keyed, so every cell can be replayed offline through the engine with `antelligence.providers.Cached(..., offline=True)`.

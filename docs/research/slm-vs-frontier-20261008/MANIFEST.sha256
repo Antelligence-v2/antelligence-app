@@ -33,4 +33,4 @@ c9af1f398664c60a4f37000decfb218eb5428544be74c4cbc621a892a4537f88  docs/research/
 9c2ebfa8ef1019ed0e18c64de72ef0a7b7144eabbf7d02b89b91d83b41238c53  docs/research/slm-vs-frontier-20261008/sensitivity-maxtok2048/raw/claude-sonnet-5.5-research_qa.jsonl
 acab4379685ca7b79aa35365b7ff58840dda06142468d13246812e0ad466bae8  docs/research/slm-vs-frontier-20261008/sensitivity-maxtok2048/raw/qwen38-27b-q3k-research_qa.jsonl
 9a6e55d6b7fe83c48f7cb41be41e58ca1caddc14de94807a36c20cdf49a315c1  docs/research/slm-vs-frontier-20261008/sensitivity-maxtok2048/run-log.jsonl
-6d20b97985a7f8fd2c9bcd7851c453adf5d2ace84a70ebd9efde95b8c291cc80  ledger/goal-2026-10-08-usage.jsonl
+adc84d34a337b0502c5c774bf9224e71e232807203856b74e81c970b7a872792  docs/research/slm-vs-frontier-20261008/usage-summary.json
