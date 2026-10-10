@@ -21,7 +21,7 @@ from __future__ import annotations
 import json
 import sqlite3
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, FrozenSet, Iterable, List, Mapping, Optional, Sequence, Tuple
+from typing import Any, Callable, FrozenSet, Iterable, List, Mapping, Optional, Sequence, Tuple
 
 from antelligence.kernel.canonical import canonical_json, content_hash, plain
 
@@ -470,11 +470,34 @@ class EvidenceMemory:
         self._pending.append({"record_id": record_id, "subject": subject, "from": old, "to": new, "reason": reason, "tick": tick})
 
 
+@dataclass(frozen=True)
+class RecalledRecord:
+    """A recalled record plus its author's reputation as of the reading tick.
+
+    Reputation is attached at read time, never stored in the record body:
+    putting it in the body would change ``content_key`` and break
+    ``min_confirmations`` between authors. Attribute access falls through to
+    the record, so policies can treat it as a :class:`Record`.
+    """
+
+    record: Record
+    author_reputation: Optional[float]
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self.record, name)
+
+    def to_dict(self) -> dict:
+        return {**self.record.to_dict(), "author_reputation": self.author_reputation}
+
+
 class ScopedRecall:
     """Scheduler memory reader: admitted records relevant to one agent.
 
     ``select`` maps (agent_id, observation) to the subjects the agent may
     recall; ``None`` means every subject in scope (use only in small worlds).
+    With ``reputation`` (author id -> standing, e.g. a frozen
+    :class:`~antelligence.kernel.reputation.ReputationView`), records are
+    returned as :class:`RecalledRecord` carrying their author's reputation.
     """
 
     def __init__(
@@ -484,15 +507,20 @@ class ScopedRecall:
         *,
         kinds: Optional[Iterable[str]] = None,
         limit: int = 32,
+        reputation: Optional[Callable[[str], Optional[float]]] = None,
     ) -> None:
         self.memory = memory
         self.select = select
         self.kinds = None if kinds is None else frozenset(kinds)
         self.limit = limit
+        self.reputation = reputation
 
-    def recall_for(self, agent_id: str, scope: str, tick: int, observation: Mapping[str, Any]) -> Tuple[Record, ...]:
+    def recall_for(self, agent_id: str, scope: str, tick: int, observation: Mapping[str, Any]) -> Tuple[Any, ...]:
         subjects = None if self.select is None else list(self.select(agent_id, observation))
-        return tuple(self.memory.recall(scope, subjects=subjects, kinds=self.kinds, limit=self.limit))
+        records = self.memory.recall(scope, subjects=subjects, kinds=self.kinds, limit=self.limit)
+        if self.reputation is None:
+            return tuple(records)
+        return tuple(RecalledRecord(r, self.reputation(r.author)) for r in records)
 
 
 SubjectOf = Callable[[Any], Optional[str]]
