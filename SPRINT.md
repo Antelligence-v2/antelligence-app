@@ -74,11 +74,11 @@ Evidence: `uv run --extra test pytest tests/test_api_server.py tests/test_cli.py
 
 Also landed since this file was last updated (upstream PR #3, merged 2026-10-05): the `antelligence/` engine (kernel, providers, worlds foraging/task_dag/tumor/research_qa, experiments, provenance, /engine API). Full suite at W0: 905 passed, 2 skipped (BraTS/TCGA data absent).
 
-## Phase 7 — 48h goal 2026-10-08 [CURRENT]
-Source of truth: operator goal file `GOAL-antelligence-48h.md` (overrides this file where they conflict).
+## Phase 7 — Sprint 1, 2026-10-08 → 10-10 [COMPLETE — in review]
+Each item is its own upstream PR (Antelligence-v2/antelligence-app).
 
-- [x] Sync fork `main` with upstream `main` (fork PR #15, operator merges)
 - [x] W0 truth pass: `docs/status/2026-10-08-truth-pass.md`, this file reconciled
-- [ ] W1 chain layer on ZKsync Era Sepolia: zksolc compile + tests, `blockchain/scripts/deploy-zksync.js`, `blockchain/deployments/zksync-era-sepolia.json`, backend chain config driven by the deployments file, one tumor run submitted and read back with explorer URL, privacy audit, `docs/research/chain-options-20261008.md`, `docs/status/2026-10-08-chain-redeploy.md` (deploy blocked on testnet gas — see `docs/status/BLOCKERS.md`)
-- [ ] W2 preregistered SLM-vs-frontier benchmark: `docs/research/slm-vs-frontier-20261008/` (PREREGISTRATION.md, bundles, results.csv, REPORT.md)
-- [ ] W3 sprint report: `docs/status/2026-10-08-sprint-report.md`, delivered to the operator's notification channel
+- [x] Provenance: config fingerprint + `metrics_hash` on simulate/run responses (fork PR #14)
+- [x] W1 chain layer on ZKsync Era Sepolia (chain 300): zksolc compile + tests, `blockchain/scripts/deploy-zksync.js`, `blockchain/deployments/zksync-era-sepolia.json`, backend chain config driven by the deployments file, one end-to-end run at trust tier `proof_staged`, privacy audit, `docs/research/chain-options-20261008.md`, `docs/status/2026-10-08-chain-redeploy.md`
+- [x] W1 security review fixes: "verified" bound to proven values, wrong-chain signing refused, verified records immutable (contract-side fix needs a redeploy)
+- [x] W2 preregistered SLM-vs-frontier benchmark: `docs/research/slm-vs-frontier-20261008/` (PREREGISTRATION.md, bundles, results.csv, REPORT.md)

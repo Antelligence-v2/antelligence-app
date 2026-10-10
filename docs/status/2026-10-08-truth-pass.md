@@ -1,6 +1,6 @@
 # Truth pass, 2026-10-08 (W0)
 
-- Goal: `GOAL-antelligence-48h.md` W0.
+- Sprint 1 (2026-10-08 → 10-10), workstream W0.
 - Tree checked: `hermes/sync-20261008` @ `12428af`. This is the fork's `main` merged with upstream `main` @ `3c7418e` (Antelligence-v2 PR #3), as opened for review in fork PR #15.
 - Every number below comes from a command run on 2026-10-08 against that tree.
 
@@ -67,10 +67,8 @@ I read bytecode presence with `eth_getCode` against `https://base-sepolia-rpc.pu
 - The only deployer key configured for this repo is in `antelligence-app/.env` (`PRIVATE_KEY`; never printed). Its public address is `0xEE8a688CE7beb1bd46bd5C84bd774Efc750fB086`.
   - **ZKsync Era Sepolia (chain 300):** balance **0 ETH**, nonce 0. Checked via `https://sepolia.era.zksync.dev`, `https://zksync-sepolia.drpc.org` and the explorer API (`No transactions found`).
   - **Base Sepolia:** 0.00796 ETH.
-- Matrix/Conduit was retired 2026-07-04. `~/openclaw-infra/scripts/send-matrix.py` is a compatibility shim that delivers to the operator's Telegram chat. That is the delivery path used for heartbeats; it returned `{"ok": true, "transport": "telegram"}`.
 
 ## 6. Changes in this PR
 
-- `SPRINT.md`: Phase 6 ticked with evidence; Phase 7 (this goal: W1–W3) added.
+- `SPRINT.md`: Phase 6 ticked with evidence; Phase 7 (Sprint 1) added.
 - `docs/status/2026-10-08-truth-pass.md`: this file.
-- `docs/status/BLOCKERS.md`: started, with the ZKsync gas blocker.
