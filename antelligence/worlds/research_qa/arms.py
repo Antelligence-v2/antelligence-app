@@ -10,6 +10,7 @@ from __future__ import annotations
 from typing import Any, Callable, Dict, Mapping, Optional
 
 from antelligence.kernel.admission import AdmissionPolicy
+from antelligence.kernel.aggregate import VERIFICATIONS
 from antelligence.kernel.field import BoardField
 from antelligence.kernel.scheduler import RunConfig, RunResult, Scheduler
 from antelligence.kernel.types import Policy
@@ -19,8 +20,10 @@ PolicyFactory = Callable[[str], Policy]
 
 
 def _claim_payload(payload: Mapping[str, Any]) -> Optional[str]:
-    if set(payload) != {"answer", "evidence_ids", "brief"}:
+    if set(payload) - {"verification"} != {"answer", "evidence_ids", "brief"}:
         return "claim_fields"
+    if payload.get("verification", VERIFICATIONS[0]) not in VERIFICATIONS:
+        return "claim_verification"
     if len(payload["brief"]) > 160 or len(payload["evidence_ids"]) > 3:
         return "claim_bounds"
     return None
@@ -31,8 +34,10 @@ def _safe_id(text: str) -> str:
 
 
 def build(task: Mapping[str, Any], protocol: str, policy_factory: PolicyFactory, *, seed: int = 0,
-          run_id: Optional[str] = None) -> Scheduler:
-    world = ResearchQAWorld(task, protocol)
+          run_id: Optional[str] = None, lenient: bool = False, verify: bool = False,
+          min_confirmations: int = 1, plurality: bool = False) -> Scheduler:
+    world = ResearchQAWorld(task, protocol, lenient=lenient, verify=verify, min_confirmations=min_confirmations,
+                            plurality=plurality)
     p = PROTOCOLS[protocol]
     config = RunConfig(run_id or f"qa-{_safe_id(world.task_id)}", seed=seed, max_ticks=p.rounds, arm=protocol,
                        max_emits_per_tick=1)

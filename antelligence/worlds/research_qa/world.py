@@ -26,14 +26,18 @@ from typing import Any, Dict, List, Mapping, Optional
 from backend.swarm_core import (
     _PayloadError,
     _parse_answer,
+    _answer_key,
     _score_answer,
     _strict_majority,
     _validate_task,
     public_task,
 )
 
+from antelligence.kernel.aggregate import FAILED, UNVERIFIED, VERIFIED, canonical_answer
 from antelligence.kernel.field import SenseQuery
+from antelligence.kernel.memory import CLAIM, EvidenceMemory
 from antelligence.kernel.types import Intent, Observation, Outcome
+from antelligence.worlds.research_qa.verify import ClaimVerdict, verify_claim
 
 ANSWER = "answer"
 ABSTAIN = "abstain"
@@ -77,7 +81,9 @@ INSTRUCTIONS = {
 
 
 class ResearchQAWorld:
-    def __init__(self, task: Mapping[str, Any], protocol: str, *, agent_prefix: str = "worker") -> None:
+    def __init__(self, task: Mapping[str, Any], protocol: str, *, agent_prefix: str = "worker",
+                 lenient: bool = False, verify: bool = False, min_confirmations: int = 1,
+                 plurality: bool = False) -> None:
         _validate_task(task)
         if protocol not in PROTOCOLS:
             raise ValueError(f"unknown protocol {protocol!r}")
@@ -95,6 +101,15 @@ class ResearchQAWorld:
         self.invalid: Dict[str, int] = {a: 0 for a in self.agent_ids}
         self.missing: Dict[str, int] = {a: 0 for a in self.agent_ids}
         self._round = 0
+        self.lenient, self.verify, self.plurality = lenient, verify, plurality
+        self.min_confirmations = min_confirmations
+        # lenient: rounds whose reply was unusable; counted apart from accuracy, a missing vote not a dead cell.
+        self.format_failed: Dict[str, set] = {a: set() for a in self.agent_ids}
+        self.verdicts: Dict[str, Dict[int, ClaimVerdict]] = {a: {} for a in self.agent_ids}
+        self.claim_memory: Optional[EvidenceMemory] = None
+        self._claim_ids: Dict[str, Optional[str]] = {}
+        if verify:
+            self.claim_memory = EvidenceMemory(min_confirmations=min_confirmations)
 
     # ------------------------------------------------------------- contract
     @property
@@ -105,7 +120,14 @@ class ResearchQAWorld:
         return list(self.agent_ids)
 
     def describe(self) -> Dict[str, Any]:
-        return {"world": "research_qa", "version": 1, "task_id": self.task_id, "protocol": self.protocol.describe()}
+        out = {"world": "research_qa", "version": 1, "task_id": self.task_id, "protocol": self.protocol.describe()}
+        if self.lenient:
+            out["lenient"] = True
+        if self.verify:
+            out.update(verify=True, min_confirmations=self.min_confirmations)
+        if self.plurality:
+            out["plurality"] = True
+        return out
 
     def visible_ids(self, agent_id: str) -> List[str]:
         own = self.shards[agent_id]
@@ -139,6 +161,9 @@ class ResearchQAWorld:
             return Outcome(False, "no_answer")
         if intent.action not in (ANSWER, ABSTAIN):
             # Includes "malformed": the policy got a reply it could not parse.
+            if self.lenient:
+                self.format_failed[agent_id].add(round_number)
+                return Outcome(False, "malformed_reply" if intent.action == MALFORMED else "unknown_action")
             self.invalid[agent_id] += 1
             return Outcome(False, "malformed_reply" if intent.action == MALFORMED else "unknown_action")
         visible = set(self.visible_ids(agent_id))
@@ -150,18 +175,47 @@ class ResearchQAWorld:
         try:
             parsed = _parse_answer(json.dumps(payload), view_task)
         except (_PayloadError, ValueError) as exc:
-            self.invalid[agent_id] += 1
-            return Outcome(False, f"invalid_payload: {exc}"[:120])
+            return self._reject(agent_id, round_number, f"invalid_payload: {exc}"[:120])
         if len(parsed["evidence_ids"]) > MAX_CITED:
-            self.invalid[agent_id] += 1
-            return Outcome(False, "invalid_payload: too many evidence ids")
+            if not self.lenient:
+                return self._reject(agent_id, round_number, "invalid_payload: too many evidence ids")
+            parsed["evidence_ids"] = parsed["evidence_ids"][:MAX_CITED]
         self.answers[agent_id][round_number] = parsed
-        return Outcome(True, effects={"answer": parsed["answer"], "evidence_ids": parsed["evidence_ids"]})
+        effects: Dict[str, Any] = {"answer": parsed["answer"], "evidence_ids": parsed["evidence_ids"]}
+        if self.verify:
+            verdict = verify_claim({**parsed, **{k: intent.params[k] for k in ("quotes", "calculation")
+                                                 if k in intent.params}}, view_task)
+            if verdict is not None:
+                self.verdicts[agent_id][round_number] = verdict
+                effects["verification"] = verdict.to_dict()
+            self._record_claim(agent_id, parsed["answer"], verdict, view_task, tick)
+        return Outcome(True, effects=effects)
+
+    def _reject(self, agent_id: str, round_number: int, reason: str) -> Outcome:
+        if self.lenient:
+            self.format_failed[agent_id].add(round_number)
+        else:
+            self.invalid[agent_id] += 1
+        return Outcome(False, reason)
+
+    def _record_claim(self, agent_id: str, answer: Optional[str], verdict: Optional[ClaimVerdict],
+                      view_task: Mapping[str, Any], tick: int) -> None:
+        """Propose a verified answer to the claim memory; a changed mind retracts the agent's earlier claim."""
+        assert self.claim_memory is not None
+        record_id = None
+        if verdict is not None and verdict.status == VERIFIED:
+            body = canonical_answer(answer) if view_task["answer_type"] == "decimal" else answer
+            record_id = self.claim_memory.propose(scope=self.task_id, kind=CLAIM, author=agent_id,
+                                                  subject=self.task_id, body={"answer": body}, tick=tick).id
+        previous = self._claim_ids.get(agent_id)
+        if previous is not None and previous != record_id:
+            self.claim_memory.invalidate(previous, tick, "superseded")
+        self._claim_ids[agent_id] = record_id
 
     def step_environment(self, tick: int) -> None:
         round_number = tick - 1
         for agent in self.agent_ids:
-            if round_number not in self.answers[agent]:
+            if round_number not in self.answers[agent] and round_number not in self.format_failed[agent]:
                 self.missing[agent] += 1
         if self.protocol.share_citations and round_number == 0:
             for agent in self.agent_ids:
@@ -184,12 +238,13 @@ class ResearchQAWorld:
 
     def metrics(self) -> Dict[str, Any]:
         finals = self.final_answers()
-        complete = all(self.protocol.rounds - 1 in self.answers[a] for a in self.agent_ids)
+        last = self.protocol.rounds - 1
+        complete = all(last in self.answers[a] or last in self.format_failed[a] for a in self.agent_ids)
         if self.protocol.aggregate == "last":
             answer = finals[0]
         else:
             answer = _strict_majority(self.task, finals, self.protocol.agents)
-        if any(self.invalid.values()):
+        if any(self.invalid.values()) or (self.lenient and all(last in self.format_failed[a] for a in self.agent_ids)):
             status, answer = "invalid", None
         elif not complete or any(self.missing.values()):
             # Any required call that never produced an answer (e.g. a provider failure
@@ -199,7 +254,7 @@ class ResearchQAWorld:
             status = "abstained"
         else:
             status = "completed"
-        return {
+        out = {
             "task_id": self.task_id,
             "domain": self.task["domain"],
             "protocol": self.protocol.name,
@@ -210,3 +265,28 @@ class ResearchQAWorld:
             "invalid": sum(self.invalid.values()),
             "rounds_completed": self._round,
         }
+        if self.lenient:
+            out["format_failures"] = sum(len(r) for r in self.format_failed.values())
+        if self.verify:
+            out.update(self._verification_metrics(last, finals))
+        if self.plurality:
+            counts: Dict[Any, List[str]] = {}
+            for a in finals:
+                if a is not None:
+                    counts.setdefault(_answer_key(self.task, a), []).append(a)
+            ranked = sorted(counts.values(), key=len, reverse=True)
+            top = None if not ranked or (len(ranked) > 1 and len(ranked[1]) == len(ranked[0])) else ranked[0][0]
+            out["plurality_answer"] = top
+            out["plurality_correct"] = _score_answer(self.task, top)
+        return out
+
+    def _verification_metrics(self, last: int, finals: List[Optional[str]]) -> Dict[str, Any]:
+        """Final-round ballots with their verdicts, for a downstream aggregator (counts cover cast answers)."""
+        assert self.claim_memory is not None
+        votes = [{"seat": a, "answer": ans,
+                  "verification": self.verdicts[a][last].status if last in self.verdicts[a] else UNVERIFIED}
+                 for a, ans in zip(self.agent_ids, finals)]
+        counts = {s: sum(1 for v in votes if v["answer"] is not None and v["verification"] == s)
+                  for s in (VERIFIED, UNVERIFIED, FAILED)}
+        admitted = sorted(r.body["answer"] for r in self.claim_memory.recall(self.task_id, kinds=[CLAIM]))
+        return {"votes": votes, "verification_counts": counts, "admitted_answers": admitted}
