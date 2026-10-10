@@ -21,7 +21,8 @@
     "deployed": false,
     "contracts_deployed": false,
     "approval_required_before_merge": true,
-    "approval_required_before_deploy": true
+    "approval_required_before_deploy": true,
+    "contracts_deployed_note": "Refers to this manifest's target network (ZKsync Era Sepolia, chain 300). Historical Base Sepolia deployments exist; see deployments.base-sepolia."
   },
   "release_scope": {
     "objective": "Phase-2 proof-chain provenance, fail-closed trust derivation, replay determinism, contract swarm-knowledge support, frontend runtime restoration, and their supporting tests/specifications.",
@@ -127,5 +128,46 @@
     "This manifest pins the code candidate at source_commit; the manifest-only successor commit is reviewed separately to avoid self-referential commit hashing.",
     "No merge, deployment, contract deployment, secret change, or production authority expansion is authorized by this manifest.",
     "Green tests and CI are evidence, not merge approval; a fresh independent exact-head zero-blocker/zero-high verdict is still required."
-  ]
+  ],
+  "deployments": {
+    "updated_at": "2026-10-09",
+    "source_of_truth": "blockchain/deployments/<network>.json (written by blockchain/scripts/deploy-zksync.js)",
+    "selected_network_default": "zksync-era-sepolia",
+    "zksync-era-sepolia": {
+      "chain_id": 300,
+      "deployed": true,
+      "deployed_at_utc": "2026-10-09T18:13:24.720Z",
+      "deployer": "0xF822f19C0FEc804f002e9087523677195a3C96cE",
+      "deployments_file": "blockchain/deployments/zksync-era-sepolia.json",
+      "git_commit": "7eef6781370d291426dc70f70aedf59c9a6c105b",
+      "compiler": {
+        "zksolc": "1.5.15",
+        "solc": "zkVM-0.8.24-1.0.2"
+      },
+      "contracts": {
+        "FoodToken": "0xA2B81529f67BEA1f536Ce97D31fe389Bdba54330",
+        "ColonyMemory": "0x5e204425CDECebA8134B51522ff839a99De79363",
+        "TumorIntel": "0x90445eDC246d83FA42D700584796216E6510e317",
+        "ExperienceRegistry": "0x2d77EE763987ab6131Ad5e9627C22EFE1FB29c3b"
+      },
+      "e2e_evidence": "docs/status/e2e-zksync-era-sepolia.json",
+      "e2e_submission_tx": "0xf0cf992598bd4324808270ebb426f44a0beac7fa874ade35563ee71d3b94150f",
+      "trust_tier": "proof_staged (mock SP1 adapter; never verified_onchain). ZKsync proves chain state, not simulation correctness.",
+      "proof_verifier": "none; MockProofVerifier not deployed",
+      "evidence": "docs/status/2026-10-08-chain-redeploy.md"
+    },
+    "zksync-local-inmemory": {
+      "chain_id": 260,
+      "deployed": "rehearsal only (ephemeral anvil-zksync node; record not committed)",
+      "evidence": "docs/status/2026-10-08-chain-redeploy.md"
+    },
+    "base-sepolia": {
+      "chain_id": 84532,
+      "deployed": "historical",
+      "deployments_file": null,
+      "note": "Addresses with bytecode on 2026-10-08 (eth_getCode): TumorIntel 0xd1cfa5b9994e06cc18a21dc18fb9d20a3c02238b (older) and 0x925b455175eF932a9a0239090a94E593224CD8AB, ExperienceRegistry 0x58A78E337ce3D948A39475f05Ca1A2c30274CADE, ColonyMemory 0x914D72b9d49ED4Bb46FA553a01fEbbd5EEf481fA, FoodToken 0x7310fb01b393459d2f8Ab15AD4a66F5380200869. No tx/deployer/commit records; no longer referenced by code.",
+      "evidence": "docs/status/2026-10-08-truth-pass.md"
+    },
+    "proof_verifier": "none configured; MockProofVerifier intentionally not deployed, so no run can become verified_onchain"
+  }
 }

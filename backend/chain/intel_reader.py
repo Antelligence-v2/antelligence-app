@@ -7,7 +7,7 @@ import time
 from dataclasses import dataclass
 from typing import Any, Callable, List, Optional
 
-from chain.config import get_base_sepolia_rpc_url, get_tumor_intel_address
+from chain.config import get_rpc_url, get_tumor_intel_address
 
 PIN_TYPE_NAMES = {
     0: "HYPOXIC_CLUSTER",
@@ -99,7 +99,7 @@ class ChainIntelReader:
             if w3 is None:
                 from web3 import Web3
 
-                rpc = rpc_url or get_base_sepolia_rpc_url()
+                rpc = rpc_url or get_rpc_url()
                 if not rpc:
                     return None
                 w3 = Web3(Web3.HTTPProvider(rpc))

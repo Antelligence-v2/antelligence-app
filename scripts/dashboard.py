@@ -22,14 +22,17 @@ from chain.ipfs import create_simulation_artifact
 st.set_page_config(page_title="Antelligence Dashboard", layout="wide")
 
 st.title("Antelligence — Simulation Leaderboard")
-st.markdown("Privacy-preserving tumor simulation attestation on Base L2")
+st.markdown("Privacy-preserving tumor simulation attestation (testnet; see blockchain/deployments/)")
 
 # Sidebar
 st.sidebar.header("Configuration")
 artifacts_dir = st.sidebar.text_input("Artifacts directory", value="./results")
-contract = "0xd1cfa5b9994e06cc18a21dc18fb9d20a3c02238b"
-st.sidebar.code(f"TumorIntel: {contract}", language="text")
-st.sidebar.markdown(f"[View on BaseScan](https://sepolia.basescan.org/address/{contract})")
+from chain.config import explorer_address_url, get_network, get_tumor_intel_address  # noqa: E402
+
+contract = get_tumor_intel_address()
+st.sidebar.code(f"Network: {get_network().name}\nTumorIntel: {contract or 'not deployed'}", language="text")
+if contract and explorer_address_url(contract):
+    st.sidebar.markdown(f"[View on block explorer]({explorer_address_url(contract)})")
 
 # Load data
 tab1, tab2, tab3 = st.tabs(["Leaderboard", "Sweep Results", "System Info"])

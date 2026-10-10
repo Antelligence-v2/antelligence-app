@@ -6,6 +6,13 @@ import pytest
 from backend.chain.verifier_admin import set_verifier_address, submit_proof_verification
 
 
+@pytest.fixture(autouse=True)
+def _deployed_tumor_intel(monkeypatch):
+    """Contract addresses are no longer hard-coded; supply one as a deployment would."""
+    monkeypatch.setenv("ANTELLIGENCE_TUMOR_INTEL_ADDR", "0x" + "ab" * 20)
+
+
+
 class TestVerifierAdmin:
     @patch("backend.chain.verifier_admin.subprocess.run")
     def test_set_verifier_address_rejects_malformed_address_before_cast(self, mock_run):
@@ -31,7 +38,7 @@ class TestVerifierAdmin:
 
     @patch("backend.chain.verifier_admin.get_tumor_intel_address")
     @patch("backend.chain.verifier_admin.get_private_key")
-    @patch("backend.chain.verifier_admin.get_base_sepolia_rpc_url")
+    @patch("backend.chain.verifier_admin.get_rpc_url")
     @patch("backend.chain.verifier_admin.subprocess.run")
     def test_set_verifier_address_invalid_config(self, mock_run, mock_rpc, mock_pk, mock_intel):
         mock_intel.return_value = "0x1234567890123456789012345678901234567890"
