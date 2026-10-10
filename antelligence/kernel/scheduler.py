@@ -18,7 +18,7 @@ import asyncio
 import hashlib
 import inspect
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Mapping, Optional, Protocol, Tuple
+from typing import Any, Callable, Dict, List, Mapping, Optional, Protocol, Tuple
 
 from antelligence.kernel import events as ev
 from antelligence.kernel.canonical import content_hash
@@ -128,6 +128,7 @@ class Scheduler:
         recorder: Optional[Recorder] = None,
         log: Optional[ev.EventLog] = None,
         record_frames: bool = True,
+        reputation: Optional[Callable[[str], Optional[float]]] = None,
     ) -> None:
         self.world = world
         self.policies = dict(policies)
@@ -138,6 +139,9 @@ class Scheduler:
         self.memory = memory
         self.gate = gate
         self.recorder = recorder
+        # agent id -> its author reputation, stamped onto every signal it emits.
+        # Must be frozen for the run (see kernel.reputation.ReputationView).
+        self.reputation = reputation
         self.intents_blocked = 0
         self.log = log if log is not None else ev.EventLog()
         self.tick = 0
@@ -160,8 +164,7 @@ class Scheduler:
 
     def config_hash(self) -> str:
         agents = sorted(self.world.agents())
-        return content_hash(
-            {
+        config = {
                 "world": self.world.describe(),
                 "seed": self.config.seed,
                 "max_ticks": self.config.max_ticks,
@@ -173,7 +176,9 @@ class Scheduler:
                 "memory": self.memory is not None,
                 "recorder": self.recorder is not None,
             }
-        )
+        if self.reputation is not None:  # absent key keeps pre-reputation config hashes unchanged
+            config["reputation"] = _describe(self.reputation)
+        return content_hash(config)
 
     # -------------------------------------------------------------------- run
     def run(self) -> RunResult:
@@ -311,7 +316,9 @@ class Scheduler:
                 self._reject(agent_id, tick, None, "emit_budget_exceeded", {"kind": draft.kind})
                 continue
             try:
-                signal = Signal.stamp(draft, sender=agent_id, scope=self.config.scope, tick=tick, revision=view.revision)
+                standing = self.reputation(agent_id) if self.reputation is not None else None
+                signal = Signal.stamp(draft, sender=agent_id, scope=self.config.scope, tick=tick,
+                                      revision=view.revision, sender_reputation=standing)
             except SignalError as exc:
                 self._reject(agent_id, tick, None, "invalid_signal", {"kind": draft.kind, "message": str(exc)})
                 continue

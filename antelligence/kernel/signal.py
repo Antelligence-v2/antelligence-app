@@ -118,6 +118,9 @@ class Signal:
     payload: Mapping[str, Any] = field(default_factory=dict)
     cites: Tuple[str, ...] = ()
     parent_ids: Tuple[str, ...] = ()
+    # Stamped by the scheduler from the reputation ledger, never by the agent.
+    # Omitted from the hashed body when absent, so existing signal ids are unchanged.
+    sender_reputation: Optional[float] = None
     id: str = field(init=False)
 
     def __post_init__(self) -> None:
@@ -137,10 +140,16 @@ class Signal:
         object.__setattr__(self, "payload", _payload(self.payload))
         object.__setattr__(self, "cites", _refs(self.cites, "cites"))
         object.__setattr__(self, "parent_ids", _refs(self.parent_ids, "parent_ids"))
+        if self.sender_reputation is not None:
+            value = self.sender_reputation
+            if isinstance(value, bool) or not isinstance(value, (int, float)) or not 0 <= value <= 1:
+                raise SignalError("sender_reputation must be a number in [0, 1]")
+            object.__setattr__(self, "sender_reputation", float(value))
         object.__setattr__(self, "id", content_hash(self._body()))
 
     @classmethod
-    def stamp(cls, draft: SignalDraft, *, sender: str, scope: str, tick: int, revision: int) -> "Signal":
+    def stamp(cls, draft: SignalDraft, *, sender: str, scope: str, tick: int, revision: int,
+              sender_reputation: Optional[float] = None) -> "Signal":
         return cls(
             sender=sender,
             scope=scope,
@@ -153,6 +162,7 @@ class Signal:
             payload=draft.payload,
             cites=draft.cites,
             parent_ids=draft.parent_ids,
+            sender_reputation=sender_reputation,
         )
 
     @property
@@ -164,7 +174,7 @@ class Signal:
         return self.emitted_at < tick <= self.expires_at
 
     def _body(self) -> dict:
-        return {
+        body = {
             "sender": self.sender,
             "scope": self.scope,
             "kind": self.kind,
@@ -177,6 +187,9 @@ class Signal:
             "cites": list(self.cites),
             "parent_ids": list(self.parent_ids),
         }
+        if self.sender_reputation is not None:
+            body["sender_reputation"] = self.sender_reputation
+        return body
 
     def to_dict(self) -> dict:
         return {"id": self.id, **plain(self._body())}
@@ -195,6 +208,7 @@ class Signal:
             payload=data.get("payload") or {},
             cites=tuple(data.get("cites") or ()),
             parent_ids=tuple(data.get("parent_ids") or ()),
+            sender_reputation=data.get("sender_reputation"),
         )
         if "id" in data and data["id"] != signal.id:
             raise SignalError("signal id does not match its content")
