@@ -15,7 +15,7 @@
         "enabled": true,
         "mode": "3"
       },
-      "compilerPath": "/Users/operator/Library/Caches/hardhat-nodejs/compilers-v2/zksolc/zksolc-v1.5.15",
+      "compilerPath": "<hardhat-nodejs cache>/compilers-v2/zksolc/zksolc-v1.5.15",
       "missingLibrariesPath": "./.zksolc-libraries-cache/missingLibraryDependencies.json",
       "areLibrariesMissing": false,
       "experimental": {},
