@@ -331,3 +331,24 @@ def test_plurality_control_reports_alongside_strict_majority():
     tie = run(MED, "independent_vote", votes(["yes", "no", None]), plurality=True).metrics
     assert tie["plurality_answer"] is None and tie["plurality_correct"] is None
     assert "plurality_answer" not in run(MED, "independent_vote", votes(["yes", "no", None])).metrics
+
+
+def test_a_dropped_currency_sign_still_binds_but_percent_does_not():
+    from antelligence.worlds.research_qa.verify import verify_claim
+
+    task = {"answer_type": "decimal", "choices": [], "evidence": [
+        {"id": "t", "text": '["2016 net revenue", "$ 644.2"] ["2015 net revenue", "$ 637.2"] ["margin", "5.0%"]'}]}
+
+    def claim(a, b, answer, op="subtract"):
+        return {"answer": answer, "evidence_ids": ["t"], "brief": "",
+                "calculation": {"operation": op, "operands": [{"evidence_id": "t", "quote": a},
+                                                               {"evidence_id": "t", "quote": b}]}}
+
+    assert verify_claim(claim("644.2", "637.2", "7"), task).status == "verified"
+    assert verify_claim(claim("$ 644.2", "$ 637.2", "7"), task).status == "verified"
+    assert verify_claim(claim("644.2", "999.9", "7"), task).status == "failed"  # not in the source at all
+    percent = {"answer": "5", "evidence_ids": ["t"], "brief": "",
+               "calculation": {"operation": "identity", "operands": [{"evidence_id": "t", "quote": "5.0"}]}}
+    assert verify_claim(percent, task).status == "failed"  # a dropped % is not restored
+    percent["calculation"]["operands"][0]["quote"] = "5.0%"
+    assert verify_claim(percent, task).status == "verified"
