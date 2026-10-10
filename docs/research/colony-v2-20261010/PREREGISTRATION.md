@@ -22,7 +22,8 @@ Sprint 1's answer was no for same-model colonies. The pilot (`pilot-independence
 - **Serving:** `vllm/vllm-openai:v0.30.0`. The HF revisions are pinned in `colony_v2_pod.py`: Qwen `017b9c7a…`, Phi `cfbefacb…`, Gemma `ee0ef602…`. Thinking mode is turned off (`enable_thinking: false`) for every seat, so all models answer directly within the same budget.
 - **Identity:** every reply records the served model name, the HF revision hash and the vLLM version. A reply whose served model name doesn't match is an error, not an answer.
 - **Excluded:** the Sprint 1 local models (an abliterated Qwen and a finance fine-tune of Phi4) are not used, on the operator's instruction. So Sprint 1 and pilot Qwen numbers do not carry over to seat Q.
-- **Decoding:** temperature 0.7, top-p 1.0, max 512 output tokens. The seed is fixed per (item, seat, sample index).
+- **Decoding:** temperature 0.7, top-p 1.0, max 2,048 output tokens.
+  - *Amended 2026-10-10, before any evaluation-split call.* The draft said 512. In the 2-task development plumbing check, Haiku hit 512 on 3 of 6 replies whose visible JSON was only about 300 characters, because Nous counts hidden reasoning tokens as output. A 512 cap would measure that budget, not the model. The new cap is the same for every seat, and tokens are reported per arm. The seed is fixed per (item, seat, sample index).
 - **Output limit:** a reply cut off at the token limit is a format failure (§5), not a wrong answer.
 
 ## 3. Data

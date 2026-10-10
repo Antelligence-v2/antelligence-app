@@ -47,7 +47,7 @@ GATED_FILES = ("docs/research/colony-v2-20261010/PREREGISTRATION.md", "scripts/c
 HAIKU_MAX_CALLS = 800
 RETRIES = 3
 MODELS = ("qwen", "phi", "gemma", "haiku")
-TEMPERATURE, MAX_TOKENS = 0.7, 512
+TEMPERATURE, MAX_TOKENS = 0.7, 2048
 
 
 @dataclass
