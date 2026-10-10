@@ -119,6 +119,14 @@ def main() -> None:
     L = []
     L.append("# REPORT: small local models vs frontier models on the Antelligence engine")
     L.append("")
+    notes = OUT / "ANALYSIS-NOTES.md"  # hand-written summary/deviations/limitations; survives regeneration
+    if notes.exists():
+        L.append(notes.read_text(encoding="utf-8").rstrip())
+        L.append("")
+        L.append("---")
+        L.append("")
+        L.append("# Preregistered results (auto-generated)")
+        L.append("")
     L.append(f"Generated {datetime.now(timezone.utc).isoformat(timespec='seconds')} by `scripts/w2_report.py` from "
              "`results.csv` and `comparisons.json` (produced by `scripts/w2_analyze.py`). Design: `PREREGISTRATION.md` "
              f"(committed before the first evaluation call; first evaluation call in the ledger: `{first_eval}`).")
