@@ -1,3 +1,5 @@
 # Reviewed false positives only. Each line is one exact finding fingerprint (commit:file:rule:line).
 # 2026-10-09: public ZKsync Era Sepolia FoodToken contract address in release-manifest.json, not a key (operator-approved).
 3cc6ba854d08c6e654fb39eb6abe896b91a6b3a9:release-manifest.json:generic-api-key:148
+# Same finding after the commit was re-applied onto upstream main for the upstream PR (2026-10-10).
+12da95f1d19755e3f50564ab0f709e863f83d175:release-manifest.json:generic-api-key:148
