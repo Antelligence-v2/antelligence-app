@@ -29,7 +29,7 @@ from backend.source_calculation import SourceCalculationError, _rounded_text, co
 from antelligence.kernel.aggregate import FAILED, UNVERIFIED, VERIFIED
 
 MAX_QUOTES = 3
-MIN_QUOTE_CHARS = 8
+MIN_QUOTE_CHARS = 20  # short fragments ("patients") would ground anything
 MAX_QUOTE_CHARS = 240
 
 PASS, NONE = "pass", "none"

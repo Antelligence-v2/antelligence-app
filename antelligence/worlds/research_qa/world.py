@@ -277,7 +277,7 @@ class ResearchQAWorld:
             ranked = sorted(counts.values(), key=len, reverse=True)
             top = None if not ranked or (len(ranked) > 1 and len(ranked[1]) == len(ranked[0])) else ranked[0][0]
             out["plurality_answer"] = top
-            out["plurality_correct"] = _score_answer(self.task, top)
+            out["plurality_correct"] = _score_answer(self.task, top) if top is not None else None
         return out
 
     def _verification_metrics(self, last: int, finals: List[Optional[str]]) -> Dict[str, Any]:
