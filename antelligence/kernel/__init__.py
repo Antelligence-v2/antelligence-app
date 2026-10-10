@@ -1,9 +1,12 @@
 """Engine kernel: coordination, trust and execution primitives."""
 
 from antelligence.kernel.admission import AdmissionPolicy
+from antelligence.kernel.aggregate import AggregateDecision, Aggregator, Vote
 from antelligence.kernel.canonical import canonical_json, content_hash
 from antelligence.kernel.events import Event, EventLog
-from antelligence.kernel.memory import EvidenceMemory, EvidenceRecorder, Record, ScopedRecall
+from antelligence.kernel.independence import IndependenceReport, errors_from_runs, herding, independence
+from antelligence.kernel.memory import EvidenceMemory, EvidenceRecorder, RecalledRecord, Record, ScopedRecall
+from antelligence.kernel.reputation import ReputationLedger, ReputationView
 from antelligence.kernel.field import BoardField, GridField, SenseQuery, SignalField
 from antelligence.kernel.scheduler import RunConfig, RunResult, Scheduler, derive_seed
 from antelligence.kernel.signal import Signal, SignalDraft, SignalError
@@ -12,6 +15,16 @@ from antelligence.kernel.verifier import EpisodeVerdict, EvidenceGate, classify_
 
 __all__ = [
     "AdmissionPolicy",
+    "AggregateDecision",
+    "Aggregator",
+    "IndependenceReport",
+    "RecalledRecord",
+    "ReputationLedger",
+    "ReputationView",
+    "Vote",
+    "errors_from_runs",
+    "herding",
+    "independence",
     "EpisodeVerdict",
     "EvidenceGate",
     "EvidenceMemory",

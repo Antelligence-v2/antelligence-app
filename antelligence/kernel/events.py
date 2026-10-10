@@ -28,6 +28,8 @@ SIGNAL_REJECTED = "signal_rejected"
 SIGNAL_EXPIRED = "signal_expired"
 INTENT_BLOCKED = "intent_blocked"
 MEMORY_CHANGED = "memory_changed"
+REPUTATION_UPDATED = "reputation_updated"
+AGGREGATED = "aggregated"
 TICK_ENDED = "tick_ended"
 RUN_FINISHED = "run_finished"
 

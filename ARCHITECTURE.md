@@ -9,7 +9,8 @@
 
 ```
 antelligence/
-├── kernel/        signal, field, types, scheduler, events, memory, admission, verifier, policies/
+├── kernel/        signal, field, types, scheduler, events, memory, admission, verifier, policies/,
+│                  independence (n_eff), reputation (ledger), aggregate (calibrated votes)
 ├── providers/     one OpenAI-compatible client + cache / budget / offline fake
 ├── worlds/        foraging (E13), task_dag (E15), tumor, research_qa
 ├── experiments/   registry, runner, paired statistics, store

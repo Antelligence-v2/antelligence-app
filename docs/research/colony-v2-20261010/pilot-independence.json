@@ -1,0 +1,394 @@
+{
+  "cross_model": {
+    "agents": [
+      "claude-haiku-5.5",
+      "claude-sonnet-5.5",
+      "qwen38-27b-q3k"
+    ],
+    "double_fault": {
+      "claude-haiku-5.5": {
+        "claude-haiku-5.5": 0.111111,
+        "claude-sonnet-5.5": 0.055556,
+        "qwen38-27b-q3k": 0.061111
+      },
+      "claude-sonnet-5.5": {
+        "claude-haiku-5.5": 0.055556,
+        "claude-sonnet-5.5": 0.316667,
+        "qwen38-27b-q3k": 0.116667
+      },
+      "qwen38-27b-q3k": {
+        "claude-haiku-5.5": 0.061111,
+        "claude-sonnet-5.5": 0.116667,
+        "qwen38-27b-q3k": 0.211111
+      }
+    },
+    "error_rate": {
+      "claude-haiku-5.5": 0.111111,
+      "claude-sonnet-5.5": 0.316667,
+      "qwen38-27b-q3k": 0.211111
+    },
+    "flags": [],
+    "items": 180,
+    "n": {
+      "claude-haiku-5.5": 180,
+      "claude-sonnet-5.5": 180,
+      "qwen38-27b-q3k": 180
+    },
+    "n_eff": 2.049792,
+    "n_eff_ci": [
+      1.769724,
+      2.412882
+    ],
+    "n_eff_rate_adjusted": 1.769435,
+    "n_eff_rate_adjusted_ci": [
+      1.447884,
+      2.221655
+    ],
+    "overlap": {
+      "claude-haiku-5.5": {
+        "claude-haiku-5.5": 180,
+        "claude-sonnet-5.5": 180,
+        "qwen38-27b-q3k": 180
+      },
+      "claude-sonnet-5.5": {
+        "claude-haiku-5.5": 180,
+        "claude-sonnet-5.5": 180,
+        "qwen38-27b-q3k": 180
+      },
+      "qwen38-27b-q3k": {
+        "claude-haiku-5.5": 180,
+        "claude-sonnet-5.5": 180,
+        "qwen38-27b-q3k": 180
+      }
+    },
+    "rho": {
+      "claude-haiku-5.5": {
+        "claude-haiku-5.5": 1.0,
+        "claude-sonnet-5.5": 0.139341,
+        "qwen38-27b-q3k": 0.293595
+      },
+      "claude-sonnet-5.5": {
+        "claude-haiku-5.5": 0.139341,
+        "claude-sonnet-5.5": 1.0,
+        "qwen38-27b-q3k": 0.262408
+      },
+      "qwen38-27b-q3k": {
+        "claude-haiku-5.5": 0.293595,
+        "claude-sonnet-5.5": 0.262408,
+        "qwen38-27b-q3k": 1.0
+      }
+    },
+    "rho_adjusted": {
+      "claude-haiku-5.5": {
+        "claude-haiku-5.5": 1.0,
+        "claude-sonnet-5.5": 0.268293,
+        "qwen38-27b-q3k": 0.429577
+      },
+      "claude-sonnet-5.5": {
+        "claude-haiku-5.5": 0.268293,
+        "claude-sonnet-5.5": 1.0,
+        "qwen38-27b-q3k": 0.345315
+      },
+      "qwen38-27b-q3k": {
+        "claude-haiku-5.5": 0.429577,
+        "claude-sonnet-5.5": 0.345315,
+        "qwen38-27b-q3k": 1.0
+      }
+    }
+  },
+  "error_definition": "wrong or abstained final answer, W2 strict scorer",
+  "source": "docs/research/slm-vs-frontier-20261008/cells (W2 benchmark data)",
+  "within_model": {
+    "claude-haiku-5.5": {
+      "agents": [
+        "voter1",
+        "voter2",
+        "voter3"
+      ],
+      "double_fault": {
+        "voter1": {
+          "voter1": 0.075581,
+          "voter2": 0.069767,
+          "voter3": 0.069767
+        },
+        "voter2": {
+          "voter1": 0.069767,
+          "voter2": 0.081395,
+          "voter3": 0.075581
+        },
+        "voter3": {
+          "voter1": 0.069767,
+          "voter2": 0.075581,
+          "voter3": 0.081395
+        }
+      },
+      "error_rate": {
+        "voter1": 0.075581,
+        "voter2": 0.081395,
+        "voter3": 0.081395
+      },
+      "flags": [],
+      "items": 172,
+      "n": {
+        "voter1": 172,
+        "voter2": 172,
+        "voter3": 172
+      },
+      "n_eff": 1.075901,
+      "n_eff_ci": [
+        1.014872,
+        1.187234
+      ],
+      "n_eff_rate_adjusted": 1.057638,
+      "n_eff_rate_adjusted_ci": [
+        1.0,
+        1.134502
+      ],
+      "overlap": {
+        "voter1": {
+          "voter1": 172,
+          "voter2": 172,
+          "voter3": 172
+        },
+        "voter2": {
+          "voter1": 172,
+          "voter2": 172,
+          "voter3": 172
+        },
+        "voter3": {
+          "voter1": 172,
+          "voter2": 172,
+          "voter3": 172
+        }
+      },
+      "rho": {
+        "voter1": {
+          "voter1": 1.0,
+          "voter2": 0.88015,
+          "voter3": 0.88015
+        },
+        "voter2": {
+          "voter1": 0.88015,
+          "voter2": 1.0,
+          "voter3": 0.922242
+        },
+        "voter3": {
+          "voter1": 0.88015,
+          "voter2": 0.922242,
+          "voter3": 1.0
+        }
+      },
+      "rho_adjusted": {
+        "voter1": {
+          "voter1": 1.0,
+          "voter2": 0.916261,
+          "voter3": 0.916261
+        },
+        "voter2": {
+          "voter1": 0.916261,
+          "voter2": 1.0,
+          "voter3": 0.922242
+        },
+        "voter3": {
+          "voter1": 0.916261,
+          "voter2": 0.922242,
+          "voter3": 1.0
+        }
+      }
+    },
+    "claude-sonnet-5.5": {
+      "agents": [
+        "voter1",
+        "voter2",
+        "voter3"
+      ],
+      "double_fault": {
+        "voter1": {
+          "voter1": 0.04878,
+          "voter2": 0.04878,
+          "voter3": 0.04878
+        },
+        "voter2": {
+          "voter1": 0.04878,
+          "voter2": 0.073171,
+          "voter3": 0.04878
+        },
+        "voter3": {
+          "voter1": 0.04878,
+          "voter2": 0.04878,
+          "voter3": 0.04878
+        }
+      },
+      "error_rate": {
+        "voter1": 0.04878,
+        "voter2": 0.073171,
+        "voter3": 0.04878
+      },
+      "flags": [],
+      "items": 41,
+      "n": {
+        "voter1": 41,
+        "voter2": 41,
+        "voter3": 41
+      },
+      "n_eff": 1.094379,
+      "n_eff_ci": [
+        1.0,
+        3.0
+      ],
+      "n_eff_rate_adjusted": 1.0,
+      "n_eff_rate_adjusted_ci": [
+        1.0,
+        3.0
+      ],
+      "overlap": {
+        "voter1": {
+          "voter1": 41,
+          "voter2": 41,
+          "voter3": 41
+        },
+        "voter2": {
+          "voter1": 41,
+          "voter2": 41,
+          "voter3": 41
+        },
+        "voter3": {
+          "voter1": 41,
+          "voter2": 41,
+          "voter3": 41
+        }
+      },
+      "rho": {
+        "voter1": {
+          "voter1": 1.0,
+          "voter2": 0.805961,
+          "voter3": 1.0
+        },
+        "voter2": {
+          "voter1": 0.805961,
+          "voter2": 1.0,
+          "voter3": 0.805961
+        },
+        "voter3": {
+          "voter1": 1.0,
+          "voter2": 0.805961,
+          "voter3": 1.0
+        }
+      },
+      "rho_adjusted": {
+        "voter1": {
+          "voter1": 1.0,
+          "voter2": 1.0,
+          "voter3": 1.0
+        },
+        "voter2": {
+          "voter1": 1.0,
+          "voter2": 1.0,
+          "voter3": 1.0
+        },
+        "voter3": {
+          "voter1": 1.0,
+          "voter2": 1.0,
+          "voter3": 1.0
+        }
+      }
+    },
+    "qwen38-27b-q3k": {
+      "agents": [
+        "voter1",
+        "voter2",
+        "voter3"
+      ],
+      "double_fault": {
+        "voter1": {
+          "voter1": 0.111111,
+          "voter2": 0.078431,
+          "voter3": 0.065359
+        },
+        "voter2": {
+          "voter1": 0.078431,
+          "voter2": 0.111111,
+          "voter3": 0.071895
+        },
+        "voter3": {
+          "voter1": 0.065359,
+          "voter2": 0.071895,
+          "voter3": 0.104575
+        }
+      },
+      "error_rate": {
+        "voter1": 0.111111,
+        "voter2": 0.111111,
+        "voter3": 0.104575
+      },
+      "flags": [],
+      "items": 153,
+      "n": {
+        "voter1": 153,
+        "voter2": 153,
+        "voter3": 153
+      },
+      "n_eff": 1.341399,
+      "n_eff_ci": [
+        1.18719,
+        1.606015
+      ],
+      "n_eff_rate_adjusted": 1.325213,
+      "n_eff_rate_adjusted_ci": [
+        1.121119,
+        1.523328
+      ],
+      "overlap": {
+        "voter1": {
+          "voter1": 153,
+          "voter2": 153,
+          "voter3": 153
+        },
+        "voter2": {
+          "voter1": 153,
+          "voter2": 153,
+          "voter3": 153
+        },
+        "voter3": {
+          "voter1": 153,
+          "voter2": 153,
+          "voter3": 153
+        }
+      },
+      "rho": {
+        "voter1": {
+          "voter1": 1.0,
+          "voter2": 0.669118,
+          "voter3": 0.558813
+        },
+        "voter2": {
+          "voter1": 0.669118,
+          "voter2": 1.0,
+          "voter3": 0.626777
+        },
+        "voter3": {
+          "voter1": 0.558813,
+          "voter2": 0.626777,
+          "voter3": 1.0
+        }
+      },
+      "rho_adjusted": {
+        "voter1": {
+          "voter1": 1.0,
+          "voter2": 0.669118,
+          "voter3": 0.578125
+        },
+        "voter2": {
+          "voter1": 0.669118,
+          "voter2": 1.0,
+          "voter3": 0.648437
+        },
+        "voter3": {
+          "voter1": 0.578125,
+          "voter2": 0.648437,
+          "voter3": 1.0
+        }
+      }
+    }
+  }
+}
