@@ -198,7 +198,7 @@ Verification checks that claims are grounded in the cited passage. It is not acc
 | solo3[qwen] | 300 | 350559 | 39880 | 3279.3 |
 | solo4[haiku] | 400 | 676316 | 170705 | 1484.9 |
 
-GPU time and dollars: {'hours': 0.98, 'usd': 1.0}
+GPU time and dollars: {'hours': 0.98, 'usd': 1.08}
 
 ## Explained-null checklist (section 9)
 

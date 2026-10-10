@@ -64,5 +64,5 @@ On finance the colonies are significantly *worse* (Holm p < 0.001 and p = 0.016)
 ## Cost
 
 - **Calls:** 2,800 cells across 4 models, all on development and evaluation items from public benchmarks.
-- **GPU:** about 59 minutes, $1.00 (RunPod balance $2.79 → $1.79).
+- **GPU:** about 59 minutes, $1.08 (RunPod balance $2.79 → $1.71 once the final charges posted).
 - **Haiku:** 707 calls through Nous credits, recorded in the ledger (which is gitignored and stays on this machine).
