@@ -88,7 +88,8 @@ class ForagingSB:
         return out
 
     def describe(self) -> Dict[str, Any]:
-        return {"world": self.name, "version": 1, "agents": N_AGENTS, "steps": STEPS, "actions": list(ACTIONS),
+        return {"world": self.name, "version": 1, "agents": N_AGENTS, "steps": STEPS,
+                "max_ticks": STEPS, "actions": list(ACTIONS),
                 "v1_pickups": V1_PICKUPS, "v2_flip_tick": V2_FLIP_TICK, "score": "deliveries"}
 
 
