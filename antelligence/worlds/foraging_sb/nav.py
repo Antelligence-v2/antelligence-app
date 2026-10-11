@@ -123,7 +123,7 @@ def next_to(cell: Cell) -> Set[Cell]:
     return {(cell[0] + dx, cell[1] + dy) for dx, dy in DIRS.values()}
 
 
-def _distances(rows: Sequence[str], goals: Set[Cell]) -> Dict[Cell, int]:
+def distances(rows: Sequence[str], goals: Set[Cell]) -> Dict[Cell, int]:
     """Steps from every walkable (free or unseen) cell to the nearest goal, walking around walls, food and nest."""
     height, width = len(rows), len(rows[0])
     dist = {g: 0 for g in goals}
@@ -182,12 +182,12 @@ def plan_route(rows: Sequence[str], pos: Cell, carrying: bool, food_at: Optional
         near = next_to(target)
         if pos in near:
             return ("drop" if carrying else "pick_up"), "at_target"
-        dist = _distances(rows, {c for c in near if 0 <= c[0] < len(rows[0]) and 0 <= c[1] < len(rows)
+        dist = distances(rows, {c for c in near if 0 <= c[0] < len(rows[0]) and 0 <= c[1] < len(rows)
                                  and rows[c[1]][c[0]] in ".?"})
         step = _descend(dist, pos, busy, rot) if pos in dist else None
         if step:
             return step, mode
     unseen = {(x, y) for y, row in enumerate(rows) for x, ch in enumerate(row) if ch == "?"}
-    dist = _distances(rows, unseen)
+    dist = distances(rows, unseen)
     step = _descend(dist, pos, busy, rot) if pos in dist else None
     return (step, "explore") if step else ("stay", "explore")

@@ -372,6 +372,32 @@ def test_oracle_walks_the_true_shortest_path():
     assert world.deliveries >= 2  # alone on the map the oracle shuttles food to the nest
 
 
+def test_oracle_actions_lists_every_shortest_path_first_step():
+    world = lone(100)
+    world.walls = set()
+    world.food = {(8, 8)}
+    world.nest = {(0, 0)}
+    world.carrying["0"] = False
+    world.positions["0"] = (4, 5)  # food at (8, 8), open map: east and south both shorten the way
+    acts = FORAGING_SB.oracle_actions(world, "0", 1)
+    assert set(acts) == {"east", "south"} and acts[0] == FORAGING_SB.oracle_action(world, "0", 1)
+    world.positions["0"] = (8, 3)  # straight line: one direction only
+    assert FORAGING_SB.oracle_actions(world, "0", 1) == ("south",)
+    world.positions["0"] = (8, 7)  # next to the food
+    assert FORAGING_SB.oracle_actions(world, "0", 1) == ("pick_up",)
+    world.carrying["0"] = True
+    world.positions["0"] = (1, 0)
+    assert FORAGING_SB.oracle_actions(world, "0", 1) == ("drop",)
+    world.positions["0"] = (3, 1)  # carrying, nest at (0, 0): west and north both shorten it
+    assert set(FORAGING_SB.oracle_actions(world, "0", 1)) == {"west", "north"}
+    world.positions["0"] = (0, 0)  # standing on the nest cell, off the walkable map: still answers
+    assert FORAGING_SB.oracle_actions(world, "0", 1)
+    world.positions["0"] = (3, 1)
+    view = LocalView("0", 1, 0, 1, world.observe("0", 1).data)
+    move = next(q for q in FORAGING_SB.labelled_questions(world, view, 1) if q.kind == "move")
+    assert move.accept == FORAGING_SB.oracle_actions(world, "0", 1) and move.label == move.accept[0]
+
+
 # --- validity check ----------------------------------------------------------
 
 
