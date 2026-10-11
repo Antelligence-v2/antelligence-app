@@ -25,8 +25,11 @@ QUEEN_ID = "queen"
 
 def framework_policies(world_agents: Sequence[str], groups: Mapping[str, Sequence[str]], backend: DecisionBackend,
                        sensor: Sensor, model: str, *, use_queen: bool, queen: Optional[Policy] = None,
-                       max_checks: int = 2) -> Dict[str, Policy]:
-    """Per-agent policy map: a DecisionWorker for every worker, plus the queen when ``use_queen``."""
+                       max_checks: int = 2, report_ttl: int = 10) -> Dict[str, Policy]:
+    """Per-agent policy map: a DecisionWorker for every worker, plus the queen when ``use_queen``.
+
+    ``report_ttl`` is how long a worker report stays on the board; it must be >= the queen's cadence.
+    """
     group_of: Dict[str, str] = {}
     for group, members in groups.items():
         for agent in members:
@@ -38,7 +41,8 @@ def framework_policies(world_agents: Sequence[str], groups: Mapping[str, Sequenc
     if missing:
         raise ValueError(f"agents without a group: {missing}")
     policies: Dict[str, Policy] = {
-        a: DecisionWorker(backend, sensor, group_of[a], model=model, use_queen=use_queen, max_checks=max_checks)
+        a: DecisionWorker(backend, sensor, group_of[a], model=model, use_queen=use_queen, max_checks=max_checks,
+                          report_ttl=report_ttl)
         for a in workers}
     if use_queen:
         if queen is None:
