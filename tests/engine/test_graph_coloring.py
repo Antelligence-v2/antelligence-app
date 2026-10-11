@@ -313,3 +313,9 @@ def test_kernel_never_imports_a_world():
     kernel = Path(__file__).resolve().parents[2] / "antelligence/kernel"
     for source in kernel.rglob("*.py"):
         assert not re.search(r"^\s*(from|import)\s+antelligence\.worlds", source.read_text(), re.M), source
+
+
+def test_describe_declares_episode_length():
+    from antelligence.worlds.graph_coloring import GRAPH_COLORING
+    from antelligence.worlds.graph_coloring.world import ROUNDS
+    assert GRAPH_COLORING.describe()["max_ticks"] == ROUNDS
