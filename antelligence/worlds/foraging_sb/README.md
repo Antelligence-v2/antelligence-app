@@ -38,8 +38,8 @@ where you remembered it?"* (offered only once the agent has the corresponding me
 
 `ForagingSensor` turns an agent's `LocalView` into a `SensedState`: about 300-400 characters in words ("Carrying food:
 no. Remembered food spot: 3 north, 2 east. That spot is in view and food is there. Remembered nest: 4 south. Heard:
-agent 7 (1 east of you) says "food is north-west of me". Best known next step toward the food: go east."). Directions
-and the route hint are computed in code. The remembered food and nest are what the agent was briefed on, moved only
+agent 7 (1 east of you) says "food is north-west of me"."). Directions
+are computed in code; the text never suggests a move (a planner hint jammed agents and would measure the planner). The remembered food and nest are what the agent was briefed on, moved only
 when it picks up or drops there; seeing the spot empty, or food somewhere else, never changes them. That is what makes
 a script go stale under v1 and v2.
 
