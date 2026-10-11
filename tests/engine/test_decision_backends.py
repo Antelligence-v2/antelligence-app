@@ -356,6 +356,19 @@ def test_slm_length_and_parse_failures_are_not_retried():
         with pytest.raises(DecisionError):
             run(SLMBackend(provider, SLM, backoff_s=0).decide(slm_request()))
         assert len(provider.requests) == 1
+    calls = []
+
+    class LengthRaising:  # OpenAICompatProvider raises on a length cut-off before SLMBackend sees the reply
+        def describe(self):
+            return {"provider": "length-raising"}
+
+        async def complete(self, chat):
+            calls.append(chat)
+            raise ProviderError("generation did not finish normally (length)")
+
+    with pytest.raises(DecisionError, match="cut off"):
+        run(SLMBackend(LengthRaising(), SLM, backoff_s=0).decide(slm_request()))
+    assert len(calls) == 1
 
 
 def test_slm_max_tokens_scales_with_options_and_respects_cap():
