@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""v4 pilot CLI: validity | calibrate | plan | run | report-data. Every subcommand takes --dry-run.
+"""v4 pilot CLI: validity | plan | run | report-data. Every subcommand takes --dry-run.
 
 --dry-run uses fake policies, a fake backend and a fake ledger: no network, no keys read. Live mode needs
 ``antelligence.experiments.v4_wiring.make_hooks(...)`` (written by the integrator) and reads keys only in
@@ -26,7 +26,6 @@ from antelligence.experiments import v4_pilot as pilot  # noqa: E402
 DEFAULT_WORLDS = {"foraging_sb": "antelligence.worlds.foraging_sb:FORAGING_SB",
                   "graph_coloring": "antelligence.worlds.graph_coloring:GRAPH_COLORING"}
 EXP_REL = "docs/research/v4-pilot-20261011"
-BACKENDS = ("jev", "laya", "qwen3.5-9b", "deepseek")
 
 
 def nous_key() -> str:
@@ -95,29 +94,6 @@ def cmd_validity(args: argparse.Namespace, root: Path) -> int:
     invalid = [f"{n}/{v}" for n, r in report.items() for v, x in r["variants"].items() if not x["valid"]]
     print(json.dumps({"invalid_variants": invalid}))
     return 1 if invalid else 0
-
-
-def cmd_calibrate(args: argparse.Namespace, root: Path) -> int:
-    worlds = load_worlds(args.world)
-    out = out_dir_for(args, root, pilot.DEV_SEEDS)
-    hooks = hooks_for(args, root)
-    items = pilot.harvest_questions(worlds, total=args.n)
-    summary = {}
-    for name in args.backend.split(","):
-        path = out / "calibration" / f"{name}.jsonl"
-        have = budget.read_jsonl(path)
-        rows = asyncio.run(pilot.calibrate(hooks.make_backend(name), name, items, concurrency=args.concurrency,
-                                           done=[f"{r['backend']}:{r['id']}" for r in have]))
-        path.parent.mkdir(parents=True, exist_ok=True)
-        with path.open("a") as handle:
-            handle.writelines(json.dumps(r, sort_keys=True) + "\n" for r in rows)
-        allrows = have + rows
-        summary[name] = {"all": metrics.calibration_summary(allrows),
-                         **{k: metrics.calibration_summary([r for r in allrows if r["kind"] == k])
-                            for k in ("judgement", "move")}}
-    write_json(out / "calibration-summary.json", summary)
-    print(json.dumps({n: s["all"] for n, s in summary.items()}, default=str))
-    return 0
 
 
 def build_plan(args: argparse.Namespace) -> List[pilot.CellSpec]:
@@ -203,9 +179,6 @@ def main(argv: Optional[List[str]] = None) -> int:
         return p
 
     add("validity")
-    cal = add("calibrate")
-    cal.add_argument("--backend", default="jev", help=f"comma list of {BACKENDS}")
-    cal.add_argument("--n", type=int, default=300)
     for name in ("plan", "run"):
         p = add(name, seeds="eval" if name == "plan" else "dev")
         p.add_argument("--arms")
@@ -217,7 +190,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     sub.choices["run"].add_argument("--bundles", action="store_true", help="write run bundles, event logs, frames")
     add("report-data")
     args = parser.parse_args(argv)
-    handler = {"validity": cmd_validity, "calibrate": cmd_calibrate, "plan": cmd_plan, "run": cmd_run,
+    handler = {"validity": cmd_validity, "plan": cmd_plan, "run": cmd_run,
                "report-data": cmd_report_data}[args.cmd]
     return handler(args, Path(args.root))
 
