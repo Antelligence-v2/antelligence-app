@@ -24,14 +24,25 @@ REPORT_DESCRIPTION = "report: my local evidence disagrees"
 P_CHECK = 0.5
 
 
+def _newest_queen_signal(view: LocalView, group: str):
+    mine = [s for s in view.signals if s.kind == "queen" and s.payload.get("group") == group]
+    return max(mine, key=lambda s: (s.emitted_at, s.id)) if mine else None
+
+
 def latest_queen_allowed(view: LocalView, group: str) -> Optional[List[str]]:
     """Allowed actions from the newest queen signal for ``group`` in the view, else None."""
-    mine = [s for s in view.signals if s.kind == "queen" and s.payload.get("group") == group]
-    if not mine:
+    newest = _newest_queen_signal(view, group)
+    if newest is None:
         return None
-    newest = max(mine, key=lambda s: (s.emitted_at, s.id))
     allowed = newest.payload.get("allowed", [])
     return [a for a in allowed if isinstance(a, str)] if isinstance(allowed, list) else []
+
+
+def latest_queen_goal(view: LocalView, group: str) -> Optional[str]:
+    """The goal text of the newest queen signal for ``group``, else None."""
+    newest = _newest_queen_signal(view, group)
+    goal = newest.payload.get("goal") if newest is not None else None
+    return goal[:MAX_REASON] if isinstance(goal, str) and goal else None
 
 
 class DecisionWorker:
@@ -72,8 +83,10 @@ class DecisionWorker:
             return Intent(NOOP, emit=(report,), meta={**base, "reason": "empty_allowed", "reported": True})
         criteria = {a: sensed.actions[a] for a in allowed}
         criteria[REPORT] = REPORT_DESCRIPTION
+        goal = latest_queen_goal(view, self.group) if self.use_queen else None
+        instructions = "Which action?" if goal is None else f"Which action? Your group's goal: {goal}"
         questions: Dict[str, Question] = {
-            "move": Question("choice", "Which action?", tuple(allowed) + (REPORT,), criteria)}
+            "move": Question("choice", instructions, tuple(allowed) + (REPORT,), criteria)}
         for qid in sorted(sensed.checks)[: self.max_checks]:
             if qid != "move":
                 questions[qid] = sensed.checks[qid]
