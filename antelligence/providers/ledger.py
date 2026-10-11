@@ -75,6 +75,10 @@ class LedgerWriter:
         self._redact = tuple(s for s in redact if s)
         self._lock = threading.Lock()
 
+    def add_redaction(self, *secrets: str) -> None:
+        """Scrub more strings from error text (keys that are only read once an arm needs them)."""
+        self._redact += tuple(s for s in secrets if s)
+
     def _clean(self, text: str) -> str:
         for secret in self._redact:
             text = text.replace(secret, "***")
