@@ -10,7 +10,7 @@ from antelligence.kernel.decision import Answer, DecisionError, DecisionRequest,
 from antelligence.providers import (CachedDecision, ChatResponse, EscalatingBackend, FakeBackend, FakeProvider,
                                     JevBackend, LayaBackend, LedgeredDecision, LedgerWriter, ProviderError,
                                     SLMBackend, ledger_context)
-from antelligence.providers.decision_backends import hashed_answers, parse_slm_json
+from antelligence.providers.decision_backends import hashed_answers, parse_slm_json, slm_max_tokens
 
 FIX = Path(__file__).parent / "fixtures" / "decision"
 JEV = json.loads((FIX / "jev_1_13_0_reply.json").read_text())
@@ -298,8 +298,11 @@ def test_slm_backend_end_to_end_and_accounting():
     provider, _ = slm_provider()
     response = run(SLMBackend(provider, SLM, backoff_s=0).decide(slm_request(seed=9)))
     chat = provider.requests[0]
-    assert chat.max_tokens == 64 and chat.temperature == 0.0 and chat.seed == 9
-    assert "Carrying food: no." in chat.messages[1]["content"]
+    assert chat.max_tokens == 96 and chat.temperature == 0.0 and chat.seed == 9
+    prompt = chat.messages[1]["content"]
+    assert "Carrying food: no." in prompt
+    assert '"food_known": 0.83, "move": {"move north": p, "move south": p, "stay": p}' in prompt
+    assert '"urgency": {"0": p, "1": p, "2": p}' in prompt
     assert response.answers["move"].value == "move north"
     assert (response.served_model, response.input_tokens, response.output_tokens) == (SLM, 120, 40)
     assert response.cost_usd == 0.0
@@ -323,6 +326,44 @@ def test_slm_rejects_served_model_mismatch_and_malformed_without_retry():
     with pytest.raises(DecisionError):
         run(SLMBackend(provider, SLM, backoff_s=0).decide(slm_request()))
     assert state["n"] == 1
+
+
+SHAPES = [  # (replacement for the three-question GOOD reply, expected food_known, expected move confidence)
+    ('{"food_known": {"noul": 0.5}, ', 0.5), ('{"food_known": {"p_yes": 0.5}, ', 0.5),
+    ('{"food_known": {"yes": 0.5}, ', 0.5), ('{"food_known": {"yes": 1.0, "no": 3.0}, ', 0.25),
+    ('{"food_known": {"choice": {"yes": 0.0, "no": 1.0}}, ', 0.0)]
+
+
+@pytest.mark.parametrize("head,expected", SHAPES)
+def test_slm_noul_tolerates_wrapped_and_yes_no_forms(head, expected):
+    assert parse(head + GOOD.split(", ", 1)[1])["food_known"].p_yes == pytest.approx(expected)
+
+
+def test_slm_choice_nested_and_omitted_zero_options():
+    a = parse(GOOD.replace('"move": {', '"move": {"choice": {').replace('"stay": 0.2}', '"stay": 0.2}}'))
+    assert a["move"].value == "move north"
+    full = GOOD.replace('"move south": 0.1, ', "").replace('"stay": 0.2', '"stay": 0.3')  # listed sum 1.0
+    assert parse(full)["move"].probabilities["move south"] == 0.0
+    with pytest.raises(DecisionError):  # listed options sum 0.9 < 0.98: not safe to assume the rest is 0
+        parse(GOOD.replace('"move south": 0.1, ', ""))
+    with pytest.raises(DecisionError):
+        parse(GOOD.replace('"food_known": 0.9', '"food_known": {"maybe": 0.9}'))
+
+
+def test_slm_length_and_parse_failures_are_not_retried():
+    for content, finish in ((GOOD[:30], "length"), ("nope", "stop")):
+        provider = FakeProvider(lambda chat: ChatResponse(content, SLM, chat.request_hash, 9, 9, finish), model=SLM)
+        with pytest.raises(DecisionError):
+            run(SLMBackend(provider, SLM, backoff_s=0).decide(slm_request()))
+        assert len(provider.requests) == 1
+
+
+def test_slm_max_tokens_scales_with_options_and_respects_cap():
+    request = slm_request()
+    assert slm_max_tokens(request) == 96
+    assert slm_max_tokens(request, cap=50) == 50
+    big = DecisionRequest(SLM, "s", {"m": Question("choice", "?", tuple(f"o{i}" for i in range(7)))})
+    assert slm_max_tokens(big) == 94 and slm_max_tokens(slm_request(), 256) == 96
 
 
 # --- Fake ------------------------------------------------------------------
