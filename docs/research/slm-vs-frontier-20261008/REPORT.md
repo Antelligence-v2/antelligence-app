@@ -232,6 +232,8 @@ Accuracy = correct / requested. Wilson = one-sided 95% lower bound on accuracy. 
 - Local cost is API cost only; electricity, hardware amortization and the operator's time are unmeasured. Wall time for Qwen is on a shared 36 GB Mac with 3 llama.cpp slots.
 - A Wilson bound describes this sample; it is not a guarantee of future accuracy. Nothing here is clinical or financial evidence.
 
+A no-model scripted planner also scores 16/19 through the same merge (`tests/engine/test_task_dag.py:71`). So on task_dag the models only filled in a two-node template. The task_dag result measures the merge code, not the models.
+
 ## Raw evidence
 
 Hashes of every raw file are in `MANIFEST.sha256` (cells, bundles, raw responses, run log, usage summary). Raw responses are request-hash keyed, so every cell can be replayed offline through the engine with `antelligence.providers.Cached(..., offline=True)`.
