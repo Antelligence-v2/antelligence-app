@@ -96,6 +96,12 @@ def test_sensed_state_rules():
         SensedState("x", {}, {REPORT: "not allowed as a world action"})
     with pytest.raises(ValueError):
         SensedState("", {}, {"north": "x"})
+    check = Question("noul", "Is the food patch you remember still there?")
+    assert SensedState("x", {}, {"north": "x"}, {"patch": check}).checks == {"patch": check}
+    with pytest.raises(ValueError):
+        SensedState("x", {}, {"north": "x"}, {"a": check, "b": check, "c": check})
+    with pytest.raises(ValueError):
+        SensedState("x", {}, {"north": "x"}, {"m": questions()["move"]})
 
 
 def test_labelled_question_and_report_truth():

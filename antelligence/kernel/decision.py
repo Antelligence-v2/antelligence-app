@@ -29,6 +29,7 @@ from antelligence.kernel.types import LocalView
 QUESTION_TYPES = ("noul", "choice", "score")
 REPORT = "report"  # the worker's escape option: "my local evidence disagrees"
 MAX_STATE_CHARS = 1200  # ~300 tokens; Laya's hard limit is 1,024 tokens
+MAX_CHECKS = 2  # judgement questions per agent per tick
 
 
 class DecisionError(RuntimeError):
@@ -217,11 +218,16 @@ class SensedState:
     counting left to the model). ``fields`` holds the same facts in structured
     form for scripts and the harness. ``actions`` maps legal action ids to a
     short description; the move question offers a subset of these plus REPORT.
+    ``checks`` are at most two judgement questions (noul) phrased so that a
+    "no" means an assumption the agent relies on looks broken, e.g. "Is the
+    food patch you remember still there?". Worlds compute counts and dates in
+    code; checks never ask the model to count.
     """
 
     text: str
     fields: Mapping[str, Any]
     actions: Mapping[str, str]
+    checks: Mapping[str, Question] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         if not self.text or len(self.text) > MAX_STATE_CHARS:
@@ -230,6 +236,10 @@ class SensedState:
             raise ValueError(f"actions must be non-empty and must not contain {REPORT!r}")
         object.__setattr__(self, "fields", plain(dict(self.fields)))
         object.__setattr__(self, "actions", dict(self.actions))
+        checks = dict(self.checks)
+        if len(checks) > MAX_CHECKS or not all(isinstance(q, Question) and q.type == "noul" for q in checks.values()):
+            raise ValueError(f"checks must be at most {MAX_CHECKS} noul questions")
+        object.__setattr__(self, "checks", checks)
 
 
 @runtime_checkable
