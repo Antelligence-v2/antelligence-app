@@ -113,6 +113,19 @@ def test_labelled_question_and_report_truth():
         LabelledQuestion("f", "judgement", questions()["food_known"], 1)
     assert report_is_true("explore", ("go_patch",)) is True
     assert report_is_true("go_patch", ("go_patch", "explore")) is False
+    assert report_is_true(("a", "b"), ("b",)) is False  # one good action allowed -> the report is false
+    assert report_is_true(("a", "b"), ("c",)) is True
+
+
+def test_labelled_question_accept_set():
+    q = Question("choice", "Which?", ("a", "b", "c"))
+    assert LabelledQuestion("m", "move", q, "a").accept == ("a",)
+    assert LabelledQuestion("m", "move", q, "a", accept=("a", "c")).accept == ("a", "c")
+    for bad in (("b",), ("a", "z")):
+        with pytest.raises(ValueError):
+            LabelledQuestion("m", "move", q, "a", accept=bad)
+    with pytest.raises(ValueError):
+        LabelledQuestion("f", "judgement", questions()["food_known"], True, accept=("a",))
 
 
 def test_protocols_are_runtime_checkable():
