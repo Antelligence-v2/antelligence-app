@@ -87,8 +87,6 @@ def write_json(path: Path, body: Any) -> None:
     path.write_text(json.dumps(body, indent=1, sort_keys=True, default=str) + "\n")
 
 
-
-
 def cmd_validity(args: argparse.Namespace, root: Path) -> int:
     worlds = load_worlds(args.world)
     seeds = parse_seeds(args.seeds)
