@@ -325,6 +325,8 @@ class SLMBackend:
                 raise DecisionError(f"{self.name}: {exc}") from None
             except ProviderError as exc:
                 last = str(exc)
+                if "(length)" in last:  # the provider's own length cut-off: deterministic, never retried
+                    raise DecisionError(f"{self.name}: reply cut off at max_tokens={chat.max_tokens}") from None
                 if attempt < self.retries:
                     await asyncio.sleep(self.backoff_s * (attempt + 1))
         else:
