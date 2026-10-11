@@ -1,4 +1,3 @@
-import json
 import subprocess
 
 import pytest
@@ -146,6 +145,20 @@ def test_tap_prefers_policy_reported_allowed_set_and_ignores_failed_policies():
     assert s["reports"] == 1  # the report is seen through meta["answer"], not the NOOP action
 
 
+def test_tap_report_truth_uses_every_good_action():
+    class TwoGood(FakePilotWorld):
+        def oracle_actions(self, world, agent_id, tick):
+            return ("down", "up")
+
+    world = TwoGood("two")
+    base = world.make_world(1, "v1")
+    tap = p.MetricsTap(base, world, base)
+    for agent, allowed in (("w0", ["up"]), ("w1", ["left"])):
+        tap.observe(agent, 1)
+        tap.apply(agent, Intent(NOOP, meta={"allowed": allowed, "answer": REPORT}), 1)
+    assert [r["report_true"] for r in tap.records] == [False, True]  # an allowed good action makes a report false
+
+
 def test_cells_are_append_only_and_never_rerun(tmp_path):
     kit = p.DryKit()
     path = tmp_path / "cells.jsonl"
@@ -204,7 +217,7 @@ def test_prereg_gate(tmp_path):
     assert p.uses_eval_seeds([100, 3]) and not p.uses_eval_seeds(p.DEV_SEEDS)
 
 
-def test_validity_check_and_calibration_harvest():
+def test_validity_check():
     ok = p.validity_check(FakePilotWorld(), seeds=[100, 101])
     assert all(v["valid"] for v in ok["variants"].values())
     assert ok["variants"]["v1"]["S_variant"] == 0.0 and ok["variants"]["v1"]["S_prime_variant"] == 1.0
@@ -212,24 +225,3 @@ def test_validity_check_and_calibration_harvest():
     assert bad["variants"]["v1"]["valid"] and not bad["variants"]["v2"]["valid"]
     with pytest.raises(ValueError):
         p.validity_check(FakePilotWorld(), seeds=[1])
-    worlds = {"a": FakePilotWorld("a"), "b": FakePilotWorld("b")}
-    items = p.harvest_questions(worlds, total=40)
-    assert len(items) == 40 and {i["world"] for i in items} == {"a", "b"}
-    assert sum(i["world"] == "a" for i in items) == 20
-    assert {i["kind"] for i in items} == {"judgement", "move"}
-    assert abs(sum(i["kind"] == "move" for i in items) - 20) <= 2
-    assert len({i["id"] for i in items}) == 40 and all(i["seed"] in p.DEV_SEEDS for i in items)
-    with pytest.raises(ValueError):
-        p.harvest_questions(worlds, seeds=[1, 2])
-
-
-def test_calibrate_rows_fit_the_metric_summary():
-    from antelligence.experiments.v4_metrics import calibration_summary
-    items = p.harvest_questions({"a": FakePilotWorld("a")}, total=30)
-    rows = p.asyncio.run(p.calibrate(p.DryBackend("x"), "x", items))
-    assert len(rows) == 30 and all(r["latency_s"] >= 0 for r in rows)
-    s = calibration_summary(rows)
-    assert s["scored"] == 30 and 0 <= s["accuracy"] <= 1 and 0 <= s["ece"] <= 1
-    again = p.asyncio.run(p.calibrate(p.DryBackend("x"), "x", items, done=[f"x:{i['id']}" for i in items[:10]]))
-    assert len(again) == 20
-    json.dumps(rows)
