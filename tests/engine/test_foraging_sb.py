@@ -406,3 +406,9 @@ def test_kernel_never_imports_a_world():
 
 def test_width_constant_matches_published_map():
     assert WIDTH == 10 and asyncio  # 10x10 map, 10 agents, 100 rounds
+
+
+def test_describe_declares_episode_length():
+    from antelligence.worlds.foraging_sb import FORAGING_SB
+    from antelligence.worlds.foraging_sb.world import STEPS
+    assert FORAGING_SB.describe()["max_ticks"] == STEPS
