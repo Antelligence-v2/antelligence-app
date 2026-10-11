@@ -321,7 +321,7 @@ def test_sensor_text_example_shape():
     world = FORAGING_SB.make_world(100, "base")
     text = ForagingSensor().sense(LocalView("0", 1, 0, 1, world.observe("0", 1).data)).text
     assert text.startswith("Carrying food: no. Remembered food spot: ") and "Remembered nest: " in text
-    assert text.endswith(".") and "Best known next step toward" in text
+    assert text.endswith(".") and "next step" not in text  # describes, never prescribes a move
 
 
 def test_nest_check_flags_a_flipped_view():

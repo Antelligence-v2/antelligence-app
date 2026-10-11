@@ -1,6 +1,6 @@
 """Sensor for foraging_sb: LocalView -> SensedState in short words.
 
-Everything is computed here in code (directions, distances, the route hint), so a decision model never
+Everything is computed here in code (directions, distances, blocked sides), so a decision model never
 counts or does geometry. The text only uses what the world told this agent: its own view (mirrored under
 variant v2), the cells it remembers, and the peer messages it heard. The remembered food and nest are the spots
 the agent was briefed on, moved only when it picks up or drops there; seeing the spot empty or food somewhere
@@ -127,10 +127,8 @@ def render(f: Mapping[str, Any]) -> str:
         parts.append("Your last move was blocked.")
     for m in f["heard"][:2]:
         parts.append(f"Heard: agent {m['from']} ({relative(m['dx'], m['dy'])} of you) says \"{m['text']}\".")
-    goal = {"to_nest": "the nest", "to_food": "the food", "explore": "unseen ground",
-            "at_target": "the nest" if f["carrying"] else "the food"}[f["mode"]]
-    step = {"stay": "stay put", "pick_up": "pick up food", "drop": "drop the food"}.get(f["route"], "go " + f["route"])
-    parts.append(f"Best known next step toward {goal}: {step}.")
+    # No route hint: the text describes the situation and never prescribes a move. A planner hint that ignores
+    # other agents jammed every model arm into one lane (dev seed 100), and it would measure the planner, not the model.
     return " ".join(parts)
 
 
