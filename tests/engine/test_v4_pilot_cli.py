@@ -40,7 +40,7 @@ def test_run_report_data_and_rerun(tmp_path, capsys):
     assert "F-Jev_vs_DS-all" in results["comparisons_mean_g_diff"] and results["limits_usd"]["nous"] == 4.5
 
 
-def test_validity_plan_dry_runs(tmp_path, capsys):
+def test_validity_calibrate_plan_dry_runs(tmp_path, capsys):
     base = ["--dry-run", "--root", str(tmp_path), "--out-dir", str(tmp_path), *W]
     code, text = call(capsys, "validity", *base)
     assert code == 0 and json.loads((tmp_path / "validity.json").read_text())["fake_a"]["variants"]["v1"]["valid"]
@@ -48,6 +48,11 @@ def test_validity_plan_dry_runs(tmp_path, capsys):
            "bad=tests.engine.fake_pilot_world:FAKE_BAD"]
     code, text = call(capsys, "validity", *bad)
     assert code == 1 and json.loads(text)["invalid_variants"] == ["bad/v2"]
+    code, text = call(capsys, "calibrate", *base, "--backend", "jev,laya", "--n", "30")
+    summary = json.loads((tmp_path / "calibration-summary.json").read_text())
+    assert code == 0 and summary["jev"]["all"]["n"] == 30 and summary["laya"]["judgement"]["n"] > 0
+    code, _ = call(capsys, "calibrate", *base, "--backend", "jev", "--n", "30")  # resumes: nothing re-asked
+    assert len((tmp_path / "calibration" / "jev.jsonl").read_text().splitlines()) == 30
     code, text = call(capsys, "plan", *base)
     proj = json.loads(text)
     assert code == 0 and proj["cells"]["planned"] == proj["cells"]["after_cuts"] > 0
@@ -86,3 +91,9 @@ def test_eval_seeds_are_refused_until_prereg_is_committed(tmp_path, capsys):
     for cell in (tmp_path / "o" / "cells.jsonl").read_text().splitlines():
         assert json.loads(cell)["split"] == "eval"
 
+
+def test_live_mode_reads_keys_only_at_the_cli_boundary(tmp_path):
+    # no --dry-run: the wiring is live, so building the Jev backend asks the CLI's env_value for its key
+    # (the autouse fixture makes that raise, which also proves nothing else reads the environment or files)
+    with pytest.raises(AssertionError, match="dry-run must not read keys"):
+        cli.main(["calibrate", "--root", str(tmp_path), *W, "--n", "5", "--backend", "jev"])

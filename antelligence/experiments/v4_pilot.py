@@ -152,7 +152,7 @@ class SetupError(RuntimeError):
 # --- metrics tap --------------------------------------------------------------
 
 
-class _WorldProxy:
+class WorldProxy:
     """Delegates the World protocol (and snapshot/scene for frames) to ``inner``."""
 
     def __init__(self, inner: World) -> None:
@@ -189,7 +189,7 @@ class _WorldProxy:
         return getattr(self.inner, name)
 
 
-class MetricsTap(_WorldProxy):
+class MetricsTap(WorldProxy):
     """Records every worker decision for metrics. Outermost world wrapper; never changes behaviour.
 
     Per worker decision: the allowed set, the answer, the report flag, and (privileged, metrics only) the

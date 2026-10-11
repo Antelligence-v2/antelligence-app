@@ -82,7 +82,7 @@ def test_framework_cell_reports_and_escalations_are_counted():
     assert run(spec("F-Jev", seed=cell["seed"]))["trace_hash"] == cell["trace_hash"]  # deterministic
 
 
-class QueenWorld(p._WorldProxy):
+class QueenWorld(p.WorldProxy):
     """Stand-in for HiveWorld: adds the queen agent."""
 
     def agents(self):
