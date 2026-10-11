@@ -144,6 +144,11 @@ def providers_of_arm(arm: str) -> Tuple[str, ...]:
     return tuple(sorted(out))
 
 
+class SetupError(RuntimeError):
+    """Raised by ``build_policies`` before any model call (wrong pod loaded, missing key): the run stops and the
+    cell is NOT recorded, so it can be rerun once fixed. Failures after a call has been made are error cells."""
+
+
 # --- metrics tap --------------------------------------------------------------
 
 
@@ -294,6 +299,8 @@ BuildPolicies = Callable[[CellSpec, PilotWorld, World], PolicySet]
 LedgerTags = Callable[..., ContextManager[Any]]
 # ledger_rows(run_id) -> ledger rows written for that cell
 LedgerRows = Callable[[str], List[Dict[str, Any]]]
+# reconcile(run_id, ledger rows) -> fields merged into the cell (physical calls vs ledger rows)
+Reconcile = Callable[[str, List[Dict[str, Any]]], Dict[str, Any]]
 
 
 def _ledger_summary(rows: Sequence[Mapping[str, Any]]) -> Dict[str, Any]:
@@ -329,6 +336,7 @@ def _write_bundle(directory: Path, run_id: str, scheduler: Scheduler, result: An
 
 async def arun_cell(spec: CellSpec, pilot_world: PilotWorld, build_policies: BuildPolicies, *,
                     ledger_tags: LedgerTags, ledger_rows: Optional[LedgerRows] = None,
+                    reconcile: Optional[Reconcile] = None,
                     refs: Optional[Mapping[str, float]] = None, bundle_dir: Optional[Path] = None,
                     max_ticks: Optional[int] = None) -> Dict[str, Any]:
     """Run one episode on the kernel Scheduler and return its cell dict.
@@ -354,7 +362,8 @@ async def arun_cell(spec: CellSpec, pilot_world: PilotWorld, build_policies: Bui
     if refs and spec.condition != "base" and arm.decider not in ("script", "script_adapted") \
             and "S" in refs and "S-prime" in refs and refs["S-prime"] > refs["S"]:
         g = (score - refs["S"]) / (refs["S-prime"] - refs["S"])
-    led = _ledger_summary(ledger_rows(spec.run_id) if ledger_rows else [])
+    rows = ledger_rows(spec.run_id) if ledger_rows else []
+    led = _ledger_summary(rows)
     tapped = tap.summary()
     cell = {
         **spec.to_dict(), "key": spec.key, "split": "eval" if spec.seed in EVAL_SEEDS else "dev",
@@ -363,6 +372,8 @@ async def arun_cell(spec: CellSpec, pilot_world: PilotWorld, build_policies: Bui
         **tapped, "trace_hash": result.trace_hash, "config_hash": result.config_hash,
         "event_count": result.event_count, "hardware": arm.hardware, "backend": arm.backend, "model": arm.model,
         "pod": arm.backend == "vllm" or arm.escalation}
+    if reconcile is not None:
+        cell.update(reconcile(spec.run_id, rows))
     if bundle_dir is not None:
         cell["bundle_hash"] = _write_bundle(Path(bundle_dir), spec.run_id, scheduler, result, spec,
                                             {"cell": spec.key, "score": score, "metrics_tap": tapped})
@@ -387,11 +398,12 @@ def append_cell(path: Path, cell: Mapping[str, Any]) -> None:
 async def run_plan(plan: Sequence[CellSpec], worlds: Mapping[str, PilotWorld], build_policies: BuildPolicies, *,
                    ledger_tags: LedgerTags, cells_path: Path, ledger_rows: Optional[LedgerRows] = None,
                    concurrency: int = 4, before_cell: Optional[Callable[[CellSpec], None]] = None,
-                   bundle_dir: Optional[Path] = None) -> List[Dict[str, Any]]:
+                   bundle_dir: Optional[Path] = None, reconcile: Optional[Reconcile] = None) -> List[Dict[str, Any]]:
     """Run missing cells, S and S' first (so G is known), at most ``concurrency`` episodes at once.
 
     A cell whose key is already in ``cells_path`` is never rerun, whatever its result. A BudgetExceeded
-    from ``before_cell`` stops the run; any other failure is recorded as an error cell.
+    from ``before_cell`` or a SetupError from ``build_policies`` stops the run (cell not recorded); any other
+    failure is recorded as an error cell.
     """
     done = {c["key"] for c in load_cells(cells_path)}
     new: List[Dict[str, Any]] = []
@@ -408,8 +420,9 @@ async def run_plan(plan: Sequence[CellSpec], worlds: Mapping[str, PilotWorld], b
                 before_cell(spec)
             try:
                 cell = await arun_cell(spec, worlds[spec.world], build_policies, ledger_tags=ledger_tags,
-                                       ledger_rows=ledger_rows, refs=refs_for(spec), bundle_dir=bundle_dir)
-            except BudgetExceeded:
+                                       ledger_rows=ledger_rows, reconcile=reconcile, refs=refs_for(spec),
+                                       bundle_dir=bundle_dir)
+            except (BudgetExceeded, SetupError):
                 raise
             except Exception as exc:
                 cell = {**spec.to_dict(), "key": spec.key, "score": None, "g": None,
@@ -434,6 +447,7 @@ class Hooks:
     ledger_tags: LedgerTags
     ledger_rows: LedgerRows
     make_backend: Callable[[str], Any]  # name ("jev", "laya", "qwen3.5-9b", "deepseek") -> DecisionBackend
+    reconcile: Optional[Reconcile] = None  # physical calls vs ledger rows, merged into each cell
 
 
 def script_score(pilot_world: PilotWorld, seed: int, world_condition: str, script_condition: str,
