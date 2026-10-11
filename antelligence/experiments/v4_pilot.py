@@ -522,14 +522,14 @@ def harvest_questions(worlds: Mapping[str, PilotWorld], *, total: int = 300, see
                 pool += [{**i, "world": name, "seed": seed, "condition": condition,
                           "id": f"{name}-{seed}-{condition}-{i['id']}"} for i in h.items]
         quota = total // len(worlds) + (total % len(worlds) > sorted(worlds).index(name))
-        by_kind = {k: rng.sample(v, len(v)) for k in ("judgement", "move")
-                   if (v := [i for i in pool if i["kind"] == k])}
+        strata: Dict[Tuple[str, str], List[Dict[str, Any]]] = {}
+        for i in rng.sample(pool, len(pool)):  # judgement strata by label, so yes and no stay balanced
+            strata.setdefault((i["kind"], str(i["label"]) if i["kind"] == "judgement" else ""), []).append(i)
         picked: List[Dict[str, Any]] = []
         while len(picked) < min(quota, len(pool)):
-            for kind in list(by_kind):
-                if by_kind[kind] and len(picked) < quota:
-                    picked.append(by_kind[kind].pop())
-            by_kind = {k: v for k, v in by_kind.items() if v}
+            for key in sorted(strata):
+                if strata[key] and len(picked) < quota:
+                    picked.append(strata[key].pop())
         out += picked
     return out
 
