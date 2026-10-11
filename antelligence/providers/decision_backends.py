@@ -30,7 +30,7 @@ import httpx
 
 from antelligence.kernel.canonical import canonical_json, content_hash
 from antelligence.kernel.decision import (Answer, DecisionBackend, DecisionError, DecisionRequest, DecisionResponse,
-                                          Question, check_answers)
+                                          Question, QUESTION_TYPES, check_answers)
 from antelligence.providers.base import BudgetExceeded, ChatRequest, Provider, ProviderError
 from antelligence.providers.ledger import LedgerWriter, cost_usd
 
@@ -38,7 +38,6 @@ JEV_MODEL = "jev-1.13.0"
 JEV_URL = "https://api.typesafe.ai"
 LAYA_MODEL = "convaiinnovations/laya-typed-decisions"
 LAYA_URL = "http://127.0.0.1:8520"
-SLM_MAX_OUTPUT_TOKENS = 64
 MAX_RESPONSE_BYTES = 2_000_000
 
 
@@ -195,33 +194,71 @@ class LayaBackend(_TypedHTTPBackend):
 # --- SLM -------------------------------------------------------------------
 
 _SLM_SYSTEM = (
-    "You answer typed questions about a state. Reply with ONE JSON object and nothing else. Keys are the question "
-    "ids. noul: a number, the probability of yes. choice: an object {option: probability} over exactly the given "
-    "options. score: an object {level index: probability} over the levels. Probabilities sum to 1.")
+    "You answer typed questions about a state. Reply with ONE JSON object and nothing else: no prose, no code "
+    "fence. Probabilities in one question sum to 1; every listed option must appear (0 is allowed).")
+SLM_TOKEN_CAP = 256  # per-request budget ceiling; the every-agent arms' 64-token cap does not apply here
 _FENCE = re.compile(r"^```[a-zA-Z]*\s*(.*?)\s*```$", re.DOTALL)
 NORMALISE_RANGE = (0.5, 1.5)  # probability vectors summing inside this are rescaled to 1; outside is rejected
 
 
+def slm_max_tokens(request: DecisionRequest, cap: int = SLM_TOKEN_CAP) -> int:
+    """24 + 12 per noul + 10 per option of every choice/score question, at most ``cap``."""
+    need = 24 + sum(12 if q.type == "noul" else 10 * len(q.options) for q in request.questions.values())
+    return min(need, cap)
+
+
 def _slm_prompt(request: DecisionRequest) -> str:
-    questions = {}
+    questions, shape = {}, []
     for qid, q in request.questions.items():
         body: Dict[str, Any] = {"type": q.type, "instructions": q.instructions}
+        keys = q.options if q.type == "choice" else tuple(str(i) for i in range(len(q.options)))
         if q.type == "choice":
             body["options"] = {o: q.criteria.get(o) for o in q.options}
         elif q.type == "score":
             body["levels"] = {str(i): text for i, text in enumerate(q.options)}
         questions[qid] = body
-    return json.dumps({"state": request.state, "questions": questions}, ensure_ascii=False, sort_keys=True)
+        probs = ", ".join(f"{json.dumps(k)}: p" for k in keys)
+        shape.append(f"{json.dumps(qid)}: " + ("0.83" if q.type == "noul" else "{" + probs + "}"))
+    return (json.dumps({"state": request.state, "questions": questions}, ensure_ascii=False, sort_keys=True)
+            + "\nReply exactly in this shape (noul: P(yes) as one number, e.g. 0.83; choice/score: p is each "
+            "option's probability, all options listed, sum 1):\n{" + ", ".join(shape) + "}")
+
+
+def _unwrap(raw: Any) -> Any:
+    """Models nest the value under the type name ({"noul": x}); strip one such wrapper."""
+    if isinstance(raw, dict) and len(raw) == 1 and next(iter(raw)) in QUESTION_TYPES:
+        return next(iter(raw.values()))
+    return raw
+
+
+def _p_yes(raw: Any) -> float:
+    """Number, {"p_yes": x}, {"yes": x} or {"yes": a, "no": b} (a / (a + b)); anything else is rejected."""
+    raw = _unwrap(raw)
+    if not isinstance(raw, dict):
+        return _num(raw)
+    if set(raw) == {"p_yes"}:
+        return _num(raw["p_yes"])
+    if "yes" in raw and set(raw) <= {"yes", "no"}:
+        yes, no = _num(raw["yes"]), _num(raw.get("no", 0.0))
+        if yes < 0 or no < 0 or ("no" in raw and yes + no == 0):
+            raise ValueError(f"yes/no weights {yes}, {no} are unusable")
+        return yes / (yes + no) if "no" in raw else yes
+    raise ValueError(f"cannot read P(yes) from {raw!r}")
 
 
 def _distribution(raw: Any, keys: Tuple[str, ...]) -> Dict[str, float]:
-    if not isinstance(raw, dict) or {str(k) for k in raw} != set(keys):
-        raise ValueError(f"probabilities must cover exactly {list(keys)}")
+    """Option map (maybe nested under the type name). Unknown names reject; omitted options count as 0 only
+    when the listed ones already sum to >= 0.98 (otherwise the reply was truncated or confused)."""
+    raw = _unwrap(raw)
+    if not isinstance(raw, dict) or not raw or not {str(k) for k in raw} <= set(keys):
+        raise ValueError(f"probabilities must be named from {list(keys)}")
     probs = {str(k): _num(v) for k, v in raw.items()}
     total = sum(probs.values())
+    if len(probs) < len(keys) and total < 0.98:
+        raise ValueError(f"options {sorted(set(keys) - set(probs))} missing and listed ones sum to {total:.3f}")
     if any(p < 0 for p in probs.values()) or not NORMALISE_RANGE[0] <= total <= NORMALISE_RANGE[1]:
         raise ValueError(f"probabilities sum to {total:.3f}")
-    return {k: probs[k] / total for k in keys}
+    return {k: probs.get(k, 0.0) / total for k in keys}
 
 
 def parse_slm_json(request: DecisionRequest, text: str) -> Dict[str, Answer]:
@@ -240,7 +277,7 @@ def parse_slm_json(request: DecisionRequest, text: str) -> Dict[str, Answer]:
     try:
         for qid, q in request.questions.items():
             if q.type == "noul":
-                p = _num(raw[qid])
+                p = _p_yes(raw[qid])
                 if not 0.0 <= p <= 1.0:
                     raise ValueError(f"{qid}: P(yes) {p} outside [0, 1]")
                 answers[qid] = Answer("noul", p, {"yes": p, "no": 1.0 - p})
@@ -259,9 +296,13 @@ def parse_slm_json(request: DecisionRequest, text: str) -> Dict[str, Answer]:
 
 
 class SLMBackend:
-    """Asks a chat model (Qwen on vLLM) the same typed questions; non-thinking is the provider's extra_body."""
+    """Asks a chat model the same typed questions; non-thinking is the provider's extra_body.
 
-    def __init__(self, provider: Provider, model: str, *, max_tokens: int = SLM_MAX_OUTPUT_TOKENS, retries: int = 3,
+    ``max_tokens`` caps the per-request budget from :func:`slm_max_tokens`. Only transport/provider errors are
+    retried; a length cut-off or an unparseable reply raises at once.
+    """
+
+    def __init__(self, provider: Provider, model: str, *, max_tokens: int = SLM_TOKEN_CAP, retries: int = 3,
                  backoff_s: float = 0.5, name: str = "slm") -> None:
         self.provider, self.model, self.max_tokens = provider, model, max_tokens
         self.retries, self.backoff_s, self.name = retries, backoff_s, name
@@ -274,7 +315,7 @@ class SLMBackend:
             raise DecisionError(f"request model {request.model!r} != backend model {self.model!r}")
         chat = ChatRequest(self.model, ({"role": "system", "content": _SLM_SYSTEM},
                                         {"role": "user", "content": _slm_prompt(request)}),
-                           max_tokens=self.max_tokens, temperature=0.0, seed=request.seed)
+                           max_tokens=slm_max_tokens(request, self.max_tokens), temperature=0.0, seed=request.seed)
         last = ""
         for attempt in range(self.retries + 1):
             try:
@@ -290,6 +331,8 @@ class SLMBackend:
             raise DecisionError(f"{self.name}: failed after {self.retries + 1} attempts: {last}")
         if reply.model != self.model:
             raise DecisionError(f"{self.name}: served model {reply.model!r} is not {self.model!r}")
+        if reply.finish_reason == "length":  # deterministic at temperature 0: a retry would only repeat it
+            raise DecisionError(f"{self.name}: reply cut off at max_tokens={chat.max_tokens}")
         answers = parse_slm_json(request, reply.content)  # malformed output is not retried: temperature 0
         check_answers(request, answers)
         reported = (reply.extra or {}).get("cost")
