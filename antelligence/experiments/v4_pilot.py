@@ -242,6 +242,7 @@ class MetricsTap(_WorldProxy):
                 "tick": tick, "agent": agent_id, "answer": REPORT if reported else intent.action, "allowed": allowed,
                 "reported": reported, "failed": "reason" in intent.meta, "oracle": oracle,
                 "model": "escalated" in intent.meta, "escalated": bool(intent.meta.get("escalated")),
+                "check_failed": bool(intent.meta.get("failed_checks")),
                 "report_true": (report_is_true(oracle, allowed) if reported and oracle else None)})
         return self.inner.apply(agent_id, intent, tick)
 
@@ -259,27 +260,8 @@ class MetricsTap(_WorldProxy):
             "report_precision": sum(bool(r["report_true"]) for r in judged) / len(judged) if judged else None,
             "model_decisions": len(model), "escalations": sum(r["escalated"] for r in model),
             "escalation_rate": sum(r["escalated"] for r in model) / len(model) if model else None,
+            "check_reports": sum(r["check_failed"] for r in answers),  # board reports posted by a failed check
             "queen_signals": len(self.queen_signals)}
-
-
-class TimedPolicy:
-    """Wraps a policy and records wall-clock seconds per decision (model calls, network included)."""
-
-    def __init__(self, inner: Policy, sink: List[float]) -> None:
-        self.inner, self.sink = inner, sink
-
-    def describe(self) -> Dict[str, Any]:
-        return self.inner.describe()
-
-    async def decide(self, view: LocalView) -> Intent:
-        start = time.monotonic()
-        try:
-            result = self.inner.decide(view)
-            if hasattr(result, "__await__"):
-                result = await result
-            return result
-        finally:
-            self.sink.append(time.monotonic() - start)
 
 
 # --- cell runner --------------------------------------------------------------
@@ -293,6 +275,7 @@ class PolicySet:
     policies: Mapping[str, Policy] = field(default_factory=dict)
     default_policy: Optional[Policy] = None
     wrap_world: Optional[Callable[[World], World]] = None
+    queen_every: Optional[int] = None  # the queen's effective cadence in ticks (None: no queen), for the cell record
 
 
 # build_policies(spec, pilot_world, world) -> PolicySet
@@ -346,12 +329,9 @@ async def arun_cell(spec: CellSpec, pilot_world: PilotWorld, build_policies: Bui
     world = pilot_world.make_world(spec.seed, spec.condition)
     built = build_policies(spec, pilot_world, world)
     tap = MetricsTap(built.wrap_world(world) if built.wrap_world else world, pilot_world, world)
-    decide_s: List[float] = []
-    timed = {a: TimedPolicy(p, decide_s) for a, p in built.policies.items()}
-    default = TimedPolicy(built.default_policy, decide_s) if built.default_policy else None
     config = RunConfig(run_id=spec.run_id, seed=spec.seed, arm=spec.arm,
                        max_ticks=max_ticks or int(pilot_world.describe().get("max_ticks", 100)))
-    scheduler = Scheduler(tap, timed, BoardField(), config, default_policy=default)
+    scheduler = Scheduler(tap, built.policies, BoardField(), config, default_policy=built.default_policy)
     start = time.monotonic()
     with ledger_tags(run=spec.run_id, arm=spec.arm, world=spec.world, seed=spec.seed, condition=spec.condition):
         result = await scheduler.arun()
@@ -367,8 +347,10 @@ async def arun_cell(spec: CellSpec, pilot_world: PilotWorld, build_policies: Bui
     cell = {
         **spec.to_dict(), "key": spec.key, "split": "eval" if spec.seed in EVAL_SEEDS else "dev",
         "score": score, "g": g, "ticks": result.ticks, "wall_s": wall, "stopped_reason": result.stopped_reason,
-        "policy_failures": result.policy_failures, **led, "decision_s": seconds_per_decision(decide_s),
-        **tapped, "trace_hash": result.trace_hash, "config_hash": result.config_hash,
+        "policy_failures": result.policy_failures, **led,
+        # wall-clock per physical model call (ledger rows), never a cache hit or a policy's bookkeeping
+        "decision_s": seconds_per_decision(led["latencies_s"]), **tapped, "queen_every": built.queen_every,
+        "trace_hash": result.trace_hash, "config_hash": result.config_hash,
         "event_count": result.event_count, "hardware": arm.hardware, "backend": arm.backend, "model": arm.model,
         "pod": arm.backend == "vllm" or arm.escalation}
     if reconcile is not None:
