@@ -28,7 +28,7 @@ from antelligence.kernel.canonical import canonical_json
 from antelligence.kernel.decision import REPORT, Answer, DecisionRequest, DecisionResponse, check_answers
 from antelligence.kernel.field import BoardField
 from antelligence.kernel.scheduler import RunConfig, Scheduler
-from antelligence.kernel.types import NOOP, Intent, LocalView, Observation, Outcome, Policy, World
+from antelligence.kernel.types import Intent, LocalView, Observation, Outcome, Policy, World
 from antelligence.provenance.bundle import build_bundle
 
 DEV_SEEDS = tuple(range(100, 110))
@@ -228,15 +228,18 @@ class MetricsTap(_WorldProxy):
         else:
             allowed = tuple(intent.meta.get("allowed") or self._allowed(agent_id, tick))
             oracle = self._oracle.pop((agent_id, tick), None)
+            # A REPORT answer acts NOOP (DecisionWorker) and says so in meta["answer"]; a policy that could not
+            # answer (backend or provider failure) sets meta["reason"]. NOOP itself can be a legal action.
+            reported = intent.action == REPORT or intent.meta.get("answer") == REPORT
             self.records.append({
-                "tick": tick, "agent": agent_id, "answer": intent.action, "allowed": allowed,
-                "reported": intent.action == REPORT, "oracle": oracle,
+                "tick": tick, "agent": agent_id, "answer": REPORT if reported else intent.action, "allowed": allowed,
+                "reported": reported, "failed": "reason" in intent.meta, "oracle": oracle,
                 "model": "escalated" in intent.meta, "escalated": bool(intent.meta.get("escalated")),
-                "report_true": (report_is_true(oracle, allowed) if intent.action == REPORT and oracle else None)})
+                "report_true": (report_is_true(oracle, allowed) if reported and oracle else None)})
         return self.inner.apply(agent_id, intent, tick)
 
     def summary(self) -> Dict[str, Any]:
-        answers = [r for r in self.records if r["answer"] != NOOP]  # NOOP = failed policy, not an answer
+        answers = [r for r in self.records if not r["failed"]]  # a failed policy is a noop, not an answer
         compliant = [r for r in answers if r["answer"] == REPORT or r["answer"] in r["allowed"]]
         reports = [r for r in answers if r["reported"]]
         judged = [r for r in reports if r["report_true"] is not None]

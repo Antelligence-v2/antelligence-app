@@ -131,16 +131,19 @@ def test_tap_tracks_queen_allowed_set_compliance_and_report_truth():
     assert cell["queen_signals"] == 1
 
 
-def test_tap_prefers_policy_reported_allowed_set_and_ignores_noops():
+def test_tap_prefers_policy_reported_allowed_set_and_ignores_failed_policies():
     world = WORLDS["fake_world"]
     base = world.make_world(1, "v1")
     tap = p.MetricsTap(base, world, base)
     tap.observe("w0", 1)
     tap.apply("w0", Intent("down", meta={"allowed": ["up"], "escalated": ["q"]}), 1)
     tap.observe("w1", 1)
-    tap.apply("w1", Intent(NOOP), 1)  # failed policy: not an answer
+    tap.apply("w1", Intent(NOOP, meta={"reason": "backend_error:X"}), 1)  # failed policy: not an answer
+    tap.observe("w2", 1)
+    tap.apply("w2", Intent(NOOP, meta={"allowed": ["up"], "answer": "report"}), 1)  # DecisionWorker's REPORT acts NOOP
     s = tap.summary()
-    assert (s["answers"], s["noops"], s["compliance"], s["escalation_rate"]) == (1, 1, 0.0, 1.0)
+    assert (s["answers"], s["noops"], s["compliance"], s["escalation_rate"]) == (2, 1, 0.5, 1.0)
+    assert s["reports"] == 1  # the report is seen through meta["answer"], not the NOOP action
 
 
 def test_cells_are_append_only_and_never_rerun(tmp_path):
