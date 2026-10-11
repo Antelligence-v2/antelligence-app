@@ -19,6 +19,7 @@ from antelligence.worlds.graph_coloring.world import (
     CONDITIONS,
     LIAR_ID,
     MAX_COLOURS,
+    ROUNDS,
     GraphColoringWorld,
     colour_action,
 )
@@ -83,7 +84,7 @@ class GraphColoringPilot:
         return out
 
     def describe(self) -> Dict[str, Any]:
-        return {"world": self.name, "conditions": list(CONDITIONS), "liar": LIAR_ID,
+        return {"world": self.name, "conditions": list(CONDITIONS), "liar": LIAR_ID, "max_ticks": ROUNDS,
                 "groups": "ids 0-3 / 4-7", "family_by_seed": "seed % 3 -> ws, ba, dt"}
 
 
