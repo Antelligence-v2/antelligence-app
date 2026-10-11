@@ -92,6 +92,8 @@ def test_eval_seeds_are_refused_until_prereg_is_committed(tmp_path, capsys):
         assert json.loads(cell)["split"] == "eval"
 
 
-def test_live_mode_needs_integrator_wiring(tmp_path):
-    with pytest.raises(ImportError):
-        cli.main(["calibrate", "--root", str(tmp_path), *W, "--n", "5"])  # no --dry-run: wiring module absent
+def test_live_mode_reads_keys_only_at_the_cli_boundary(tmp_path):
+    # no --dry-run: the wiring is live, so building the Jev backend asks the CLI's env_value for its key
+    # (the autouse fixture makes that raise, which also proves nothing else reads the environment or files)
+    with pytest.raises(AssertionError, match="dry-run must not read keys"):
+        cli.main(["calibrate", "--root", str(tmp_path), *W, "--n", "5", "--backend", "jev"])

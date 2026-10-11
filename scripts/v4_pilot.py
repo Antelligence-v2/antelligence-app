@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """v4 pilot CLI: validity | calibrate | plan | run | report-data. Every subcommand takes --dry-run.
 
---dry-run uses fake policies, a fake backend and a fake ledger: no network, no keys read. Live mode needs
-``antelligence.experiments.v4_wiring.make_hooks(...)`` (written by the integrator) and reads keys only in
+--dry-run runs the real wiring (``antelligence.experiments.v4_wiring``) over scripted fake endpoints and a
+scratch ledger/cache: no network, no keys read. Live mode uses ``v4_wiring.make_hooks(...)`` and reads keys only in
 ``nous_key`` and ``env_value`` below. Evaluation seeds (1..5) refuse to run unless PREREGISTRATION.md and the
 harness files are committed and clean.
 """
@@ -66,10 +66,10 @@ def load_worlds(overrides: Sequence[str]) -> Dict[str, Any]:
 
 
 def hooks_for(args: argparse.Namespace, root: Path) -> pilot.Hooks:
-    if args.dry_run:
-        kit = pilot.DryKit()
-        return pilot.Hooks(kit.build_policies, kit.tags, kit.rows_for, kit.backend)
-    wiring = importlib.import_module("antelligence.experiments.v4_wiring")  # integrator-provided
+    wiring = importlib.import_module("antelligence.experiments.v4_wiring")
+    if args.dry_run:  # the real wiring (HiveWorld, queen, workers, caches, ledger) over scripted fakes
+        out = out_dir_for(args, root, ())
+        return wiring.make_dry_hooks(ledger=out / "dry-ledger.jsonl", cache_dir=out / "dry-cache")
     return wiring.make_hooks(nous_key=nous_key, env_value=env_value, ledger=root / "ledger/v4-pilot-usage.jsonl",
                              cache_dir=root / "cache/v4-pilot")
 
@@ -164,7 +164,8 @@ def cmd_run(args: argparse.Namespace, root: Path) -> int:
     new = asyncio.run(pilot.run_plan(plan, worlds, hooks.build_policies, ledger_tags=hooks.ledger_tags,
                                      cells_path=cells_path, ledger_rows=hooks.ledger_rows,
                                      concurrency=args.concurrency, before_cell=guard,
-                                     bundle_dir=out / "bundles" if args.bundles else None))
+                                     bundle_dir=out / "bundles" if args.bundles else None,
+                                     reconcile=hooks.reconcile))
     print(json.dumps({"planned": len(plan), "ran": len(new), "skipped": len(plan) - len(new),
                       "errors": sum("error" in c for c in new), "cells": str(cells_path)}))
     return 0
