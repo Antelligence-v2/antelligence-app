@@ -229,6 +229,18 @@ def test_cache_hits_write_no_row_and_offline_replay_is_identical(tmp_path):
     assert again["score"] == first["score"] and again["g"] is None
     assert again["calls_physical"] == again["calls_ledger_rows"] == 0 and first["calls"] > 0
     assert LedgerWriter(tmp_path / "replay-ledger.jsonl").rows() == []
+    # every reply of the replay came from the cache: no physical call, so no seconds-per-decision sample
+    assert again["decision_s"]["n"] == 0 and again["cache_hits"] > 0 and first["decision_s"]["n"] == first["calls"]
+
+
+def test_cache_hits_are_counted_apart_from_physical_calls_and_stay_out_of_decision_s(tmp_path):
+    cell = run(dry(tmp_path), "foraging_sb", "F-Jev-noEsc", seed=100, condition="base")
+    assert cell["cache_hits"] > 0  # identical requests repeat within a run (a jam shows the same state again)
+    assert cell["decision_s"]["n"] == cell["calls"] == len(cell["latencies_s"]) < cell["decisions"]
+    assert cell["queen_every"] == 10  # the effective cadence, not the None override
+    assert run(dry(tmp_path / "c"), "graph_coloring", "F-Jev")["queen_every"] == 1
+    assert run(dry(tmp_path / "d"), "graph_coloring", "F-Jev-noQueen")["queen_every"] is None
+    assert run(dry(tmp_path / "e"), "graph_coloring", "DS-all")["queen_every"] is None
 
 
 def test_caches_are_scoped_to_the_run(tmp_path):
@@ -244,7 +256,7 @@ def test_reconcile_reports_a_gap(tmp_path):
     wr = wiring(tmp_path)
     wr._counter("r")[0] = 5
     assert wr.reconcile("r", [{}] * 5) == {"calls_physical": 5, "calls_ledger_rows": 5, "calls_gap": 0,
-                                          "calls_reconciled": True}
+                                          "calls_reconciled": True, "cache_hits": 0}
     gap = wr.reconcile("r", [{}] * 4)
     assert gap["calls_reconciled"] is False and gap["calls_gap"] == 1
     assert wr.reconcile("never-ran", [])["calls_reconciled"] is True

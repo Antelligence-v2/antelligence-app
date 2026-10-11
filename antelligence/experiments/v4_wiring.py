@@ -206,6 +206,30 @@ class _CountingBackend:
         return await self.inner.decide(request)
 
 
+class _HitCountingCached(Cached):
+    """Chat cache that counts the replies it served without a physical call."""
+
+    def __init__(self, inner: Provider, path: Path, counter: List[int], **kw: Any) -> None:
+        super().__init__(inner, path, **kw)
+        self.counter = counter
+
+    async def complete(self, request: ChatRequest) -> ChatResponse:
+        response = await super().complete(request)
+        self.counter[0] += bool(response.cached)
+        return response
+
+
+class _HitCountingCachedDecision(CachedDecision):
+    def __init__(self, inner: DecisionBackend, cache_dir: Path, counter: List[int], **kw: Any) -> None:
+        super().__init__(inner, cache_dir, **kw)
+        self.counter = counter
+
+    async def decide(self, request: DecisionRequest) -> Any:
+        response = await super().decide(request)
+        self.counter[0] += bool(response.cached)
+        return response
+
+
 @dataclass
 class ChatLane:
     provider: Provider
@@ -220,14 +244,18 @@ class Wiring:
         self.leaves, self.writer, self.cache_dir, self.offline = leaves, writer, Path(cache_dir), offline
         self.thresholds = dict(thresholds or {})  # EscalatingBackend lo / hi / c_min, fixed by the preregistration
         self.calls: Dict[str, List[List[int]]] = {}  # run id -> one counter per physical call site
+        self.hits: Dict[str, List[List[int]]] = {}  # run id -> one counter per cache site (replies served from cache)
 
-    def _counter(self, run: str) -> List[int]:
+    def _counter(self, run: str, sink: Optional[Dict[str, List[List[int]]]] = None) -> List[int]:
         counter = [0]
-        self.calls.setdefault(run, []).append(counter)
+        (self.calls if sink is None else sink).setdefault(run, []).append(counter)
         return counter
 
     def physical_calls(self, run: str) -> int:
         return sum(c[0] for c in self.calls.get(run, []))
+
+    def cache_hits(self, run: str) -> int:
+        return sum(c[0] for c in self.hits.get(run, []))
 
     def chat(self, spec: CellSpec, arm: ArmSpec, role: str) -> ChatLane:
         """A role-tagged, ledgered, cached chat lane for ``role`` ("every_agent" | "queen")."""
@@ -238,19 +266,21 @@ class Wiring:
         counted = _CountingProvider(leaf, self._counter(spec.run_id))
         ledgered = LedgeredChat(counted, self.writer, role=role, expected_model=model, backend=backend, price=price)
         path = self.cache_dir / backend / f"{spec.run_id}-{role}.jsonl"
-        return ChatLane(Cached(ledgered, path, offline=self.offline), model)
+        return ChatLane(_HitCountingCached(ledgered, path, self._counter(spec.run_id, self.hits),
+                                           offline=self.offline), model)
 
     def decision(self, spec: CellSpec, leaf: DecisionBackend, role: str) -> CachedDecision:
         backend = str(leaf.describe().get("backend", "unknown"))
         counted = _CountingBackend(leaf, self._counter(spec.run_id))
         ledgered = LedgeredDecision(counted, self.writer, role=role)
-        return CachedDecision(ledgered, self.cache_dir / backend / spec.run_id, offline=self.offline)
+        return _HitCountingCachedDecision(ledgered, self.cache_dir / backend / spec.run_id,
+                                          self._counter(spec.run_id, self.hits), offline=self.offline)
 
     def reconcile(self, run: str, rows: List[Dict[str, Any]]) -> Dict[str, Any]:
         """Physical calls made by this cell vs the ledger rows written for it (cache hits are neither)."""
         physical = self.physical_calls(run)
         return {"calls_physical": physical, "calls_ledger_rows": len(rows), "calls_gap": physical - len(rows),
-                "calls_reconciled": physical == len(rows)}
+                "calls_reconciled": physical == len(rows), "cache_hits": self.cache_hits(run)}
 
 
 # --- the one assembly -----------------------------------------------------------------------------------------
@@ -282,7 +312,8 @@ def build_policies(spec: CellSpec, pilot_world: PilotWorld, world: World, *, fac
                                   queen=queen, report_ttl=max(MIN_REPORT_TTL, every))
     use_queen = arm.queen
     return PolicySet(policies=policies,
-                     wrap_world=lambda inner: HiveWorld(inner, pilot_world.board_summary, queen=use_queen))
+                     wrap_world=lambda inner: HiveWorld(inner, pilot_world.board_summary, queen=use_queen),
+                     queen_every=every if use_queen else None)
 
 
 # --- hooks ----------------------------------------------------------------------------------------------------
