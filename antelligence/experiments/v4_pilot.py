@@ -339,10 +339,7 @@ async def arun_cell(spec: CellSpec, pilot_world: PilotWorld, build_policies: Bui
                     reconcile: Optional[Reconcile] = None,
                     refs: Optional[Mapping[str, float]] = None, bundle_dir: Optional[Path] = None,
                     max_ticks: Optional[int] = None) -> Dict[str, Any]:
-    """Run one episode on the kernel Scheduler and return its cell dict.
-
-    ``refs`` = {"S": score, "S-prime": score} for the same world, seed and condition gives G (variant runs).
-    """
+    """One episode on the kernel Scheduler -> cell dict; ``refs`` {"S", "S-prime"} scores give G (variants)."""
     arm = ARMS[spec.arm]
     world = pilot_world.make_world(spec.seed, spec.condition)
     built = build_policies(spec, pilot_world, world)
@@ -522,14 +519,19 @@ def harvest_questions(worlds: Mapping[str, PilotWorld], *, total: int = 300, see
                 pool += [{**i, "world": name, "seed": seed, "condition": condition,
                           "id": f"{name}-{seed}-{condition}-{i['id']}"} for i in h.items]
         quota = total // len(worlds) + (total % len(worlds) > sorted(worlds).index(name))
-        strata: Dict[Tuple[str, str], List[Dict[str, Any]]] = {}
-        for i in rng.sample(pool, len(pool)):  # judgement strata by label, so yes and no stay balanced
-            strata.setdefault((i["kind"], str(i["label"]) if i["kind"] == "judgement" else ""), []).append(i)
+        rank: Dict[Tuple[str, str], int] = {}
+        by_kind: Dict[str, List[Tuple[int, Dict[str, Any]]]] = {}
+        for i in rng.sample(pool, len(pool)):  # judgements alternate yes/no so both labels stay represented
+            key = (i["kind"], str(i["label"]) if i["kind"] == "judgement" else "")
+            rank[key] = rank.get(key, -1) + 1
+            by_kind.setdefault(i["kind"], []).append((-rank[key], i))
+        by_kind = {k: [i for _, i in sorted(v, key=lambda r: r[0])] for k, v in sorted(by_kind.items())}
         picked: List[Dict[str, Any]] = []
         while len(picked) < min(quota, len(pool)):
-            for key in sorted(strata):
-                if strata[key] and len(picked) < quota:
-                    picked.append(strata[key].pop())
+            for kind in list(by_kind):
+                if by_kind[kind] and len(picked) < quota:
+                    picked.append(by_kind[kind].pop())
+            by_kind = {k: v for k, v in by_kind.items() if v}
         out += picked
     return out
 
