@@ -226,6 +226,13 @@ python3 frontend/tests/tumor_browser.py
 - `blockchain/` - smart contracts and Hardhat project
 - `docs/` - release notes, plans, and proof specification
 
+## Third-party credits
+
+The v4 pilot worlds are ports of two MIT-licensed benchmarks:
+
+- [SwarmBench](https://github.com/x66ccff/swarmbench) (MIT) - the foraging task behind `foraging_sb`.
+- [AgentsNet](https://github.com/floriangroetschla/AgentsNet) (MIT) - the graph-coloring task behind `graph_coloring`.
+
 ## Status
 
 This repo is being tightened toward a public-ready DeSci release. The current emphasis is simulation correctness, provenance clarity, proof lifecycle staging, and consistent local interfaces.
