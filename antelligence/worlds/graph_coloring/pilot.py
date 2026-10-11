@@ -64,12 +64,18 @@ class GraphColoringPilot:
                                    "edges_scored": len(w.scored_edges())})
 
     def oracle_action(self, world: World, agent_id: str, tick: int) -> str:
-        """Privileged: NOOP if my colour already clashes with no neighbour's true colour, else the reference colour."""
+        """Privileged: the first of ``oracle_actions``."""
+        return self.oracle_actions(world, agent_id, tick)[0]
+
+    def oracle_actions(self, world: World, agent_id: str, tick: int) -> Tuple[str, ...]:
+        """Privileged: NOOP if my colour clashes with no neighbour's true colour, else every palette colour no
+        neighbour truly holds now (palette order), else the reference colour."""
         w = _w(world)
-        mine = w.colour[agent_id]
-        if mine is not None and all(w.colour[u] != mine for u in w.neighbours(agent_id)):
-            return NOOP
-        return colour_action(w.target[agent_id])
+        held = {w.colour[u] for u in w.neighbours(agent_id)}
+        if w.colour[agent_id] is not None and w.colour[agent_id] not in held:
+            return (NOOP,)
+        free = tuple(colour_action(c) for c in range(w.palette) if c not in held)
+        return free or (colour_action(w.target[agent_id]),)
 
     def labelled_questions(self, world: World, view: LocalView, tick: int) -> List[LabelledQuestion]:
         w = _w(world)
@@ -80,7 +86,8 @@ class GraphColoringPilot:
         out = [LabelledQuestion(qid, "judgement", q, truth[qid]) for qid, q in sensed.checks.items()]
         move = Question("choice", "Which action should you take now?", tuple(sensed.actions),
                         criteria=dict(sensed.actions))
-        out.append(LabelledQuestion("move", "move", move, self.oracle_action(world, view.agent_id, tick)))
+        good = self.oracle_actions(world, view.agent_id, tick)
+        out.append(LabelledQuestion("move", "move", move, good[0], accept=good))
         return out
 
     def describe(self) -> Dict[str, Any]:

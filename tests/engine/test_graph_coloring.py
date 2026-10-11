@@ -298,6 +298,26 @@ def test_oracle_and_labelled_questions():
 
 
 # --- validity -------------------------------------------------------------------------------------------------
+def test_oracle_actions_lists_every_colour_no_neighbour_holds():
+    world = GraphColoringWorld(1, graph=TRIANGLE_TAIL)  # 2 touches 0, 1 and 3; palette of 4
+    assert GRAPH_COLORING.oracle_actions(world, "2", 1) == tuple(f"colour_{i}" for i in (1, 2, 3, 4))  # nobody coloured
+    world.colour.update({"0": 0, "1": 1, "3": 1})
+    assert GRAPH_COLORING.oracle_actions(world, "2", 1) == ("colour_3", "colour_4")  # uncoloured: free colours
+    world.colour["2"] = 0  # clashes with 0
+    assert GRAPH_COLORING.oracle_actions(world, "2", 1) == ("colour_3", "colour_4")
+    assert GRAPH_COLORING.oracle_action(world, "2", 1) == "colour_3"
+    world.colour["2"] = 2  # clashes with nobody
+    assert GRAPH_COLORING.oracle_actions(world, "2", 1) == ("noop",)
+    world.colour.update({"0": 0, "1": 1, "3": 2, "2": 0})  # every colour held around 2 -> reference colour
+    world.palette = 3
+    assert GRAPH_COLORING.oracle_actions(world, "2", 1) == (f"colour_{world.target['2'] + 1}",)
+    world.palette = 4
+    world.colour["2"] = None
+    view = view_of(world, "2", 1)
+    move = GRAPH_COLORING.labelled_questions(world, view, 1)[-1]
+    assert move.accept == GRAPH_COLORING.oracle_actions(world, "2", 1) and move.label == move.accept[0]
+
+
 def test_validity_check_on_dev_seeds_passes_both_variants(tmp_path):
     result = validity_check(DEV_SEEDS)
     assert result["seeds"] == list(range(100, 110)) and result["all_pass"]
