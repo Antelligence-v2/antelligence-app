@@ -119,6 +119,9 @@ class FakePilotWorld:
     def oracle_action(self, world: FakeWorld, agent_id: str, tick: int) -> str:
         return world.effective(tick)
 
+    def oracle_actions(self, world: FakeWorld, agent_id: str, tick: int) -> Tuple[str, ...]:
+        return (world.effective(tick),)
+
     def labelled_questions(self, world: FakeWorld, view: LocalView, tick: int) -> List[LabelledQuestion]:
         truth = world.effective(tick)
         return [LabelledQuestion("intact", "judgement", Question("noul", "Does the usual rule still hold?"),

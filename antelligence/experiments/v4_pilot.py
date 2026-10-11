@@ -28,7 +28,7 @@ from antelligence.kernel.canonical import canonical_json
 from antelligence.kernel.decision import REPORT, Answer, DecisionRequest, DecisionResponse, check_answers
 from antelligence.kernel.field import BoardField
 from antelligence.kernel.scheduler import RunConfig, Scheduler
-from antelligence.kernel.types import NOOP, Intent, LocalView, Observation, Outcome, Policy, World
+from antelligence.kernel.types import Intent, LocalView, Observation, Outcome, Policy, World
 from antelligence.provenance.bundle import build_bundle
 
 DEV_SEEDS = tuple(range(100, 110))
@@ -144,6 +144,11 @@ def providers_of_arm(arm: str) -> Tuple[str, ...]:
     return tuple(sorted(out))
 
 
+class SetupError(RuntimeError):
+    """Raised by ``build_policies`` before any model call (wrong pod loaded, missing key): the run stops and the
+    cell is NOT recorded, so it can be rerun once fixed. Failures after a call has been made are error cells."""
+
+
 # --- metrics tap --------------------------------------------------------------
 
 
@@ -199,14 +204,16 @@ class MetricsTap(_WorldProxy):
         self.pilot_world, self.base_world = pilot_world, base_world
         self.records: List[Dict[str, Any]] = []
         self.queen_signals: List[Tuple[int, str, Tuple[str, ...]]] = []
-        self._oracle: Dict[Tuple[str, int], Optional[str]] = {}
+        self._oracle: Dict[Tuple[str, int], Optional[Tuple[str, ...]]] = {}
         self._group_of: Optional[Dict[str, str]] = None
 
     def observe(self, agent_id: str, tick: int) -> Observation:
         obs = self.inner.observe(agent_id, tick)
         if agent_id != "queen":
             try:
-                self._oracle[(agent_id, tick)] = self.pilot_world.oracle_action(self.base_world, agent_id, tick)
+                oracle = getattr(self.pilot_world, "oracle_actions", None)  # every equally good action
+                self._oracle[(agent_id, tick)] = (tuple(oracle(self.base_world, agent_id, tick)) if oracle else
+                                                  (self.pilot_world.oracle_action(self.base_world, agent_id, tick),))
             except Exception:  # metrics only: a failing oracle must not alter the run
                 self._oracle[(agent_id, tick)] = None
         return obs
@@ -228,15 +235,18 @@ class MetricsTap(_WorldProxy):
         else:
             allowed = tuple(intent.meta.get("allowed") or self._allowed(agent_id, tick))
             oracle = self._oracle.pop((agent_id, tick), None)
+            # A REPORT answer acts NOOP (DecisionWorker) and says so in meta["answer"]; a policy that could not
+            # answer (backend or provider failure) sets meta["reason"]. NOOP itself can be a legal action.
+            reported = intent.action == REPORT or intent.meta.get("answer") == REPORT
             self.records.append({
-                "tick": tick, "agent": agent_id, "answer": intent.action, "allowed": allowed,
-                "reported": intent.action == REPORT, "oracle": oracle,
+                "tick": tick, "agent": agent_id, "answer": REPORT if reported else intent.action, "allowed": allowed,
+                "reported": reported, "failed": "reason" in intent.meta, "oracle": oracle,
                 "model": "escalated" in intent.meta, "escalated": bool(intent.meta.get("escalated")),
-                "report_true": (report_is_true(oracle, allowed) if intent.action == REPORT and oracle else None)})
+                "report_true": (report_is_true(oracle, allowed) if reported and oracle else None)})
         return self.inner.apply(agent_id, intent, tick)
 
     def summary(self) -> Dict[str, Any]:
-        answers = [r for r in self.records if r["answer"] != NOOP]  # NOOP = failed policy, not an answer
+        answers = [r for r in self.records if not r["failed"]]  # a failed policy is a noop, not an answer
         compliant = [r for r in answers if r["answer"] == REPORT or r["answer"] in r["allowed"]]
         reports = [r for r in answers if r["reported"]]
         judged = [r for r in reports if r["report_true"] is not None]
@@ -291,6 +301,8 @@ BuildPolicies = Callable[[CellSpec, PilotWorld, World], PolicySet]
 LedgerTags = Callable[..., ContextManager[Any]]
 # ledger_rows(run_id) -> ledger rows written for that cell
 LedgerRows = Callable[[str], List[Dict[str, Any]]]
+# reconcile(run_id, ledger rows) -> fields merged into the cell (physical calls vs ledger rows)
+Reconcile = Callable[[str, List[Dict[str, Any]]], Dict[str, Any]]
 
 
 def _ledger_summary(rows: Sequence[Mapping[str, Any]]) -> Dict[str, Any]:
@@ -326,12 +338,10 @@ def _write_bundle(directory: Path, run_id: str, scheduler: Scheduler, result: An
 
 async def arun_cell(spec: CellSpec, pilot_world: PilotWorld, build_policies: BuildPolicies, *,
                     ledger_tags: LedgerTags, ledger_rows: Optional[LedgerRows] = None,
+                    reconcile: Optional[Reconcile] = None,
                     refs: Optional[Mapping[str, float]] = None, bundle_dir: Optional[Path] = None,
                     max_ticks: Optional[int] = None) -> Dict[str, Any]:
-    """Run one episode on the kernel Scheduler and return its cell dict.
-
-    ``refs`` = {"S": score, "S-prime": score} for the same world, seed and condition gives G (variant runs).
-    """
+    """One episode on the kernel Scheduler -> cell dict; ``refs`` {"S", "S-prime"} scores give G (variants)."""
     arm = ARMS[spec.arm]
     world = pilot_world.make_world(spec.seed, spec.condition)
     built = build_policies(spec, pilot_world, world)
@@ -351,7 +361,8 @@ async def arun_cell(spec: CellSpec, pilot_world: PilotWorld, build_policies: Bui
     if refs and spec.condition != "base" and arm.decider not in ("script", "script_adapted") \
             and "S" in refs and "S-prime" in refs and refs["S-prime"] > refs["S"]:
         g = (score - refs["S"]) / (refs["S-prime"] - refs["S"])
-    led = _ledger_summary(ledger_rows(spec.run_id) if ledger_rows else [])
+    rows = ledger_rows(spec.run_id) if ledger_rows else []
+    led = _ledger_summary(rows)
     tapped = tap.summary()
     cell = {
         **spec.to_dict(), "key": spec.key, "split": "eval" if spec.seed in EVAL_SEEDS else "dev",
@@ -360,6 +371,8 @@ async def arun_cell(spec: CellSpec, pilot_world: PilotWorld, build_policies: Bui
         **tapped, "trace_hash": result.trace_hash, "config_hash": result.config_hash,
         "event_count": result.event_count, "hardware": arm.hardware, "backend": arm.backend, "model": arm.model,
         "pod": arm.backend == "vllm" or arm.escalation}
+    if reconcile is not None:
+        cell.update(reconcile(spec.run_id, rows))
     if bundle_dir is not None:
         cell["bundle_hash"] = _write_bundle(Path(bundle_dir), spec.run_id, scheduler, result, spec,
                                             {"cell": spec.key, "score": score, "metrics_tap": tapped})
@@ -384,11 +397,12 @@ def append_cell(path: Path, cell: Mapping[str, Any]) -> None:
 async def run_plan(plan: Sequence[CellSpec], worlds: Mapping[str, PilotWorld], build_policies: BuildPolicies, *,
                    ledger_tags: LedgerTags, cells_path: Path, ledger_rows: Optional[LedgerRows] = None,
                    concurrency: int = 4, before_cell: Optional[Callable[[CellSpec], None]] = None,
-                   bundle_dir: Optional[Path] = None) -> List[Dict[str, Any]]:
+                   bundle_dir: Optional[Path] = None, reconcile: Optional[Reconcile] = None) -> List[Dict[str, Any]]:
     """Run missing cells, S and S' first (so G is known), at most ``concurrency`` episodes at once.
 
     A cell whose key is already in ``cells_path`` is never rerun, whatever its result. A BudgetExceeded
-    from ``before_cell`` stops the run; any other failure is recorded as an error cell.
+    from ``before_cell`` or a SetupError from ``build_policies`` stops the run (cell not recorded); any other
+    failure is recorded as an error cell.
     """
     done = {c["key"] for c in load_cells(cells_path)}
     new: List[Dict[str, Any]] = []
@@ -405,8 +419,9 @@ async def run_plan(plan: Sequence[CellSpec], worlds: Mapping[str, PilotWorld], b
                 before_cell(spec)
             try:
                 cell = await arun_cell(spec, worlds[spec.world], build_policies, ledger_tags=ledger_tags,
-                                       ledger_rows=ledger_rows, refs=refs_for(spec), bundle_dir=bundle_dir)
-            except BudgetExceeded:
+                                       ledger_rows=ledger_rows, reconcile=reconcile, refs=refs_for(spec),
+                                       bundle_dir=bundle_dir)
+            except (BudgetExceeded, SetupError):
                 raise
             except Exception as exc:
                 cell = {**spec.to_dict(), "key": spec.key, "score": None, "g": None,
@@ -431,6 +446,7 @@ class Hooks:
     ledger_tags: LedgerTags
     ledger_rows: LedgerRows
     make_backend: Callable[[str], Any]  # name ("jev", "laya", "qwen3.5-9b", "deepseek") -> DecisionBackend
+    reconcile: Optional[Reconcile] = None  # physical calls vs ledger rows, merged into each cell
 
 
 def script_score(pilot_world: PilotWorld, seed: int, world_condition: str, script_condition: str,
@@ -462,90 +478,6 @@ def validity_check(pilot_world: PilotWorld, seeds: Sequence[int] = DEV_SEEDS) ->
         out["variants"][v] = {"S_base": s_base, "S_prime_base": sp_base, "S_variant": s_var, "S_prime_variant": sp_var,
                               "S_prime_keeps_base": base_ok, "S_fails_variant": var_ok, "valid": base_ok and var_ok}
     return out
-
-
-# --- Phase 0 calibration ------------------------------------------------------
-
-
-class _Harvester(_WorldProxy):
-    """Collects labelled questions (with the sensed state text) while a script plays; privileged, labels only."""
-
-    def __init__(self, inner: World, pilot_world: PilotWorld, stride: int) -> None:
-        super().__init__(inner)
-        self.pilot_world, self.stride, self.items = pilot_world, stride, []
-        self.sensor = pilot_world.sensor()
-
-    def observe(self, agent_id: str, tick: int) -> Observation:
-        obs = self.inner.observe(agent_id, tick)
-        if tick % self.stride == 0:
-            view = LocalView(agent_id, tick, self.inner.revision, 0, obs.data)
-            state = self.sensor.sense(view).text
-            for lq in self.pilot_world.labelled_questions(self.inner, view, tick):
-                self.items.append({"id": f"{agent_id}-t{tick}-{lq.qid}", "kind": lq.kind, "qtype": lq.question.type,
-                                   "state": state, "question": lq.question, "label": lq.label, "tick": tick})
-        return obs
-
-
-def harvest_questions(worlds: Mapping[str, PilotWorld], *, total: int = 300, seeds: Sequence[int] = DEV_SEEDS,
-                      rng_seed: int = 0) -> List[Dict[str, Any]]:
-    """``total`` labelled questions from development seeds, split evenly across worlds and, inside each
-    world, as evenly as the pool allows between judgement and move questions."""
-    if uses_eval_seeds(seeds):
-        raise ValueError("calibration uses development seeds only")
-    rng, out = random.Random(rng_seed), []
-    for name in sorted(worlds):
-        pw, pool = worlds[name], []
-        stride = max(1, int(pw.describe().get("max_ticks", 100)) // 14)  # ~14 sampled ticks per episode
-        for seed in seeds:
-            for condition in CONDITIONS:
-                h = _Harvester(pw.make_world(seed, condition), pw, stride)
-                Scheduler(h, {}, BoardField(), RunConfig(f"harvest-{name}-{seed}-{condition}", seed=seed, arm="S",
-                                                         max_ticks=int(pw.describe().get("max_ticks", 100))),
-                          default_policy=pw.script(condition, adapted=False), record_frames=False).run()
-                pool += [{**i, "world": name, "seed": seed, "condition": condition,
-                          "id": f"{name}-{seed}-{condition}-{i['id']}"} for i in h.items]
-        quota = total // len(worlds) + (total % len(worlds) > sorted(worlds).index(name))
-        by_kind = {k: rng.sample(v, len(v)) for k in ("judgement", "move")
-                   if (v := [i for i in pool if i["kind"] == k])}
-        picked: List[Dict[str, Any]] = []
-        while len(picked) < min(quota, len(pool)):
-            for kind in list(by_kind):
-                if by_kind[kind] and len(picked) < quota:
-                    picked.append(by_kind[kind].pop())
-            by_kind = {k: v for k, v in by_kind.items() if v}
-        out += picked
-    return out
-
-
-async def calibrate(backend: Any, name: str, items: Sequence[Mapping[str, Any]], *, concurrency: int = 4,
-                    done: Sequence[str] = ()) -> List[Dict[str, Any]]:
-    """Ask one named backend every item (one question per request); wall-clock latency includes the network."""
-    sem = asyncio.Semaphore(concurrency)
-    model = str(backend.describe().get("model", name))
-    skip = set(done)
-
-    async def ask(item: Mapping[str, Any]) -> Dict[str, Any]:
-        row: Dict[str, Any] = {"id": item["id"], "backend": name, "world": item["world"], "kind": item["kind"],
-                               "type": item["qtype"]}
-        request = DecisionRequest.build(model, item["state"], {"q": item["question"]}, seed=item["seed"])
-        async with sem:
-            start = time.monotonic()
-            try:
-                response = await backend.decide(request)
-            except Exception as exc:
-                return {**row, "error": f"{type(exc).__name__}: {exc}"[:200], "latency_s": time.monotonic() - start}
-            row["latency_s"] = time.monotonic() - start
-        answer = response.answers["q"]
-        if answer.type == "noul":
-            row.update(prob=answer.p_yes, label=item["label"], correct=(answer.p_yes >= 0.5) == item["label"])
-        else:
-            right = answer.value == item["label"]
-            row.update(prob=answer.probabilities[answer.value], label=right, correct=right)
-        return {**row, "answer": answer.value, "served_model": response.served_model,
-                "input_tokens": response.input_tokens, "output_tokens": response.output_tokens,
-                "cost_usd": response.cost_usd}
-
-    return list(await asyncio.gather(*(ask(i) for i in items if f"{name}:{i['id']}" not in skip)))
 
 
 # --- dry-run kit (fake policies, backend and ledger; no network, no keys) -----
