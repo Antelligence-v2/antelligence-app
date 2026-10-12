@@ -64,3 +64,6 @@ logs/
 .env.development
 .env.test
 .env.production
+# Frontend env files must not leak into image builds (CI has none)
+**/.env
+**/.env.*

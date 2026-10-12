@@ -1,0 +1,98 @@
+name: Deploy
+
+# Ships main to the prod EC2 host once Tests pass on the merge commit.
+# Run it by hand (Actions > Deploy > Run workflow) to redeploy or roll back to any commit.
+on:
+  workflow_run:
+    workflows: [Tests]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Commit SHA, tag or branch to deploy
+        required: true
+        default: main
+
+# One deploy at a time; a newer merge waits instead of racing the current one.
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  deploy:
+    name: Build and deploy
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
+    # Prod is a Graviton (arm64) instance, so build natively on an arm runner.
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || inputs.ref }}
+
+      - name: Resolve image name
+        id: meta
+        run: |
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          echo "image=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/arm64
+          push: true
+          build-args: GIT_SHA=${{ steps.meta.outputs.sha }}
+          tags: |
+            ${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.sha }}
+            ${{ steps.meta.outputs.image }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Configure SSH
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+
+      - name: Deploy to EC2
+        env:
+          TARGET: ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}
+          IMAGE: ${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.sha }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ssh_host() { ssh -i ~/.ssh/deploy_key -o BatchMode=yes "$TARGET" "$@"; }
+          # The job token expires when this job ends, so the host only holds pull access briefly.
+          echo "$GHCR_TOKEN" | ssh_host docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+          status=0
+          ssh_host 'bash -s' -- "$IMAGE" < scripts/deploy/remote-deploy.sh || status=$?
+          ssh_host docker logout ghcr.io || true
+          exit $status
+
+      - name: Check public health endpoint
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+        run: curl -sf --retry 5 --retry-delay 5 --retry-all-errors "http://${DEPLOY_HOST}:8001/health"
+
+      - name: Summary
+        run: |
+          echo "Deployed \`${{ steps.meta.outputs.sha }}\` to prod" >> "$GITHUB_STEP_SUMMARY"
