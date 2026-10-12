@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import type { Frames } from "@/api/engine";
 import { cn } from "@/lib/utils";
 import { AntColonyScene, type AntColonySceneData } from "./AntColonyScene";
@@ -6,6 +6,11 @@ import { GridScene, type GridSceneData } from "./GridScene";
 import { TumorScene, type TumorSceneData } from "./TumorScene";
 import { FIELD_STYLE } from "./styles";
 import { frameAgentIds } from "./decode";
+import { canRender3D } from "./core/quality";
+
+// three.js loads only when someone opens the 3D view.
+const ForagingView = lazy(() => import("./worlds/foraging/ForagingView"));
+const TumorView = lazy(() => import("./worlds/tumor/TumorView"));
 
 const Legend = ({ items }: { items: Array<[string, string]> }) => (
   <div className="flex flex-wrap gap-x-3 gap-y-1.5 text-2xs text-muted-foreground">
@@ -38,10 +43,11 @@ export function SceneCanvas({ data, position, layer, selected, onSelect }: {
  * Spatial replay of a run from its recorded frames, driven by the playhead.
  * Click an agent to select it (shared with the inspector).
  */
-export function Viewport({ data, position, tick, selected, onSelect }: {
+export function Viewport({ data, position, tick, playing = false, selected, onSelect }: {
   data: Frames;
   position: number;
   tick: number;
+  playing?: boolean;
   selected: string | null;
   onSelect: (agent: string) => void;
 }) {
@@ -49,6 +55,8 @@ export function Viewport({ data, position, tick, selected, onSelect }: {
   const fields = ((data.scene.fields as string[] | undefined) ?? []).filter((f) => FIELD_STYLE[f]);
   const [layer, setLayer] = useState<string | null>(fields.includes("drug") ? "drug" : fields.includes("trail") ? "trail" : fields[0] ?? null);
   useEffect(() => { if (layer && !fields.includes(layer)) setLayer(fields[0] ?? null); }, [fields, layer]);
+  const has3D = (kind === "grid" || kind === "tumor") && canRender3D();
+  const [view, setView] = useState<"2d" | "3d">("2d");
 
   const frame = data.frames[Math.min(data.frames.length - 1, Math.max(0, tick - data.frames[0].tick))].world;
 
@@ -56,7 +64,23 @@ export function Viewport({ data, position, tick, selected, onSelect }: {
     <section className="surface-edge grid overflow-hidden rounded-xl border bg-card lg:grid-cols-[minmax(0,1fr)_260px]">
       <div className="min-w-0 border-b p-3 lg:border-b-0 lg:border-r">
         <div className="mx-auto max-w-[560px]">
-          <SceneCanvas data={data} position={position} layer={layer} selected={selected} onSelect={onSelect} />
+          {has3D && view === "3d" ? (
+            <Suspense fallback={<div className="aspect-square w-full animate-pulse rounded-lg bg-surface-2" />}>
+              {kind === "tumor" ? (
+                <TumorView
+                  data={data} position={position} playing={playing} layer={layer} selected={selected} onSelect={onSelect}
+                  fallback={<SceneCanvas data={data} position={position} layer={layer} selected={selected} onSelect={onSelect} />}
+                />
+              ) : (
+                <ForagingView
+                  data={data} position={position} playing={playing} selected={selected} onSelect={onSelect}
+                  fallback={<SceneCanvas data={data} position={position} layer={layer} selected={selected} onSelect={onSelect} />}
+                />
+              )}
+            </Suspense>
+          ) : (
+            <SceneCanvas data={data} position={position} layer={layer} selected={selected} onSelect={onSelect} />
+          )}
         </div>
       </div>
       <aside className="space-y-5 p-4">
@@ -64,6 +88,26 @@ export function Viewport({ data, position, tick, selected, onSelect }: {
           <h2 className="text-sm font-medium">Scene</h2>
           <span className="numeric font-mono text-2xs text-muted-foreground">t{tick}</span>
         </div>
+
+        {has3D && (
+          <div className="space-y-2">
+            <p className="text-2xs font-medium uppercase tracking-[0.08em] text-muted-foreground">View</p>
+            <div className="flex items-center gap-0.5 rounded-md border p-0.5">
+              {(["2d", "3d"] as const).map((v) => (
+                <button
+                  key={v}
+                  type="button"
+                  aria-pressed={view === v}
+                  onClick={() => setView(v)}
+                  className={cn("h-7 flex-1 rounded px-2 text-xs font-medium uppercase transition-colors", view === v ? "bg-accent text-foreground" : "text-muted-foreground hover:text-foreground")}
+                >
+                  {v}
+                </button>
+              ))}
+            </div>
+            {view === "3d" && <p className="text-2xs text-muted-foreground">Drag to orbit, scroll to zoom, click {kind === "tumor" ? "a nanobot" : "an ant"} to select it.</p>}
+          </div>
+        )}
 
         {(kind === "tumor" || kind === "ant_colony") && fields.length > 0 && (
           <div className="space-y-2">
