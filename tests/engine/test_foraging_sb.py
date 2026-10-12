@@ -438,3 +438,12 @@ def test_describe_declares_episode_length():
     from antelligence.worlds.foraging_sb import FORAGING_SB
     from antelligence.worlds.foraging_sb.world import STEPS
     assert FORAGING_SB.describe()["max_ticks"] == STEPS
+
+
+def test_pilot_instructions_are_short_and_say_nothing_of_variants():
+    from antelligence.experiments.pilot_contract import MAX_INSTRUCTIONS
+
+    text = FORAGING_SB.instructions
+    assert 0 < len(text) <= MAX_INSTRUCTIONS and text.startswith("Task:")
+    for hint in ("liar", "lost", "mirror", "flip", "run out", "runs out", "dropped message", "v1", "v2"):
+        assert hint not in text.lower()
