@@ -94,6 +94,7 @@ class ScriptPolicy:
 
 class FakePilotWorld:
     actions: Mapping[str, str] = {"up": "go up", "down": "go down"}
+    instructions = "Task: go up as often as you can."
 
     def __init__(self, name: str = "fake_world", harmless: Tuple[str, ...] = ()) -> None:
         self.name, self.harmless = name, harmless
