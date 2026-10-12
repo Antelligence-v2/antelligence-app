@@ -225,3 +225,32 @@ def test_validity_check():
     assert bad["variants"]["v1"]["valid"] and not bad["variants"]["v2"]["valid"]
     with pytest.raises(ValueError):
         p.validity_check(FakePilotWorld(), seeds=[1])
+
+
+def test_check_failures_are_counted_as_board_reports_apart_from_report_answers():
+    class Checker(Worker):
+        def decide(self, view):
+            meta = {"failed_checks": ["food_still_there"]} if view.agent_id == "w0" else {}
+            return Intent("up", meta=meta)
+
+    build = lambda s, pw, w: p.PolicySet(default_policy=Checker())  # noqa: E731
+    cell = p.run_cell(spec("DS-all"), WORLDS["fake_world"], build, ledger_tags=p.DryKit().tags)
+    assert cell["reports"] == 0 and cell["check_reports"] == 6  # one failing worker over 6 ticks
+
+
+def test_cell_records_the_policy_sets_queen_cadence_and_decision_s_follows_the_ledger():
+    kit = p.DryKit()
+    build = lambda s, pw, w: p.PolicySet({"queen": Queen()}, Worker(), QueenWorld, queen_every=7)  # noqa: E731
+    cell = p.run_cell(spec("F-Jev"), WORLDS["fake_world"], build, ledger_tags=kit.tags, ledger_rows=kit.rows_for)
+    assert cell["queen_every"] == 7 and cell["decision_s"]["n"] == cell["calls"] == 0  # no ledger rows, no samples
+
+
+def test_rerunning_a_key_gets_its_own_ledger_tag_so_cost_and_latency_do_not_merge():
+    kit = p.DryKit()
+    s = spec("DS-all")
+    first = p.run_cell(s, WORLDS["fake_world"], kit.build_policies, ledger_tags=kit.tags, ledger_rows=kit.rows_for)
+    second = p.run_cell(s, WORLDS["fake_world"], kit.build_policies, ledger_tags=kit.tags, ledger_rows=kit.rows_for)
+    assert first["key"] == second["key"] and first["run_tag"] != second["run_tag"]
+    assert first["run_tag"].startswith(s.key + "#") and len(kit.rows) == first["calls"] + second["calls"]
+    assert first["calls"] == second["calls"] > 0 and first["cost_usd"] == second["cost_usd"]
+    assert first["decision_s"]["n"] == second["decision_s"]["n"] == first["calls"]
