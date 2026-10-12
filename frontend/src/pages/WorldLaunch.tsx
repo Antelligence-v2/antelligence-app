@@ -1,16 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Dices, Loader2, Play } from "lucide-react";
+import { ArrowLeft, Dices, Loader2, Play, Sparkles } from "lucide-react";
 import { toast } from "sonner";
-import { useCreateRun, useWorlds } from "@/api/queries";
-import type { World } from "@/api/engine";
+import { useRunJob, useWorlds } from "@/api/queries";
+import type { ParamValue, World, WorldOption } from "@/api/engine";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Kbd } from "@/design/Kbd";
 import { Page, PageHeader } from "@/design/PageHeader";
 import { EmptyState, ErrorState } from "@/design/States";
-import { armLabel, humanize, worldMeta } from "@/features/worlds/meta";
+import { armLabel, humanize, selectsLlm, worldMeta } from "@/features/worlds/meta";
 import { ParamField } from "@/features/worlds/ParamField";
+import { SceneCanvas } from "@/features/viewport/Viewport";
 import { cn } from "@/lib/utils";
 
 const MAX_CASE = 2 ** 31 - 1;
@@ -57,33 +58,63 @@ function ArmPicker({ world, value, onChange }: { world: World; value: string; on
   );
 }
 
+function OptionPicker({ name, option, value, onChange }: { name: string; option: WorldOption; value: string; onChange: (v: string) => void }) {
+  return (
+    <div className="space-y-2">
+      <p className="text-sm">{option.label}</p>
+      <div role="radiogroup" aria-label={option.label} className="flex flex-wrap gap-1 rounded-lg border p-1">
+        {option.allowed.map((v) => (
+          <button
+            key={v}
+            type="button"
+            role="radio"
+            aria-checked={v === value}
+            data-option={name}
+            onClick={() => onChange(v)}
+            className={cn(
+              "h-8 flex-1 whitespace-nowrap rounded-md px-3 text-xs font-medium transition-colors",
+              v === value ? "bg-primary/10 text-foreground ring-1 ring-primary/40" : "text-muted-foreground hover:bg-surface-2 hover:text-foreground",
+            )}
+          >
+            {humanize(v)}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function Launcher({ world }: { world: World }) {
   const navigate = useNavigate();
-  const createRun = useCreateRun();
+  const runJob = useRunJob();
   const meta = worldMeta(world.name);
   const defaults = useMemo(() => Object.fromEntries(Object.entries(world.params).map(([k, b]) => [k, b.default])), [world]);
+  const optionDefaults = useMemo(() => Object.fromEntries(Object.entries(world.options ?? {}).map(([k, o]) => [k, o.default])), [world]);
   const [arm, setArm] = useState(world.baseline);
   const [caseId, setCaseId] = useState(world.default_cases[0] ?? 1);
   const [params, setParams] = useState<Record<string, number>>(defaults);
+  const [options, setOptions] = useState<Record<string, string>>(optionDefaults);
+  const [model, setModel] = useState(world.llm?.default_model ?? "");
+  // Predator brains only matter when there are predators (the engine ignores them otherwise).
+  const effective = params.n_predators === 0 ? Object.fromEntries(Object.entries(options).filter(([k]) => k !== "predator_type")) : options;
+  const usesLlm = !!world.llm && selectsLlm(effective);
+  const pending = runJob.running;
 
-  const launch = () => {
-    if (createRun.isPending) return;
-    createRun.mutate(
-      { world: world.name, arm, case: caseId, params },
-      {
-        onSuccess: (run) => {
-          toast.success("Run complete", { description: `${meta.title} · ${armLabel(arm)} · case ${caseId}` });
-          navigate(`/runs/${encodeURIComponent(run.run_id)}`);
-        },
-      },
-    );
+  const launch = async () => {
+    if (pending) return;
+    const body: Record<string, ParamValue> = { ...params, ...effective, ...(usesLlm ? { model: model.trim() } : {}) };
+    const runId = await runJob.start({ world: world.name, arm, case: caseId, params: body });
+    if (runId) {
+      toast.success("Run complete", { description: `${meta.title} · ${armLabel(arm)} · case ${caseId}` });
+      navigate(`/runs/${encodeURIComponent(runId)}`);
+    }
   };
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
         e.preventDefault();
-        launch();
+        void launch();
       }
     };
     window.addEventListener("keydown", onKey);
@@ -94,9 +125,13 @@ function Launcher({ world }: { world: World }) {
     ["World", meta.title],
     ["Arm", armLabel(arm)],
     ["Case (seed)", String(caseId)],
-    ...Object.entries(params).map(([k, v]) => [humanize(k), String(v)] as [string, string]),
-    ["Policy", "Rule (no LLM calls)"],
+    ...Object.entries(params).map(([k, v]) => [world.param_labels?.[k] ?? humanize(k), String(v)] as [string, string]),
+    ...Object.entries(effective).map(([k, v]) => [world.options?.[k]?.label ?? humanize(k), humanize(v)] as [string, string]),
+    ["Policy", usesLlm ? `LLM · ${model || "no model"}` : "Rule (no LLM calls)"],
   ];
+  const job = runJob.job;
+  const progress = job?.max_ticks ? Math.min(1, job.tick / job.max_ticks) : 0;
+  const preview = runJob.live;
 
   return (
     <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_300px]">
@@ -105,11 +140,38 @@ function Launcher({ world }: { world: World }) {
           <ArmPicker world={world} value={arm} onChange={setArm} />
         </Field>
 
+        {Object.keys(world.options ?? {}).length > 0 && (
+          <Field label="Agents" hint="Same choices as the original simulator">
+            <div className="surface-edge space-y-5 rounded-xl border bg-card p-5">
+              {Object.entries(world.options ?? {}).map(([name, option]) => (
+                <OptionPicker key={name} name={name} option={option} value={options[name]} onChange={(v) => setOptions((o) => ({ ...o, [name]: v }))} />
+              ))}
+              {usesLlm && (
+                <div className="space-y-2 border-t pt-4">
+                  <label htmlFor="llm-model" className="flex items-center gap-1.5 text-sm"><Sparkles className="size-3.5 text-primary" />Model (via LiteLLM)</label>
+                  <input
+                    id="llm-model"
+                    value={model}
+                    onChange={(e) => setModel(e.target.value)}
+                    spellCheck={false}
+                    className="h-8 w-full rounded-md border bg-transparent px-2.5 font-mono text-xs outline-none transition-colors focus:border-ring"
+                  />
+                  {world.llm && !world.llm.available ? (
+                    <p className="text-2xs text-danger">The backend has no IO_SECRET_KEY (or LITELLM_API_KEY), so LLM runs will be refused. Set it and restart the backend.</p>
+                  ) : (
+                    <p className="text-2xs text-muted-foreground">Each agent asks the model on its turn, so LLM runs take minutes, not seconds. You can watch it live.</p>
+                  )}
+                </div>
+              )}
+            </div>
+          </Field>
+        )}
+
         {Object.keys(world.params).length > 0 && (
           <Field label="Parameters">
             <div className="surface-edge space-y-6 rounded-xl border bg-card p-5">
               {Object.entries(world.params).map(([name, bounds]) => (
-                <ParamField key={name} name={name} bounds={bounds} value={params[name]} onChange={(v) => setParams((p) => ({ ...p, [name]: v }))} />
+                <ParamField key={name} name={name} label={world.param_labels?.[name]} bounds={bounds} value={params[name]} onChange={(v) => setParams((p) => ({ ...p, [name]: v }))} />
               ))}
             </div>
           </Field>
@@ -162,16 +224,33 @@ function Launcher({ world }: { world: World }) {
             </dl>
           </div>
           <div className="relative border-t p-4">
-            {createRun.isPending && <div className="absolute inset-x-0 top-0 h-px animate-shimmer bg-[linear-gradient(90deg,transparent,hsl(var(--primary)),transparent)] bg-[length:200%_100%]" />}
-            <Button className="w-full" onClick={launch} disabled={createRun.isPending}>
-              {createRun.isPending ? <Loader2 className="animate-spin" /> : <Play />}
-              {createRun.isPending ? "Running…" : "Launch run"}
-              {!createRun.isPending && <Kbd className="ml-auto border-primary-foreground/20 bg-primary-foreground/10 text-primary-foreground/80">⌘↵</Kbd>}
+            {pending && <div className="absolute inset-x-0 top-0 h-px animate-shimmer bg-[linear-gradient(90deg,transparent,hsl(var(--primary)),transparent)] bg-[length:200%_100%]" />}
+            <Button className="w-full" onClick={() => void launch()} disabled={pending || (usesLlm && !model.trim())}>
+              {pending ? <Loader2 className="animate-spin" /> : <Play />}
+              {pending ? (job?.status === "queued" ? "Queued…" : `Running… t${job?.tick ?? 0}`) : "Launch run"}
+              {!pending && <Kbd className="ml-auto border-primary-foreground/20 bg-primary-foreground/10 text-primary-foreground/80">⌘↵</Kbd>}
             </Button>
-            <p className="mt-2.5 text-center text-2xs text-muted-foreground">Runs locally and deterministically; results are research-grade, not clinical.</p>
+            {pending && job?.max_ticks ? (
+              <div className="mt-3 space-y-1">
+                <div className="h-1 overflow-hidden rounded-full bg-surface-3">
+                  <div className="h-full bg-primary transition-[width] duration-300" style={{ width: `${progress * 100}%` }} />
+                </div>
+                <p className="numeric text-center font-mono text-2xs text-muted-foreground">tick {job.tick} / {job.max_ticks}{job.llm ? " · LLM" : ""}</p>
+              </div>
+            ) : (
+              <p className="mt-2.5 text-center text-2xs text-muted-foreground">
+                {usesLlm ? "LLM runs call your LiteLLM proxy; replays answer from the run's response cache." : "Runs locally and deterministically; results are research-grade, not clinical."}
+              </p>
+            )}
           </div>
         </div>
-        {createRun.isError && <ErrorState className="mt-3" error={createRun.error} />}
+        {pending && preview && preview.frames.length > 0 && (
+          <div className="surface-edge mt-3 overflow-hidden rounded-xl border bg-card p-2">
+            <p className="px-1 pb-1.5 text-2xs font-medium uppercase tracking-[0.08em] text-muted-foreground">Live</p>
+            <SceneCanvas data={preview} position={preview.frames[preview.frames.length - 1].tick} layer={(preview.scene.kind as string) === "tumor" ? "drug" : "trail"} selected={null} onSelect={() => {}} />
+          </div>
+        )}
+        {runJob.error && <ErrorState className="mt-3" error={runJob.error} />}
       </aside>
     </div>
   );

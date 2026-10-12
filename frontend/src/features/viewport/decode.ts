@@ -53,6 +53,12 @@ export function trails(frames: readonly Frame[], key: string, upto: number, leng
 /** Agent ids in frame row order (the engine emits agents sorted by id). */
 export function frameAgentIds(data: Frames): string[] {
   const kind = data.scene.kind as string;
+  if (kind === "ant_colony") {
+    const first = data.frames[0].world;
+    const pad = (i: number) => String(i).padStart(3, "0");
+    return [...((first.ants ?? []) as number[][]).map((r) => `ant-${pad(r[4])}`),
+      ...((first.predators ?? []) as number[][]).map((r) => `predator-${pad(r[4])}`)];
+  }
   const first = data.frames[0].world;
   const count = ((kind === "tumor" ? first.bots : first.agents) as unknown[] | undefined)?.length ?? 0;
   return Array.from({ length: count }, (_, i) => (kind === "tumor" ? `bot-${String(i).padStart(3, "0")}` : String(i)));

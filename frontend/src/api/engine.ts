@@ -15,6 +15,10 @@ export const HealthSchema = z.object({ ok: z.boolean(), worlds: z.array(z.string
 export const ParamBoundsSchema = z.object({ default: z.number(), min: z.number(), max: z.number() });
 export type ParamBounds = z.infer<typeof ParamBoundsSchema>;
 
+/** String choice a world accepts (e.g. the legacy agent type). */
+export const OptionSchema = z.object({ default: z.string(), allowed: z.array(z.string()).min(1), label: z.string() });
+export type WorldOption = z.infer<typeof OptionSchema>;
+
 export const WorldSchema = z.object({
   name: z.string(),
   arms: z.array(z.string()).min(1),
@@ -27,6 +31,10 @@ export const WorldSchema = z.object({
   description: z.string(),
   metric_label: z.string().optional(),
   arm_descriptions: z.record(z.string()).optional(),
+  param_labels: z.record(z.string()).optional(),
+  options: z.record(OptionSchema).optional(),
+  /** Present when some options select LLM agents: the default model and whether the backend has a key. */
+  llm: z.object({ default_model: z.string(), available: z.boolean() }).nullable().optional(),
 }).passthrough();
 export type World = z.infer<typeof WorldSchema>;
 
@@ -242,8 +250,29 @@ export const ExperimentJobSchema = z.object({
 });
 export type ExperimentJob = z.infer<typeof ExperimentJobSchema>;
 
-export type RunRequest = { world: string; arm: string; case: number; params?: Record<string, number> };
-export type ExperimentBody = { world: string; arms: string[]; cases?: number[]; baseline?: string; params?: Record<string, number> };
+/** Background single run: progress while it runs, then the stored run. */
+export const RunJobSchema = z.object({
+  job_id: z.string(),
+  status: z.enum(["queued", "running", "done", "failed"]),
+  run_id: z.string(),
+  tick: z.number(),
+  max_ticks: z.number().nullable(),
+  llm: z.boolean(),
+  error: z.string().nullable(),
+});
+export type RunJob = z.infer<typeof RunJobSchema>;
+
+/** Frames of a run still in progress: frames from `since` on, plus the total so far. */
+export const LiveFramesSchema = z.object({
+  scene: z.record(z.unknown()),
+  frames: z.array(FrameSchema),
+  total: z.number(),
+});
+export type LiveFrames = z.infer<typeof LiveFramesSchema>;
+
+export type ParamValue = number | string;
+export type RunRequest = { world: string; arm: string; case: number; params?: Record<string, ParamValue> };
+export type ExperimentBody = { world: string; arms: string[]; cases?: number[]; baseline?: string; params?: Record<string, ParamValue> };
 
 /** A normalized API failure: what the user should read, plus the HTTP status if any. */
 export class ApiError extends Error {

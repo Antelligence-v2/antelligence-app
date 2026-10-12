@@ -6,6 +6,8 @@ import {
   EventPageSchema,
   FramesSchema,
   HealthSchema,
+  LiveFramesSchema,
+  RunJobSchema,
   ExperimentJobSchema,
   ExperimentListItemSchema,
   ExperimentSchema,
@@ -44,6 +46,17 @@ export const engine = {
       return await call(FramesSchema, http.get(`/runs/${encodeURIComponent(runId)}/frames`, { signal }));
     } catch (error) {
       if (error instanceof ApiError && error.status === 404 && /no frames/.test(error.message)) return null;
+      throw error;
+    }
+  },
+  startRun: (body: RunRequest) => call(RunJobSchema, http.post("/runs/jobs", body)),
+  runJob: (jobId: string) => call(RunJobSchema, http.get(`/runs/jobs/${encodeURIComponent(jobId)}`)),
+  /** null while the run has not started (queued) or once it has finished. */
+  liveFrames: async (jobId: string, since: number) => {
+    try {
+      return await call(LiveFramesSchema, http.get(`/runs/jobs/${encodeURIComponent(jobId)}/frames`, { params: { since } }));
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 404) return null;
       throw error;
     }
   },
