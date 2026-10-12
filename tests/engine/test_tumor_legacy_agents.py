@@ -150,6 +150,7 @@ def test_every_llm_launch_is_a_fresh_run(fake_litellm):
 def test_llm_runs_without_a_key_are_refused(monkeypatch):
     monkeypatch.delenv("IO_SECRET_KEY", raising=False)
     monkeypatch.delenv("LITELLM_API_KEY", raising=False)
+    monkeypatch.setattr(litellm, "_env_loaded", True)  # don't pick up a developer's backend/.env
     client = TestClient(create_app(Path(tempfile.mkdtemp())))
     response = client.post("/engine/runs/jobs", json=TUMOR_LLM)
     assert response.status_code == 503 and "IO_SECRET_KEY" in response.json()["detail"]
@@ -158,6 +159,7 @@ def test_llm_runs_without_a_key_are_refused(monkeypatch):
 def test_rule_run_jobs_need_no_key_and_bad_options_are_422(monkeypatch):
     monkeypatch.delenv("IO_SECRET_KEY", raising=False)
     monkeypatch.delenv("LITELLM_API_KEY", raising=False)
+    monkeypatch.setattr(litellm, "_env_loaded", True)  # don't pick up a developer's backend/.env
     client = TestClient(create_app(Path(tempfile.mkdtemp())))
     job, _ = wait(client, client.post("/engine/runs/jobs", json={"world": "tumor", "arm": "rule", "case": 1,
                                                                   "params": {"max_steps": 10}}).json()["job_id"])

@@ -26,7 +26,12 @@ DEFAULT_API_BASE = "http://host.orb.internal:4000/v1"  # legacy LITELLM_API_BASE
 DEFAULT_MODEL = "meta-llama/Llama-3.3-70B-Instruct"  # legacy default
 MODEL_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:/-]{0,119}$")
 
+# Legacy keeps its keys in backend/.env (loaded by backend/main.py); load it here too so the
+# engine API finds them however it is started. Variables already set always win.
+ENV_FILE = Path(__file__).resolve().parents[2] / "backend" / ".env"
+
 _cache_dir: Optional[Path] = None
+_env_loaded = False
 _offline = contextvars.ContextVar("antelligence_llm_offline", default=False)
 
 
@@ -50,11 +55,22 @@ def offline() -> Iterator[None]:
         _offline.reset(token)
 
 
+def _load_env() -> None:
+    global _env_loaded
+    if not _env_loaded:
+        _env_loaded = True
+        if ENV_FILE.is_file():
+            from dotenv import load_dotenv
+            load_dotenv(ENV_FILE, override=False)
+
+
 def api_key() -> str:
+    _load_env()
     return os.getenv("IO_SECRET_KEY") or os.getenv("LITELLM_API_KEY") or ""
 
 
 def api_base() -> str:
+    _load_env()
     return os.getenv("LITELLM_API_BASE") or DEFAULT_API_BASE
 
 
