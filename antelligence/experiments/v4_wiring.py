@@ -44,6 +44,9 @@ from antelligence.providers.wrappers import Cached, FakeProvider
 NOUS_URL = "https://inference-api.nousresearch.com/v1"
 JEV_MODEL = "jev-1.13.0"
 SLM_MODEL = "Qwen/Qwen3.5-9B"  # the escalation model; the framework arms run while this pod is up
+# Fixed from Phase 0 (docs/research/v4-pilot-20261011/phase0/): escalate a judgement when 0.2 < P(yes) < 0.8;
+# never escalate a move choice (on dev data, escalating moves to Qwen3.5-9B lowered accuracy at every threshold).
+ESCALATION: Dict[str, float] = {"lo": 0.2, "hi": 0.8, "c_min": 0.0}
 NOUS_EXTRA = {"reasoning": {"enabled": False}}
 POD_EXTRA = {"chat_template_kwargs": {"enable_thinking": False}}
 EVERY_AGENT_TOKENS = 64
@@ -242,7 +245,7 @@ class Wiring:
     def __init__(self, leaves: Leaves, writer: LedgerWriter, cache_dir: Path, *, offline: bool = False,
                  thresholds: Optional[Mapping[str, float]] = None) -> None:
         self.leaves, self.writer, self.cache_dir, self.offline = leaves, writer, Path(cache_dir), offline
-        self.thresholds = dict(thresholds or {})  # EscalatingBackend lo / hi / c_min, fixed by the preregistration
+        self.thresholds = dict(ESCALATION if thresholds is None else thresholds)  # EscalatingBackend lo/hi/c_min
         self.calls: Dict[str, List[List[int]]] = {}  # run id -> one counter per physical call site
         self.hits: Dict[str, List[List[int]]] = {}  # run id -> one counter per cache site (replies served from cache)
 

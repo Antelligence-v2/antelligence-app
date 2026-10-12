@@ -298,3 +298,13 @@ def test_every_model_arm_is_told_the_worlds_task(tmp_path, world):
     assert fw.policies["queen"].instructions == task and task in fw.policies["queen"].system
     workers = [v for k, v in fw.policies.items() if k != "queen"]
     assert workers and all(isinstance(v, DecisionWorker) and v.instructions == task for v in workers)
+
+
+def test_preregistered_escalation_thresholds_are_the_default(tmp_path):
+    from antelligence.experiments.v4_wiring import ESCALATION, Wiring
+    assert ESCALATION == {"lo": 0.2, "hi": 0.8, "c_min": 0.0}
+    from antelligence.providers import LedgerWriter
+    wiring = Wiring(None, LedgerWriter(tmp_path / "l.jsonl"), tmp_path)
+    assert wiring.thresholds == ESCALATION
+    custom = {"lo": 0.1, "hi": 0.9, "c_min": 0.5}
+    assert Wiring(None, LedgerWriter(tmp_path / "l.jsonl"), tmp_path, thresholds=custom).thresholds == custom
