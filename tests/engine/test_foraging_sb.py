@@ -1,6 +1,5 @@
 """foraging_sb: SwarmBench foraging port (layouts, view, messages, push rule, variants, S/S', sensor, PilotWorld)."""
 
-import asyncio
 import json
 import re
 from pathlib import Path
@@ -14,10 +13,12 @@ from antelligence.kernel.decision import REPORT, SensedState, Sensor
 from antelligence.kernel.field import GridField
 from antelligence.kernel.scheduler import RunConfig, Scheduler
 from antelligence.worlds.foraging_sb import ACTIONS, FORAGING_SB, ForagingSBWorld, ForagingSensor, make_layout
+from antelligence.worlds.foraging_sb.nav import DIRS
 from antelligence.worlds.foraging_sb.variants import DEV_SEEDS, RESULT, run_episode, validity_check
 from antelligence.worlds.foraging_sb.world import (
     MSG_MAX,
     MSG_RADIUS,
+    STEPS,
     V1_PICKUPS,
     V2_FLIP_TICK,
     WIDTH,
@@ -53,9 +54,6 @@ def lone(seed=101):
     return world
 
 
-# --- layouts ----------------------------------------------------------------
-
-
 @pytest.mark.parametrize("seed", DEV_SEEDS)
 def test_layout_follows_the_swarmbench_draws(seed):
     lay = make_layout(seed)
@@ -77,9 +75,6 @@ def test_layout_follows_the_swarmbench_draws(seed):
 def test_all_four_published_layouts_occur():
     seen = {(make_layout(s)["horizontal"], make_layout(s)["food"][0]) for s in range(100, 140)}
     assert len(seen) == 4
-
-
-# --- determinism, frames, contract -------------------------------------------
 
 
 @pytest.mark.parametrize("condition", ["base", "v1", "v2"])
@@ -120,9 +115,6 @@ def test_every_agent_accepts_noop_and_stay():
     assert not world.apply("0", Intent("teleport"), 1).accepted
 
 
-# --- view, messages ----------------------------------------------------------
-
-
 def test_view_is_egocentric_5x5_and_matches_the_world():
     world = FORAGING_SB.make_world(100, "base")
     for a in world.agents():
@@ -157,8 +149,7 @@ def test_messages_are_short_radius_limited_and_auto_generated():
     heard1 = world.observe("1", 2).data["heard"]
     assert [m["from"] for m in heard1] == ["0"] and re.fullmatch(r"food is [a-z-]+ of me", heard1[0]["text"])
     assert len(heard1[0]["text"]) <= MSG_MAX
-    far = max(abs(sender_pos[0] + 6 - sender_pos[0]), 3)
-    assert far > MSG_RADIUS and world.observe("2", 2).data["heard"] == []
+    assert world.observe("2", 2).data["heard"] == []  # 6 cells away: out of radius
 
 
 def test_every_message_in_a_full_run_respects_length_and_radius():
@@ -177,9 +168,6 @@ def test_every_message_in_a_full_run_respects_length_and_radius():
     sched.run()
     assert world.messages_sent > 20 and heard
     assert all(len(m["text"]) <= MSG_MAX and max(abs(m["dx"]), abs(m["dy"])) <= MSG_RADIUS for m in heard)
-
-
-# --- push rule and pick up / drop --------------------------------------------
 
 
 def test_push_rule():
@@ -234,9 +222,6 @@ def test_pick_up_and_drop_score_a_delivery():
     assert FORAGING_SB.score(world) == 1.0
 
 
-# --- variants ----------------------------------------------------------------
-
-
 def test_v1_patch_empties_after_n_pickups_and_a_new_one_appears():
     world = FORAGING_SB.make_world(100, "v1")
     old = list(world.food)
@@ -268,9 +253,6 @@ def test_v2_mirrors_only_what_is_sensed_from_tick_t():
     assert plain.view_rows(a, 99) == plain.view_rows(a, 1)  # base never flips
 
 
-# --- scripts -----------------------------------------------------------------
-
-
 def test_s_trusts_its_memory_and_s_prime_v1_leaves_the_empty_spot():
     s_score = run_episode(100, "v1").extra["score"]
     sp_score = run_episode(100, "v1", adapted=True).extra["score"]
@@ -294,17 +276,9 @@ def test_scripts_read_the_sensed_fields_and_describe_themselves():
         assert policy.decide(view).action in ACTIONS
 
 
-# --- sensor ------------------------------------------------------------------
-
-
-def midgame(condition):
-    sched, _, world = run(101, condition, frames=False)
-    return world
-
-
 @pytest.mark.parametrize("condition", ["base", "v1", "v2"])
 def test_sensor_text_is_short_words_with_at_most_two_noul_checks(condition):
-    world = midgame(condition)
+    world = run(101, condition, frames=False)[2]
     sensor = FORAGING_SB.sensor()
     for a in world.agents():
         view = LocalView(a, 100, 0, 5, world.observe(a, 100).data)
@@ -315,6 +289,33 @@ def test_sensor_text_is_short_words_with_at_most_two_noul_checks(condition):
         assert set(sensed.actions) == set(ACTIONS) and REPORT not in sensed.actions
         assert len(sensed.checks) <= 2 and all(q.type == "noul" for q in sensed.checks.values())
         assert sensed.fields["route"] in ACTIONS
+
+
+def say(world, agent, tick):
+    return ForagingSensor().sense(LocalView(agent, tick, 0, 1, world.observe(agent, tick).data)).text
+
+
+def test_state_text_describes_the_own_view_per_direction_and_the_last_move():
+    world = lone()
+    spot = next(c for c in next_to(world, world.food) if world._free((c[0] + 1, c[1])))
+    place(world, a0=spot, a1=(spot[0] + 1, spot[1]))
+    assert "East: agent 1." in say(world, "0", 1) and "Last" not in say(world, "0", 1)
+    assert world.apply("0", Intent("east"), 1).reason == "blocked_by_agent"
+    assert "Last move: east, blocked by an agent." in say(world, "0", 2)
+    side = next(d for d, (dx, dy) in DIRS.items() if (spot[0] + dx, spot[1] + dy) in world.food)
+    assert f"{side.capitalize()}: food." in say(world, "0", 3) and world.apply("0", Intent("pick_up"), 3).accepted
+    assert "Last action: pick_up, done." in say(world, "0", 4) and not world.apply("0", Intent("drop"), 4).accepted
+    assert "Last action: drop, failed." in say(world, "0", 5)
+
+
+def test_state_text_view_is_mirrored_exactly_like_the_agents_view_under_v2():
+    base, v2 = FORAGING_SB.make_world(100, "base"), FORAGING_SB.make_world(100, "v2")
+    said = {w: {a: dict(re.findall(r"(North|East|South|West): ([^.]*)\.", say(w, a, V2_FLIP_TICK)))
+                for a in w.agents()} for w in (base, v2)}
+    assert any(d["East"] != d["West"] for d in said[base].values())  # the mirror changes something
+    for a in base.agents():
+        b, m = said[base][a], said[v2][a]
+        assert (m["East"], m["West"], m["North"], m["South"]) == (b["West"], b["East"], b["North"], b["South"])
 
 
 def test_sensor_text_example_shape():
@@ -339,9 +340,6 @@ def test_nest_check_flags_a_flipped_view():
     world.positions["0"] = spot
     sensed = ForagingSensor().sense(LocalView("0", 40, 0, 1, world.observe("0", 40).data))
     assert sensed.fields["nest_seen"] is not None
-
-
-# --- labels, oracle, board ---------------------------------------------------
 
 
 def test_labelled_questions_oracle_and_board_summary():
@@ -398,9 +396,6 @@ def test_oracle_actions_lists_every_shortest_path_first_step():
     assert move.accept == FORAGING_SB.oracle_actions(world, "0", 1) and move.label == move.accept[0]
 
 
-# --- validity check ----------------------------------------------------------
-
-
 @pytest.fixture(scope="module")
 def validity():
     return validity_check(DEV_SEEDS)
@@ -421,23 +416,14 @@ def test_eval_seeds_are_not_used_for_tuning():
     assert not set(DEV_SEEDS) & set(range(1, 6))
 
 
-# --- kernel isolation --------------------------------------------------------
-
-
 def test_kernel_never_imports_a_world():
     offenders = [str(p.relative_to(ROOT)) for p in (ROOT / "antelligence/kernel").rglob("*.py")
                  if re.search(r"^\s*(from|import)\s+antelligence\.worlds", p.read_text(), re.M)]
     assert offenders == []
 
 
-def test_width_constant_matches_published_map():
-    assert WIDTH == 10 and asyncio  # 10x10 map, 10 agents, 100 rounds
-
-
-def test_describe_declares_episode_length():
-    from antelligence.worlds.foraging_sb import FORAGING_SB
-    from antelligence.worlds.foraging_sb.world import STEPS
-    assert FORAGING_SB.describe()["max_ticks"] == STEPS
+def test_describe_declares_episode_length_and_the_published_map_width():
+    assert FORAGING_SB.describe()["max_ticks"] == STEPS and WIDTH == 10
 
 
 def test_pilot_instructions_are_short_and_say_nothing_of_variants():

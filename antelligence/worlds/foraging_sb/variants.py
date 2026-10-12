@@ -1,8 +1,7 @@
 """Validity check for the foraging_sb variants (no model calls).
 
-A variant is kept only if, on the development seeds, S' scores at least 0.9 x S on the base task and S scores
-at most 0.5 x S' on the variant. ``python -m antelligence.worlds.foraging_sb.variants`` rewrites the committed
-result file.
+A variant is kept only if, on the development seeds, S' scores >= 0.9 x S on base and S scores <= 0.5 x S' on
+the variant. ``python -m antelligence.worlds.foraging_sb.variants`` rewrites the committed result file.
 """
 
 from __future__ import annotations

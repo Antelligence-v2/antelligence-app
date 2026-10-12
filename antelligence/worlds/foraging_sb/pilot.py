@@ -27,8 +27,6 @@ from antelligence.worlds.foraging_sb.world import (
 
 MOVE_QUESTION = Question("choice", "Which way should you move now?", options=tuple(ACTIONS), criteria=ACTIONS)
 RECENT = 10  # board "recent deliveries" window, in ticks (= the queen cadence)
-
-
 INSTRUCTIONS = (
     "Task: your team scores one point each time a piece of food is dropped into the nest. Find food, pick it up "
     "when it is next to you and your hands are empty, carry it to the nest and drop it when the nest is next to "

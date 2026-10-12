@@ -17,7 +17,7 @@ from typing import Any, Dict, List, Mapping, Optional
 
 from antelligence.kernel.decision import Question, SensedState
 from antelligence.kernel.types import LocalView
-from antelligence.worlds.foraging_sb.nav import RADIUS, Cell, plan_route, relative, ring_of
+from antelligence.worlds.foraging_sb.nav import DIRS, RADIUS, Cell, plan_route, relative, ring_of
 
 ACTIONS: Dict[str, str] = {
     "north": "move one cell north (up the map)",
@@ -29,6 +29,7 @@ ACTIONS: Dict[str, str] = {
     "stay": "stay where you are",
 }
 
+SEEN = {".": "open", "W": "wall", "F": "food", "N": "nest", "*": "edge"}  # what one view cell is called
 FOOD_CHECK = "food_still_there"
 NEST_CHECK = "nest_where_remembered"
 
@@ -86,11 +87,9 @@ def derive(obs: Mapping[str, Any]) -> Dict[str, Any]:
         "view": view, "map": list(obs["map"]), "food_at": list(food_at) if food_at else None,
         "nest_at": list(nest_at) if nest_at else None, "food_gone": food_gone, "food_in_view": food_in_view,
         "food_seen": obs["food_seen"], "nest_seen": list(nest_seen) if nest_seen else None, "nest_moved": nest_moved,
-        "walls_next_to": [n for n, ch in ring.items() if ch == "W"],
-        "agents_next_to": [n for n, ch in ring.items() if ch.isdigit()],
         "occupied": [list(c) for c in occupied], "stuck": int(obs["stuck"]),
         "food_adjacent": "F" in ring.values(), "nest_adjacent": "N" in ring.values(),
-        "free_around": [n for n, ch in ring.items() if ch == "."], "heard": list(obs["heard"]),
+        "last": obs.get("last"), "heard": list(obs["heard"]),
         "route": action, "mode": mode,
     }
 
@@ -119,16 +118,23 @@ def render(f: Mapping[str, Any]) -> str:
         parts.append("Food is next to you.")
     if f["nest_adjacent"]:
         parts.append("The nest is next to you.")
-    if f["walls_next_to"]:
-        parts.append(f"Walls next to you: {', '.join(f['walls_next_to'])}.")
-    if f["agents_next_to"]:
-        parts.append(f"Agents next to you: {', '.join(f['agents_next_to'])}.")
-    if f["stuck"]:
-        parts.append("Your last move was blocked.")
+    if f["food_seen"] and f["food_seen"] != f["food_at"]:
+        parts.append(f"Food in view: {relative(f['food_seen'][0] - px, f['food_seen'][1] - py)}.")
+    view = f["view"]  # the agent's own 5x5 window, two cells out each way (stopping at the first thing in the way)
+    for name, (dx, dy) in DIRS.items():
+        cells = []
+        for k in (1, 2):
+            ch = view[RADIUS + dy * k][RADIUS + dx * k]
+            cells.append(f"agent {ch}" if ch.isdigit() else SEEN[ch])
+            if ch != ".":
+                break
+        parts.append(f"{name.capitalize()}: {', then '.join(cells)}.")
+    if f["last"]:
+        act, how = f["last"]
+        parts.append(f"Last {'move' if act in DIRS else 'action'}: {act}, {how}.")
     for m in f["heard"][:2]:
         parts.append(f"Heard: agent {m['from']} ({relative(m['dx'], m['dy'])} of you) says \"{m['text']}\".")
-    # No route hint: the text describes the situation and never prescribes a move. A planner hint that ignores
-    # other agents jammed every model arm into one lane (dev seed 100), and it would measure the planner, not the model.
+    # No route hint: a planner hint that ignores other agents jammed every model arm (dev seed 100).
     return " ".join(parts)
 
 

@@ -104,6 +104,7 @@ class ForagingSBWorld:
         for m in self.memory.values():  # briefed at the start: where the food patch and the nest are
             m.food_at, m.nest_at = _anchor(self.food), _anchor(self.nest)
         self.stuck: Dict[str, int] = {a: 0 for a in self.positions}  # consecutive failed moves
+        self.last: Dict[str, Tuple[str, str]] = {}  # agent -> (its last action, how it went), in words
         self.deliveries = 0
         self.pickups = 0
         self.patch_swaps = 0
@@ -212,7 +213,7 @@ class ForagingSBWorld:
             "food_seen": list(seen_food) if seen_food else None,
             "nest_seen": list(seen_nest) if seen_nest else None,
             "heard": heard,
-            "stuck": self.stuck[agent_id],
+            "stuck": self.stuck[agent_id], "last": self.last.get(agent_id),
         }
         self._cache[agent_id] = (tick, data)
         text = self._message(agent_id, rows)
@@ -226,6 +227,16 @@ class ForagingSBWorld:
 
     # ---------------------------------------------------------------- action
     def apply(self, agent_id: str, intent: Intent, tick: int) -> Outcome:
+        pos, out = self.positions[agent_id], self._apply(agent_id, intent, tick)
+        if intent.action not in (NOOP, STAY):  # the agent's own experience, shown to it next tick
+            ahead = (pos[0] + DIRS.get(intent.action, (0, 0))[0], pos[1] + DIRS.get(intent.action, (0, 0))[1])
+            wall = "the food" if ahead in self.food else "the nest" if ahead in self.nest else "a wall"
+            how = {"blocked": f"blocked by {wall}", "blocked_by_agent": "blocked by an agent"}
+            ok = "moved" if intent.action in DIRS else "done"
+            self.last[agent_id] = (intent.action, ok if out.accepted else how.get(out.reason or "", "failed"))
+        return out
+
+    def _apply(self, agent_id: str, intent: Intent, tick: int) -> Outcome:
         action = intent.action
         if action in (NOOP, STAY):
             self.counters["idle"] += 1
