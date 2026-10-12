@@ -21,6 +21,7 @@ from antelligence.kernel.types import LocalView, Policy, World
 
 CONDITIONS = ("base", "v1", "v2")
 QUESTION_KINDS = ("judgement", "move")
+MAX_INSTRUCTIONS = 300
 
 
 @dataclass(frozen=True)
@@ -69,6 +70,7 @@ class PilotWorld(Protocol):
 
     name: str
     actions: Mapping[str, str]  # every legal action id -> short description (REPORT excluded)
+    instructions: str  # the task, in plain words (<= MAX_INSTRUCTIONS chars); identical in every condition
 
     def make_world(self, seed: int, condition: str) -> World:
         """A fresh deterministic world. ``condition`` is one of CONDITIONS."""
