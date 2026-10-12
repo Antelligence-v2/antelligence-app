@@ -163,7 +163,7 @@ def client(tmp_path):
 
 def test_api_run_lifecycle(client):
     assert client.get("/engine/health").json()["worlds"] == ["ant_colony", "foraging", "task_dag", "tumor"]
-    assert {w["name"] for w in client.get("/engine/worlds").json()} == {"foraging", "task_dag", "tumor"}
+    assert {w["name"] for w in client.get("/engine/worlds").json()} == {"ant_colony", "foraging", "task_dag", "tumor"}
     created = client.post("/engine/runs", json={"world": "foraging", "arm": "hive_memory", "case": 101})
     assert created.status_code == 201
     run = created.json()
