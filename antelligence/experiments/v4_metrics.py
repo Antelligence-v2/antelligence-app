@@ -17,6 +17,8 @@ GO_MARGIN = 0.10  # Go: framework mean G >= DS-all mean G - 0.10 and a lower med
 NO_GO_G = 0.10  # No-go: both framework arms below this mean G
 BOOTSTRAP_RESAMPLES = 10_000
 BOOTSTRAP_SEED = 20261011
+# Pre-registered: a variant run's G is undefined when S' - S is below this gap (G explodes on a tiny gap).
+MIN_GAP = {"foraging_sb": 2.0, "graph_coloring": 0.05}
 
 
 def mean(values: Iterable[Optional[float]]) -> Optional[float]:
@@ -34,10 +36,10 @@ def percentile(values: Sequence[float], q: float) -> Optional[float]:
     return ordered[low] + (ordered[high] - ordered[low]) * (rank - low)
 
 
-def gap_recovered(score: float, s_score: float, s_prime_score: float) -> Optional[float]:
-    """G = (score - S) / (S' - S). None when S' does not beat S (the ceiling has no headroom)."""
+def gap_recovered(score: float, s_score: float, s_prime_score: float, min_gap: float = 0.0) -> Optional[float]:
+    """G = (score - S) / (S' - S). None when S' beats S by no more than ``min_gap`` (no headroom to recover)."""
     gap = s_prime_score - s_score
-    return None if gap <= 0 else (score - s_score) / gap
+    return None if gap <= 0 or gap < min_gap else (score - s_score) / gap
 
 
 def seconds_per_decision(latencies: Sequence[float]) -> Dict[str, Any]:
@@ -154,7 +156,7 @@ def attach_g(cells: Sequence[Mapping[str, Any]]) -> List[Dict[str, Any]]:
         row = dict(c)
         r = refs.get((c["world"], c["seed"], c["condition"]), {})
         variant_run = c["condition"] != "base" and c["arm"] not in ("S", "S-prime")
-        row["g"] = (gap_recovered(c["score"], r["S"], r["S-prime"])
+        row["g"] = (gap_recovered(c["score"], r["S"], r["S-prime"], MIN_GAP.get(c["world"], 0.0))
                     if variant_run and c.get("score") is not None and "S" in r and "S-prime" in r else None)
         out.append(row)
     return out
@@ -180,6 +182,8 @@ def _arm_summary(cells: Sequence[Mapping[str, Any]], s_base: Mapping[Tuple, floa
         "cells": len(cells), "errors": len(cells) - len(ok),
         "score_by_condition": by_cond,
         "mean_g": mean(c["g"] for c in ok if c.get("g") is not None),
+        "g_undefined": sum(1 for c in ok if c["condition"] != "base" and c["arm"] not in ("S", "S-prime")
+                           and c.get("score") is not None and c.get("g") is None),
         "mean_g_by_condition": {cond: mean(c["g"] for c in ok if c["condition"] == cond and c.get("g") is not None)
                                 for cond in ("v1", "v2")},
         "base_share_of_S": (base_mean / s_mean) if base_mean is not None and s_mean else None,
@@ -211,9 +215,18 @@ def aggregate(cells: Sequence[Mapping[str, Any]]) -> Dict[str, Any]:
         return {(c["world"], c["seed"], c["condition"]): c["g"] for c in rows
                 if c["arm"] == arm and c.get("g") is not None and not c.get("error")}
 
-    comparisons = {f"{arm}_vs_{DS_ARM}": paired_bootstrap(g_by_key(arm), g_by_key(DS_ARM))
+    # Pre-registered: the primary comparison and go/no-go use the (world, seed, condition) keys that DS-all and both
+    # framework arms all have with a defined G (DS-all foraging has fewer seeds), so every arm is paired by seed.
+    compared = [a for a in (DS_ARM, *FRAMEWORK_ARMS) if a in per_arm]
+    shared = set.intersection(*(set(g_by_key(a)) for a in compared)) if compared else set()
+
+    def on_shared(arm: str) -> Dict[Tuple, float]:
+        return {k: v for k, v in g_by_key(arm).items() if k in shared}
+
+    comparisons = {f"{arm}_vs_{DS_ARM}": paired_bootstrap(on_shared(arm), on_shared(DS_ARM))
                    for arm in FRAMEWORK_ARMS if arm in per_arm and DS_ARM in per_arm}
-    verdict = go_no_go({a: per_arm[a]["mean_g"] for a in per_arm},
-                       {a: per_arm[a]["s_per_decision"]["median"] for a in per_arm})
+    paired_g = {a: mean(g_by_key(a)[k] for k in sorted(shared)) for a in compared}
+    verdict = go_no_go(paired_g, {a: per_arm[a]["s_per_decision"]["median"] for a in per_arm})
+    verdict["paired_keys"] = len(shared)
     return {"arms": per_arm, "by_world": per_world, "comparisons_mean_g_diff": comparisons, "go_no_go": verdict,
             "cells": len(rows), "note": "pilot estimates; 15 runs per arm per world detect only large effects"}

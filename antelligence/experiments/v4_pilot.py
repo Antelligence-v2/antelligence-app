@@ -41,6 +41,7 @@ NOUS_MODEL = "deepseek/deepseek-v4.1-flash"
 GATED_FILES = ("docs/research/v4-pilot-20261011/PREREGISTRATION.md", "scripts/v4_pilot.py",
                "antelligence/experiments/v4_pilot.py", "antelligence/experiments/v4_metrics.py",
                "antelligence/experiments/v4_budget.py")
+GATED_TREES = ("antelligence", "scripts")  # every engine, world, policy and backend file is frozen at evaluation
 
 
 @dataclass(frozen=True)
@@ -132,7 +133,7 @@ def check_committed(root: Path, files: Sequence[str] = GATED_FILES) -> None:
     for f in files:
         if git("ls-files", "--error-unmatch", "--", f).returncode != 0:
             raise SystemExit(f"evaluation refused: {f} is not committed")
-    dirty = git("status", "--porcelain", "--", *files).stdout.strip()
+    dirty = git("status", "--porcelain", "--", *files, *GATED_TREES).stdout.strip()
     if dirty:
         raise SystemExit(f"evaluation refused: uncommitted changes in gated files:\n{dirty}")
 
