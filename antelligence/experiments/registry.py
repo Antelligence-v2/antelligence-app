@@ -171,7 +171,7 @@ def _registry() -> Dict[str, WorldSpec]:
             name="ant_colony", arms=tuple(COLONY_ARMS), default_cases=tuple(COLONY_SEEDS), baseline="no_queen",
             primary_metric="food_collected", lower_is_better=False, success_metric="all_food_collected",
             params={"grid_width": (20, 5, 60), "grid_height": (20, 5, 60), "n_ants": (10, 1, 60),
-                    "n_food": (15, 1, 200), "n_predators": (0, 0, 10), "max_steps": (200, 10, 1000),
+                    "n_food": (15, 1, 200), "n_predators": (0, 0, 10), "max_steps": (200, 1, 1000),
                     "pheromone_decay_pct": (5, 1, 20), "trail_deposit_x10": (10, 1, 50),
                     "alarm_deposit_x10": (20, 1, 50), "recruitment_deposit_x10": (15, 1, 50),
                     "fear_deposit_x10": (30, 10, 100), "max_pheromone": (10, 5, 20)},

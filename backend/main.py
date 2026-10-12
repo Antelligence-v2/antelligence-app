@@ -102,6 +102,7 @@ app.include_router(make_router(RESEARCH_SERVICE))
 # Engine: cross-world swarm experiments with replayable provenance. Local-only,
 # rule-policy worlds only, bounded; see antelligence/api/app.py.
 from antelligence.api.app import EngineService, make_router as make_engine_router
+from backend import ant_colony_bridge
 ENGINE_SERVICE = EngineService(Path(os.environ.get("ANTELLIGENCE_ENGINE_DATA", project_root / "data" / "engine")))
 app.include_router(make_engine_router(ENGINE_SERVICE))
 
@@ -233,275 +234,29 @@ async def test_simulation():
 
 @app.post("/simulation/run", response_model=SimulationResult)
 async def run_simulation(config: SimulationConfig):
-    """
-    Runs a full ant foraging simulation based on the provided configuration.
-    Returns the history of every step and the final results.
-    """
+    """Runs the original ant page's config on the engine ant_colony world (see ant_colony_bridge)."""
+    from antelligence.providers.litellm import LLMUnavailable
+    from fastapi.concurrency import run_in_threadpool
     try:
-        print(f"[SIMULATION] Starting simulation with config: {config.dict()}")
-        print(f"[BLOCKCHAIN] Transaction writes enabled: {BLOCKCHAIN_TX_ENABLED}")
-        np.random.seed(42)
-        random.seed(42)
-
-        model = SimpleForagingModel(
-            width=config.grid_width,
-            height=config.grid_height,
-            N_ants=config.n_ants,
-            N_food=config.n_food,
-            agent_type=config.agent_type,
-            with_queen=config.use_queen,
-            use_llm_queen=config.use_llm_queen,
-            selected_model_param=config.selected_model,
-            prompt_style_param=config.prompt_style,
-            N_predators=config.n_predators if config.enable_predators else 0,
-            predator_type=config.predator_type
-        )
-        
-        # Apply pheromone configuration
-        model.set_pheromone_params(
-            config.pheromone_decay_rate,
-            config.trail_deposit,
-            config.alarm_deposit, 
-            config.recruitment_deposit,
-            config.max_pheromone_value,
-            config.fear_deposit
-        )
-        
-        print(f"[SIMULATION] Model initialized. API enabled: {model.api_enabled}")
-        
-        history = []
-        # Determine how often to capture detailed state (every N steps for performance)
-        detail_interval = max(1, config.max_steps // 50)  # Capture ~50 detailed snapshots
-        
-        for step_num in range(config.max_steps):
-            if not model.foods:
-                print(f"[SIMULATION] All food collected at step {step_num}")
-                break
-            
-            print(f"[SIMULATION] Running step {step_num + 1}/{config.max_steps}")
-            model.step()
-
-            # --- Create the list of agents for the current step ---
-            ants_list = [
-                AntState(
-                    id=ant.unique_id, 
-                    pos=ant.pos, 
-                    carrying_food=ant.carrying_food, 
-                    is_llm=ant.is_llm_controlled,
-                    steps_since_food=ant.steps_since_food
-                ) 
-                for ant in model.ants
-            ]
-
-            # If the queen exists, add her to the list with a special flag
-            if model.queen:
-                center_pos = (model.width // 2, model.height // 2)
-                queen_state = AntState(
-                    id='queen', 
-                    pos=center_pos, 
-                    carrying_food=False, 
-                    is_llm=model.use_llm_queen, 
-                    is_queen=True
-                )
-                ants_list.append(queen_state)
-            
-            # --- Create the list of predators for the current step ---
-            predators_list = [
-                PredatorState(
-                    id=predator.unique_id,
-                    pos=predator.pos,
-                    energy=predator.energy,
-                    is_llm=predator.is_llm_controlled,
-                    ants_caught=predator.ants_caught,
-                    hunt_cooldown=predator.hunt_cooldown
-                )
-                for predator in model.predators
-            ]
-            
-            # Capture detailed state periodically or for final step
-            capture_detail = (step_num % detail_interval == 0) or (step_num == config.max_steps - 1)
-            pheromone_data = None
-            efficiency_data = None
-            
-            if capture_detail:
-                pheromone_data = convert_pheromone_maps(model)
-                efficiency_data = convert_efficiency_data(model)
-            
-            # --- Capture the full state for this step ---
-            current_state = StepState(
-                step=model.step_count,
-                ants=ants_list,
-                predators=predators_list,
-                food_positions=model.get_food_positions(),
-                metrics=model.metrics.copy(),
-                queen_report=model.queen_llm_anomaly_rep,
-                errors=model.errors.copy(),
-                pheromone_data=pheromone_data,
-                efficiency_data=efficiency_data,
-                nest_position=(model.width // 2, model.height // 2)
-            )
-            history.append(current_state)
-            model.errors.clear()
-
-        print(f"[SIMULATION] Completed {model.step_count} steps")
-
-        # Convert food depletion history to proper format
-        food_depletion_data = [
-            FoodDepletionPoint(step=point["step"], food_piles_remaining=point["food_piles_remaining"])
-            for point in model.food_depletion_history
-        ]
-
-        # Final state data
-        final_pheromone_data = convert_pheromone_maps(model)
-        final_efficiency_data = convert_efficiency_data(model)
-
-        # Collect blockchain logs and transactions (always enabled)
-        blockchain_logs = []
-        blockchain_transactions = []
-        if hasattr(model, 'blockchain_logs'):
-            blockchain_logs = model.blockchain_logs
-            print(f"[BLOCKCHAIN] Collected {len(blockchain_logs)} blockchain logs")
-        else:
-            print(f"[BLOCKCHAIN] No blockchain logs attribute found on model")
-        
-        if hasattr(model, 'blockchain_transactions'):
-            blockchain_transactions = model.blockchain_transactions
-            print(f"[BLOCKCHAIN] Collected {len(blockchain_transactions)} blockchain transactions")
-        else:
-            print(f"[BLOCKCHAIN] No blockchain transactions attribute found on model")
-
-        return SimulationResult(
-            config=config,
-            total_steps_run=model.step_count,
-            final_metrics=model.metrics,
-            history=history,
-            food_depletion_history=food_depletion_data,
-            initial_food_count=model.initial_food_count,
-            final_pheromone_data=final_pheromone_data,
-            final_efficiency_data=final_efficiency_data,
-            blockchain_logs=blockchain_logs,
-            blockchain_transactions=blockchain_transactions
-        )
-
+        return await run_in_threadpool(ant_colony_bridge.run, config, ENGINE_SERVICE)
+    except LLMUnavailable as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
     except Exception as e:
-        print("--- ERROR CAUGHT IN /simulation/run ---")
         traceback.print_exc()
-        print("------------------------------------")
         raise HTTPException(status_code=500, detail=str(e))
-
-def _run_comparison_leg(params: dict, steps: int) -> int:
-    """Helper to run one leg of the comparison."""
-    try:
-        print(f"[QUEEN COMPARISON] Starting leg with params: {params}")
-        np.random.seed(42)
-        random.seed(42)
-        
-        # Force rule-based agents for comparison to avoid API timeouts
-        comparison_params = params.copy()
-        comparison_params['agent_type'] = 'Rule-Based'  # Use rule-based for reliable comparison
-        
-        model = SimpleForagingModel(
-            width=comparison_params['grid_width'], 
-            height=comparison_params['grid_height'], 
-            N_ants=comparison_params['n_ants'],
-            N_food=comparison_params['n_food'], 
-            agent_type=comparison_params['agent_type'], 
-            with_queen=comparison_params['with_queen'],
-            use_llm_queen=comparison_params['use_llm_queen'], 
-            selected_model_param=comparison_params['selected_model'],
-            prompt_style_param=comparison_params['prompt_style'],
-            N_predators=comparison_params.get('n_predators', 0),
-            predator_type=comparison_params.get('predator_type', 'Rule-Based')
-        )
-        
-        # Apply pheromone parameters if provided
-        if 'pheromone_decay_rate' in comparison_params:
-            model.set_pheromone_params(
-                comparison_params['pheromone_decay_rate'],
-                comparison_params['trail_deposit'],
-                comparison_params['alarm_deposit'],
-                comparison_params['recruitment_deposit'],
-                comparison_params['max_pheromone_value'],
-                comparison_params.get('fear_deposit', 3.0)
-            )
-        
-        print(f"[QUEEN COMPARISON] Running {steps} steps with rule-based agents...")
-        for step in range(steps):
-            if not model.foods: 
-                print(f"[QUEEN COMPARISON] No food remaining at step {step}")
-                break
-            model.step()
-            if step % 10 == 0:  # Log every 10 steps
-                print(f"[QUEEN COMPARISON] Step {step}/{steps}, food remaining: {len(model.foods)}")
-        
-        result = model.metrics["food_collected"]
-        print(f"[QUEEN COMPARISON] Completed with {result} food collected")
-        return result
-        
-    except Exception as e:
-        print(f"[QUEEN COMPARISON] Error in comparison leg: {str(e)}")
-        raise e
 
 @app.post("/simulation/compare", response_model=ComparisonResult)
 async def compare_queen_performance(config: ComparisonConfig):
-    """
-    Runs two simulations in parallel to compare the effectiveness of the Queen Ant.
-    """
+    """Queen vs no Queen on the engine ant_colony world, rule-based ants (as before)."""
+    from fastapi.concurrency import run_in_threadpool
     try:
-        print(f"[QUEEN COMPARISON] Starting comparison with {config.comparison_steps} steps")
-        base_params = config.dict()
-        
-        # Use asyncio timeout instead of signal (cross-platform compatible)
-        import asyncio
-        from concurrent.futures import ThreadPoolExecutor
-        import time
-        
-        async def run_comparison_with_timeout():
-            """Run comparison with timeout using asyncio"""
-            executor = ThreadPoolExecutor(max_workers=2)
-            loop = asyncio.get_event_loop()
-            
-            try:
-                # Run simulations with timeout
-                print(f"[QUEEN COMPARISON] Running simulation WITH queen...")
-                queen_params = {**base_params, 'with_queen': True}
-                food_with_queen_future = loop.run_in_executor(
-                    executor, _run_comparison_leg, queen_params, config.comparison_steps
-                )
-                
-                print(f"[QUEEN COMPARISON] Running simulation WITHOUT queen...")
-                no_queen_params = {**base_params, 'with_queen': False, 'use_llm_queen': False}
-                food_no_queen_future = loop.run_in_executor(
-                    executor, _run_comparison_leg, no_queen_params, config.comparison_steps
-                )
-                
-                # Wait for both with 60 second timeout
-                food_with_queen, food_no_queen = await asyncio.wait_for(
-                    asyncio.gather(food_with_queen_future, food_no_queen_future),
-                    timeout=60.0
-                )
-                
-                print(f"[QUEEN COMPARISON] Results - With Queen: {food_with_queen}, Without Queen: {food_no_queen}")
-                
-                return ComparisonResult(
-                    food_collected_with_queen=food_with_queen,
-                    food_collected_no_queen=food_no_queen,
-                    config=config
-                )
-            except asyncio.TimeoutError:
-                executor.shutdown(wait=False)
-                raise HTTPException(status_code=408, detail="Queen comparison timed out after 60 seconds")
-            finally:
-                executor.shutdown(wait=True)
-        
-        return await run_comparison_with_timeout()
-            
-    except HTTPException:
-        raise
-    except Exception as e:
-        print(f"[QUEEN COMPARISON] Error in comparison: {str(e)}")
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail=str(e))
+        with_queen, no_queen = await run_in_threadpool(ant_colony_bridge.compare, config, ENGINE_SERVICE,
+                                                       config.comparison_steps)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    return ComparisonResult(food_collected_with_queen=with_queen, food_collected_no_queen=no_queen, config=config)
 
 @app.post("/simulation/performance", response_model=PerformanceData)
 async def get_performance_analysis(config: SimulationConfig):
