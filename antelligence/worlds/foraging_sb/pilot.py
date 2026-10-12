@@ -29,8 +29,16 @@ MOVE_QUESTION = Question("choice", "Which way should you move now?", options=tup
 RECENT = 10  # board "recent deliveries" window, in ticks (= the queen cadence)
 
 
+INSTRUCTIONS = (
+    "Task: your team scores one point each time a piece of food is dropped into the nest. Find food, pick it up "
+    "when it is next to you and your hands are empty, carry it to the nest and drop it when the nest is next to "
+    "you. Other agents can block your way; walls are not shown until you see them."
+)
+
+
 class ForagingSB:
     name = "foraging_sb"
+    instructions = INSTRUCTIONS
     actions: Mapping[str, str] = ACTIONS
 
     def make_world(self, seed: int, condition: str) -> World:
