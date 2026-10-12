@@ -1,0 +1,2200 @@
+[
+ {
+  "arm": "S",
+  "condition": "base",
+  "queen_every": null,
+  "seed": 1,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "S",
+  "condition": "base",
+  "queen_every": null,
+  "seed": 2,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "S",
+  "condition": "base",
+  "queen_every": null,
+  "seed": 3,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "S",
+  "condition": "base",
+  "queen_every": null,
+  "seed": 4,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "S",
+  "condition": "base",
+  "queen_every": null,
+  "seed": 5,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "S",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 1,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "S",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 2,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "S",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 3,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "S",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 4,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "S",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 5,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "S",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 1,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "S",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 2,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "S",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 3,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "S",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 4,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "S",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 5,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "S",
+  "condition": "base",
+  "queen_every": null,
+  "seed": 1,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "S",
+  "condition": "base",
+  "queen_every": null,
+  "seed": 2,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "S",
+  "condition": "base",
+  "queen_every": null,
+  "seed": 3,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "S",
+  "condition": "base",
+  "queen_every": null,
+  "seed": 4,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "S",
+  "condition": "base",
+  "queen_every": null,
+  "seed": 5,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "S",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 1,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "S",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 2,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "S",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 3,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "S",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 4,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "S",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 5,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "S",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 1,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "S",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 2,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "S",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 3,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "S",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 4,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "S",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 5,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "S-prime",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 1,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "S-prime",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 2,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "S-prime",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 3,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "S-prime",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 4,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "S-prime",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 5,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "S-prime",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 1,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "S-prime",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 2,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "S-prime",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 3,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "S-prime",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 4,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "S-prime",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 5,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "S-prime",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 1,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "S-prime",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 2,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "S-prime",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 3,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "S-prime",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 4,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "S-prime",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 5,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "S-prime",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 1,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "S-prime",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 2,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "S-prime",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 3,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "S-prime",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 4,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "S-prime",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 5,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "DS-all",
+  "condition": "base",
+  "queen_every": null,
+  "seed": 1,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "DS-all",
+  "condition": "base",
+  "queen_every": null,
+  "seed": 2,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "DS-all",
+  "condition": "base",
+  "queen_every": null,
+  "seed": 3,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "DS-all",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 1,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "DS-all",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 2,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "DS-all",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 3,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "DS-all",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 1,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "DS-all",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 2,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "DS-all",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 3,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "DS-all",
+  "condition": "base",
+  "queen_every": null,
+  "seed": 1,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "DS-all",
+  "condition": "base",
+  "queen_every": null,
+  "seed": 2,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "DS-all",
+  "condition": "base",
+  "queen_every": null,
+  "seed": 3,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "DS-all",
+  "condition": "base",
+  "queen_every": null,
+  "seed": 4,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "DS-all",
+  "condition": "base",
+  "queen_every": null,
+  "seed": 5,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "DS-all",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 1,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "DS-all",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 2,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "DS-all",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 3,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "DS-all",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 4,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "DS-all",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 5,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "DS-all",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 1,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "DS-all",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 2,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "DS-all",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 3,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "DS-all",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 4,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "DS-all",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 5,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "Q-all-qwen3.5-0.8b",
+  "condition": "base",
+  "queen_every": null,
+  "seed": 1,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "Q-all-qwen3.5-0.8b",
+  "condition": "base",
+  "queen_every": null,
+  "seed": 2,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "Q-all-qwen3.5-0.8b",
+  "condition": "base",
+  "queen_every": null,
+  "seed": 3,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "Q-all-qwen3.5-0.8b",
+  "condition": "base",
+  "queen_every": null,
+  "seed": 4,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "Q-all-qwen3.5-0.8b",
+  "condition": "base",
+  "queen_every": null,
+  "seed": 5,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "Q-all-qwen3.5-0.8b",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 1,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "Q-all-qwen3.5-0.8b",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 2,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "Q-all-qwen3.5-0.8b",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 3,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "Q-all-qwen3.5-0.8b",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 4,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "Q-all-qwen3.5-0.8b",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 5,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "Q-all-qwen3.5-0.8b",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 1,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "Q-all-qwen3.5-0.8b",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 2,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "Q-all-qwen3.5-0.8b",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 3,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "Q-all-qwen3.5-0.8b",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 4,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "Q-all-qwen3.5-0.8b",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 5,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "Q-all-qwen3.5-0.8b",
+  "condition": "base",
+  "queen_every": null,
+  "seed": 1,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "Q-all-qwen3.5-0.8b",
+  "condition": "base",
+  "queen_every": null,
+  "seed": 2,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "Q-all-qwen3.5-0.8b",
+  "condition": "base",
+  "queen_every": null,
+  "seed": 3,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "Q-all-qwen3.5-0.8b",
+  "condition": "base",
+  "queen_every": null,
+  "seed": 4,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "Q-all-qwen3.5-0.8b",
+  "condition": "base",
+  "queen_every": null,
+  "seed": 5,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "Q-all-qwen3.5-0.8b",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 1,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "Q-all-qwen3.5-0.8b",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 2,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "Q-all-qwen3.5-0.8b",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 3,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "Q-all-qwen3.5-0.8b",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 4,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "Q-all-qwen3.5-0.8b",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 5,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "Q-all-qwen3.5-0.8b",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 1,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "Q-all-qwen3.5-0.8b",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 2,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "Q-all-qwen3.5-0.8b",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 3,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "Q-all-qwen3.5-0.8b",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 4,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "Q-all-qwen3.5-0.8b",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 5,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "Q-all-qwen3.5-4b",
+  "condition": "base",
+  "queen_every": null,
+  "seed": 1,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "Q-all-qwen3.5-4b",
+  "condition": "base",
+  "queen_every": null,
+  "seed": 2,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "Q-all-qwen3.5-4b",
+  "condition": "base",
+  "queen_every": null,
+  "seed": 3,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "Q-all-qwen3.5-4b",
+  "condition": "base",
+  "queen_every": null,
+  "seed": 4,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "Q-all-qwen3.5-4b",
+  "condition": "base",
+  "queen_every": null,
+  "seed": 5,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "Q-all-qwen3.5-4b",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 1,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "Q-all-qwen3.5-4b",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 2,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "Q-all-qwen3.5-4b",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 3,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "Q-all-qwen3.5-4b",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 4,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "Q-all-qwen3.5-4b",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 5,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "Q-all-qwen3.5-4b",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 1,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "Q-all-qwen3.5-4b",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 2,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "Q-all-qwen3.5-4b",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 3,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "Q-all-qwen3.5-4b",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 4,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "Q-all-qwen3.5-4b",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 5,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "Q-all-qwen3.5-4b",
+  "condition": "base",
+  "queen_every": null,
+  "seed": 1,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "Q-all-qwen3.5-4b",
+  "condition": "base",
+  "queen_every": null,
+  "seed": 2,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "Q-all-qwen3.5-4b",
+  "condition": "base",
+  "queen_every": null,
+  "seed": 3,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "Q-all-qwen3.5-4b",
+  "condition": "base",
+  "queen_every": null,
+  "seed": 4,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "Q-all-qwen3.5-4b",
+  "condition": "base",
+  "queen_every": null,
+  "seed": 5,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "Q-all-qwen3.5-4b",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 1,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "Q-all-qwen3.5-4b",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 2,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "Q-all-qwen3.5-4b",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 3,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "Q-all-qwen3.5-4b",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 4,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "Q-all-qwen3.5-4b",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 5,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "Q-all-qwen3.5-4b",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 1,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "Q-all-qwen3.5-4b",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 2,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "Q-all-qwen3.5-4b",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 3,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "Q-all-qwen3.5-4b",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 4,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "Q-all-qwen3.5-4b",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 5,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "Q-all-qwen3.5-9b",
+  "condition": "base",
+  "queen_every": null,
+  "seed": 1,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "Q-all-qwen3.5-9b",
+  "condition": "base",
+  "queen_every": null,
+  "seed": 2,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "Q-all-qwen3.5-9b",
+  "condition": "base",
+  "queen_every": null,
+  "seed": 3,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "Q-all-qwen3.5-9b",
+  "condition": "base",
+  "queen_every": null,
+  "seed": 4,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "Q-all-qwen3.5-9b",
+  "condition": "base",
+  "queen_every": null,
+  "seed": 5,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "Q-all-qwen3.5-9b",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 1,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "Q-all-qwen3.5-9b",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 2,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "Q-all-qwen3.5-9b",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 3,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "Q-all-qwen3.5-9b",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 4,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "Q-all-qwen3.5-9b",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 5,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "Q-all-qwen3.5-9b",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 1,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "Q-all-qwen3.5-9b",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 2,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "Q-all-qwen3.5-9b",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 3,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "Q-all-qwen3.5-9b",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 4,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "Q-all-qwen3.5-9b",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 5,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "Q-all-qwen3.5-9b",
+  "condition": "base",
+  "queen_every": null,
+  "seed": 1,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "Q-all-qwen3.5-9b",
+  "condition": "base",
+  "queen_every": null,
+  "seed": 2,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "Q-all-qwen3.5-9b",
+  "condition": "base",
+  "queen_every": null,
+  "seed": 3,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "Q-all-qwen3.5-9b",
+  "condition": "base",
+  "queen_every": null,
+  "seed": 4,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "Q-all-qwen3.5-9b",
+  "condition": "base",
+  "queen_every": null,
+  "seed": 5,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "Q-all-qwen3.5-9b",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 1,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "Q-all-qwen3.5-9b",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 2,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "Q-all-qwen3.5-9b",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 3,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "Q-all-qwen3.5-9b",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 4,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "Q-all-qwen3.5-9b",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 5,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "Q-all-qwen3.5-9b",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 1,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "Q-all-qwen3.5-9b",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 2,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "Q-all-qwen3.5-9b",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 3,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "Q-all-qwen3.5-9b",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 4,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "Q-all-qwen3.5-9b",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 5,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "Q-all-qwen3.8-27b",
+  "condition": "base",
+  "queen_every": null,
+  "seed": 1,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "Q-all-qwen3.8-27b",
+  "condition": "base",
+  "queen_every": null,
+  "seed": 2,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "Q-all-qwen3.8-27b",
+  "condition": "base",
+  "queen_every": null,
+  "seed": 3,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "Q-all-qwen3.8-27b",
+  "condition": "base",
+  "queen_every": null,
+  "seed": 4,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "Q-all-qwen3.8-27b",
+  "condition": "base",
+  "queen_every": null,
+  "seed": 5,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "Q-all-qwen3.8-27b",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 1,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "Q-all-qwen3.8-27b",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 2,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "Q-all-qwen3.8-27b",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 3,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "Q-all-qwen3.8-27b",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 4,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "Q-all-qwen3.8-27b",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 5,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "Q-all-qwen3.8-27b",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 1,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "Q-all-qwen3.8-27b",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 2,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "Q-all-qwen3.8-27b",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 3,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "Q-all-qwen3.8-27b",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 4,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "Q-all-qwen3.8-27b",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 5,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "Q-all-qwen3.8-27b",
+  "condition": "base",
+  "queen_every": null,
+  "seed": 1,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "Q-all-qwen3.8-27b",
+  "condition": "base",
+  "queen_every": null,
+  "seed": 2,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "Q-all-qwen3.8-27b",
+  "condition": "base",
+  "queen_every": null,
+  "seed": 3,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "Q-all-qwen3.8-27b",
+  "condition": "base",
+  "queen_every": null,
+  "seed": 4,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "Q-all-qwen3.8-27b",
+  "condition": "base",
+  "queen_every": null,
+  "seed": 5,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "Q-all-qwen3.8-27b",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 1,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "Q-all-qwen3.8-27b",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 2,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "Q-all-qwen3.8-27b",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 3,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "Q-all-qwen3.8-27b",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 4,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "Q-all-qwen3.8-27b",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 5,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "Q-all-qwen3.8-27b",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 1,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "Q-all-qwen3.8-27b",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 2,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "Q-all-qwen3.8-27b",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 3,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "Q-all-qwen3.8-27b",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 4,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "Q-all-qwen3.8-27b",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 5,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "F-Laya",
+  "condition": "base",
+  "queen_every": null,
+  "seed": 1,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "F-Laya",
+  "condition": "base",
+  "queen_every": null,
+  "seed": 2,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "F-Laya",
+  "condition": "base",
+  "queen_every": null,
+  "seed": 3,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "F-Laya",
+  "condition": "base",
+  "queen_every": null,
+  "seed": 4,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "F-Laya",
+  "condition": "base",
+  "queen_every": null,
+  "seed": 5,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "F-Laya",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 1,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "F-Laya",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 2,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "F-Laya",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 3,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "F-Laya",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 4,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "F-Laya",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 5,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "F-Laya",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 1,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "F-Laya",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 2,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "F-Laya",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 3,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "F-Laya",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 4,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "F-Laya",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 5,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "F-Laya",
+  "condition": "base",
+  "queen_every": null,
+  "seed": 1,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "F-Laya",
+  "condition": "base",
+  "queen_every": null,
+  "seed": 2,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "F-Laya",
+  "condition": "base",
+  "queen_every": null,
+  "seed": 3,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "F-Laya",
+  "condition": "base",
+  "queen_every": null,
+  "seed": 4,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "F-Laya",
+  "condition": "base",
+  "queen_every": null,
+  "seed": 5,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "F-Laya",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 1,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "F-Laya",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 2,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "F-Laya",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 3,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "F-Laya",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 4,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "F-Laya",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 5,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "F-Laya",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 1,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "F-Laya",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 2,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "F-Laya",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 3,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "F-Laya",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 4,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "F-Laya",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 5,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "F-Jev",
+  "condition": "base",
+  "queen_every": null,
+  "seed": 1,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "F-Jev",
+  "condition": "base",
+  "queen_every": null,
+  "seed": 2,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "F-Jev",
+  "condition": "base",
+  "queen_every": null,
+  "seed": 3,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "F-Jev",
+  "condition": "base",
+  "queen_every": null,
+  "seed": 4,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "F-Jev",
+  "condition": "base",
+  "queen_every": null,
+  "seed": 5,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "F-Jev",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 1,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "F-Jev",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 2,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "F-Jev",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 3,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "F-Jev",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 4,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "F-Jev",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 5,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "F-Jev",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 1,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "F-Jev",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 2,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "F-Jev",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 3,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "F-Jev",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 4,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "F-Jev",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 5,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "F-Jev",
+  "condition": "base",
+  "queen_every": null,
+  "seed": 1,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "F-Jev",
+  "condition": "base",
+  "queen_every": null,
+  "seed": 2,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "F-Jev",
+  "condition": "base",
+  "queen_every": null,
+  "seed": 3,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "F-Jev",
+  "condition": "base",
+  "queen_every": null,
+  "seed": 4,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "F-Jev",
+  "condition": "base",
+  "queen_every": null,
+  "seed": 5,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "F-Jev",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 1,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "F-Jev",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 2,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "F-Jev",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 3,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "F-Jev",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 4,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "F-Jev",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 5,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "F-Jev",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 1,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "F-Jev",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 2,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "F-Jev",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 3,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "F-Jev",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 4,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "F-Jev",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 5,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "F-Jev-noQueen",
+  "condition": "base",
+  "queen_every": null,
+  "seed": 1,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "F-Jev-noQueen",
+  "condition": "base",
+  "queen_every": null,
+  "seed": 2,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "F-Jev-noQueen",
+  "condition": "base",
+  "queen_every": null,
+  "seed": 3,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "F-Jev-noQueen",
+  "condition": "base",
+  "queen_every": null,
+  "seed": 4,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "F-Jev-noQueen",
+  "condition": "base",
+  "queen_every": null,
+  "seed": 5,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "F-Jev-noQueen",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 1,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "F-Jev-noQueen",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 2,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "F-Jev-noQueen",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 3,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "F-Jev-noQueen",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 4,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "F-Jev-noQueen",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 5,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "F-Jev-noQueen",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 1,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "F-Jev-noQueen",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 2,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "F-Jev-noQueen",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 3,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "F-Jev-noQueen",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 4,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "F-Jev-noQueen",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 5,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "F-Jev-noQueen",
+  "condition": "base",
+  "queen_every": null,
+  "seed": 1,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "F-Jev-noQueen",
+  "condition": "base",
+  "queen_every": null,
+  "seed": 2,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "F-Jev-noQueen",
+  "condition": "base",
+  "queen_every": null,
+  "seed": 3,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "F-Jev-noQueen",
+  "condition": "base",
+  "queen_every": null,
+  "seed": 4,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "F-Jev-noQueen",
+  "condition": "base",
+  "queen_every": null,
+  "seed": 5,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "F-Jev-noQueen",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 1,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "F-Jev-noQueen",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 2,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "F-Jev-noQueen",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 3,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "F-Jev-noQueen",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 4,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "F-Jev-noQueen",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 5,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "F-Jev-noQueen",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 1,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "F-Jev-noQueen",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 2,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "F-Jev-noQueen",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 3,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "F-Jev-noQueen",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 4,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "F-Jev-noQueen",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 5,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "F-Jev-noEsc",
+  "condition": "base",
+  "queen_every": null,
+  "seed": 1,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "F-Jev-noEsc",
+  "condition": "base",
+  "queen_every": null,
+  "seed": 2,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "F-Jev-noEsc",
+  "condition": "base",
+  "queen_every": null,
+  "seed": 3,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "F-Jev-noEsc",
+  "condition": "base",
+  "queen_every": null,
+  "seed": 4,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "F-Jev-noEsc",
+  "condition": "base",
+  "queen_every": null,
+  "seed": 5,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "F-Jev-noEsc",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 1,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "F-Jev-noEsc",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 2,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "F-Jev-noEsc",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 3,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "F-Jev-noEsc",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 4,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "F-Jev-noEsc",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 5,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "F-Jev-noEsc",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 1,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "F-Jev-noEsc",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 2,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "F-Jev-noEsc",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 3,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "F-Jev-noEsc",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 4,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "F-Jev-noEsc",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 5,
+  "world": "foraging_sb"
+ },
+ {
+  "arm": "F-Jev-noEsc",
+  "condition": "base",
+  "queen_every": null,
+  "seed": 1,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "F-Jev-noEsc",
+  "condition": "base",
+  "queen_every": null,
+  "seed": 2,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "F-Jev-noEsc",
+  "condition": "base",
+  "queen_every": null,
+  "seed": 3,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "F-Jev-noEsc",
+  "condition": "base",
+  "queen_every": null,
+  "seed": 4,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "F-Jev-noEsc",
+  "condition": "base",
+  "queen_every": null,
+  "seed": 5,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "F-Jev-noEsc",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 1,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "F-Jev-noEsc",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 2,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "F-Jev-noEsc",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 3,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "F-Jev-noEsc",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 4,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "F-Jev-noEsc",
+  "condition": "v1",
+  "queen_every": null,
+  "seed": 5,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "F-Jev-noEsc",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 1,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "F-Jev-noEsc",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 2,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "F-Jev-noEsc",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 3,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "F-Jev-noEsc",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 4,
+  "world": "graph_coloring"
+ },
+ {
+  "arm": "F-Jev-noEsc",
+  "condition": "v2",
+  "queen_every": null,
+  "seed": 5,
+  "world": "graph_coloring"
+ }
+]
