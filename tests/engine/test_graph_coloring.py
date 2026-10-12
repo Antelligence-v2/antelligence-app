@@ -339,3 +339,12 @@ def test_describe_declares_episode_length():
     from antelligence.worlds.graph_coloring import GRAPH_COLORING
     from antelligence.worlds.graph_coloring.world import ROUNDS
     assert GRAPH_COLORING.describe()["max_ticks"] == ROUNDS
+
+
+def test_pilot_instructions_are_short_and_say_nothing_of_variants():
+    from antelligence.experiments.pilot_contract import MAX_INSTRUCTIONS
+
+    text = GRAPH_COLORING.instructions
+    assert 0 < len(text) <= MAX_INSTRUCTIONS and text.startswith("Task:")
+    for hint in ("liar", "lost", "mirror", "flip", "run out", "runs out", "dropped message", "v1", "v2"):
+        assert hint not in text.lower()

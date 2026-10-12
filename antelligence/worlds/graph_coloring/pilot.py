@@ -25,8 +25,16 @@ from antelligence.worlds.graph_coloring.world import (
 )
 
 
+INSTRUCTIONS = (
+    "Task: 8 agents on a network each pick a colour over 4 rounds. The team scores the share of links whose two "
+    "ends hold different colours after the last round. Taking a colour tells your neighbours, who hear it next "
+    "round; noop keeps your colour silently."
+)
+
+
 class GraphColoringPilot:
     name = "graph_coloring"
+    instructions = INSTRUCTIONS
     actions: Mapping[str, str] = {
         **{colour_action(i): f"Take {COLOUR_NAMES[i]} (tells your neighbours)" for i in range(MAX_COLOURS)},
         NOOP: "Keep your current colour (silent)",
