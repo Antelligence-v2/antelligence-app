@@ -90,6 +90,10 @@ def test_eval_seeds_are_refused_until_prereg_is_committed(tmp_path, capsys):
     assert code == 0 and json.loads(text)["ran"] == 10  # 2 worlds x 5 eval seeds
     for cell in (tmp_path / "o" / "cells.jsonl").read_text().splitlines():
         assert json.loads(cell)["split"] == "eval"
+    (tmp_path / "antelligence").mkdir(exist_ok=True)
+    (tmp_path / "antelligence" / "edited_after_prereg.py").write_text("x = 1\n")  # any uncommitted engine change
+    with pytest.raises(SystemExit, match="evaluation refused"):
+        cli.main([*argv[:5], str(tmp_path / "o2"), *argv[6:]])
 
 
 def test_live_mode_reads_keys_only_at_the_cli_boundary(tmp_path):
