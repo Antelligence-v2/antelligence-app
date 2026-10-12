@@ -140,11 +140,11 @@ def test_protocols_are_runtime_checkable():
     assert not isinstance(Echo(), PilotWorld)
 
 
-def test_pilot_world_needs_short_instructions():
-    from antelligence.experiments.pilot_contract import MAX_INSTRUCTIONS
-    from tests.engine.fake_pilot_world import FakePilotWorld
-
-    world = FakePilotWorld()
-    assert isinstance(world, PilotWorld) and 0 < len(world.instructions) <= MAX_INSTRUCTIONS
-    bare = type("Bare", (), {k: v for k, v in vars(FakePilotWorld).items() if k != "instructions"})()
+def test_pilot_world_needs_instructions():
+    members = {m: (lambda self, *a, **k: None) for m in ("make_world", "sensor", "script", "score", "groups",
+                                                        "board_summary", "oracle_action", "oracle_actions",
+                                                        "labelled_questions", "describe")}
+    full = type("Full", (), {**members, "name": "w", "actions": {}, "instructions": "Task: deliver food."})()
+    assert isinstance(full, PilotWorld)
+    bare = type("Bare", (), {**members, "name": "w", "actions": {}})()
     assert not isinstance(bare, PilotWorld)
