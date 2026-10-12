@@ -47,7 +47,7 @@ def latest_queen_goal(view: LocalView, group: str) -> Optional[str]:
 
 class DecisionWorker:
     def __init__(self, backend: DecisionBackend, sensor: Sensor, group: str, *, model: str,
-                 use_queen: bool = True, max_checks: int = 2, report_ttl: int = 10) -> None:
+                 use_queen: bool = True, max_checks: int = 2, report_ttl: int = 10, instructions: str = "") -> None:
         if max_checks < 0 or report_ttl < 1:
             raise ValueError("max_checks must be >= 0 and report_ttl >= 1")
         self.backend = backend
@@ -57,10 +57,12 @@ class DecisionWorker:
         self.use_queen = use_queen
         self.max_checks = max_checks
         self.report_ttl = report_ttl
+        self.instructions = instructions.strip()  # the world's task text, put in front of the move question
 
     def describe(self) -> Dict[str, Any]:
         return {"policy": "decision_worker", "group": self.group, "model": self.model, "use_queen": self.use_queen,
-                "max_checks": self.max_checks, "report_ttl": self.report_ttl, "backend": self.backend.describe(),
+                "max_checks": self.max_checks, "report_ttl": self.report_ttl, "instructions": self.instructions,
+                "backend": self.backend.describe(),
                 "sensor": self.sensor.describe()}
 
     def _allowed(self, view: LocalView, offered: Mapping[str, str]) -> List[str]:
@@ -84,7 +86,8 @@ class DecisionWorker:
         criteria = {a: sensed.actions[a] for a in allowed}
         criteria[REPORT] = REPORT_DESCRIPTION
         goal = latest_queen_goal(view, self.group) if self.use_queen else None
-        instructions = "Which action?" if goal is None else f"Which action? Your group's goal: {goal}"
+        question = "Which action?" if goal is None else f"Which action? Your group's goal: {goal}"
+        instructions = f"{self.instructions} {question}" if self.instructions else question
         questions: Dict[str, Question] = {
             "move": Question("choice", instructions, tuple(allowed) + (REPORT,), criteria)}
         for qid in sorted(sensed.checks)[: self.max_checks]:

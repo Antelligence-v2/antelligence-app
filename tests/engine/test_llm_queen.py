@@ -206,3 +206,16 @@ def test_framework_policies_validation_and_noesc_is_backend_only():
         use_queen=False)
     assert asyncio.run(no_esc["w0"].decide(qview(1))).meta["escalated"] == []
     assert asyncio.run(esc["w0"].decide(qview(1))).meta["escalated"] == ["move"]
+
+
+def test_task_instructions_reach_the_queen_prompt_and_framework_workers():
+    provider = FakeProvider(lambda r: GOOD)
+    q = LLMQueen(provider, "q", groups={"g1": ("w0",)}, actions=ACTIONS, every=1, instructions="Task: score points.")
+    go(q, qview(1))
+    assert "Task: score points." in provider.requests[0].messages[0]["content"]
+    plain, plain_provider = queen(lambda r: GOOD)
+    go(plain, qview(1))
+    assert plain_provider.requests[0].messages[0]["content"].endswith("}")
+    pols = framework_policies(["w0", "queen"], {"g1": ("w0",)}, FakeBackend(), ChoiceSensor(), "m", use_queen=True,
+                              queen=q, instructions="Task: score points.")
+    assert pols["w0"].instructions == "Task: score points."

@@ -76,3 +76,14 @@ def test_runs_in_scheduler_deterministically():
         return run(ChoiceWorld(n=3), {a: p for a in ChoiceWorld(n=3).agents()}, ticks=3, queen=False).log.trace_hash
 
     assert once() == once()
+
+
+def test_instructions_reach_the_system_prompt_and_default_is_unchanged():
+    p, provider = policy(lambda r: '{"action": "a"}')
+    go(p, view())
+    assert provider.requests[0].messages[0]["content"].startswith("You control one agent.")
+    q = StateChatPolicy(provider, "m", ChoiceSensor(), instructions="Task: score points.")
+    go(q, view())
+    system = provider.requests[1].messages[0]["content"]
+    assert system.startswith("Task: score points.\n\nYou control one agent.")
+    assert q.describe()["instructions"] == "Task: score points."
