@@ -24,6 +24,7 @@ const TumorSimulation = lazy(() => import("./pages/TumorSimulation"));
 const TumorHunt = lazy(() => import("./pages/TumorHunt"));
 const ExperimentLab = lazy(() => import("./pages/ExperimentLab"));
 const DesignSystem = import.meta.env.DEV ? lazy(() => import("./pages/DesignSystem")) : null;
+const ViewportLab = import.meta.env.DEV ? lazy(() => import("./features/viewport/lab/ViewportLab")) : null;
 
 const queryClient = createQueryClient();
 const motionFeatures = () => import("./design/motion").then((m) => m.default);
@@ -53,6 +54,7 @@ const App = () => (
               <Route path="/experiments" element={<ExperimentLab />} />
               <Route path="/experiments/:id" element={<ExperimentLab />} />
               {DesignSystem && <Route path="/design" element={<DesignSystem />} />}
+              {ViewportLab && <Route path="/viewport-lab" element={<ViewportLab />} />}
               <Route path="*" element={<NotFound />} />
             </Route>
           </Routes>
