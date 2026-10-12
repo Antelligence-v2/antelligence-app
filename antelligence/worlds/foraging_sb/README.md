@@ -36,12 +36,13 @@ where you remembered it?"* (offered only once the agent has the corresponding me
 
 ## Sensing
 
-`ForagingSensor` turns an agent's `LocalView` into a `SensedState`: about 300-400 characters in words ("Carrying food:
-no. Remembered food spot: 3 north, 2 east. That spot is in view and food is there. Remembered nest: 4 south. Heard:
-agent 7 (1 east of you) says "food is north-west of me"."). Directions
-are computed in code; the text never suggests a move (a planner hint jammed agents and would measure the planner). The remembered food and nest are what the agent was briefed on, moved only
-when it picks up or drops there; seeing the spot empty, or food somewhere else, never changes them. That is what makes
-a script go stale under v1 and v2.
+`ForagingSensor` turns an agent's `LocalView` into a `SensedState` (about 200-400 characters): "Carrying food: no.
+Remembered food spot: 3 north, 2 east. Remembered nest: 4 south. North: open, then wall. East: agent 4. South: open, open.
+West: wall. Last move: east, moved. Heard: agent 7 (1 east of you) says "food is north-west of me"." Each direction names
+the two cells of the agent's own 5x5 view (open, wall, food, nest, edge, agent N), mirrored as the agent sees it under v2;
+"Last move" is its own last action's outcome. The text never suggests a move (a planner hint jammed agents and would
+measure the planner). The remembered food and nest are the briefed spots, moved only when the agent picks up or drops
+there; seeing the spot empty, or food elsewhere, never changes them, which makes a script go stale under v1 and v2.
 
 ## Scripts and validity
 
@@ -73,4 +74,6 @@ rewrites `docs/research/v4-pilot-20261011/validity-foraging_sb.json`. No model c
 8. **Agent ids** are `"0"`..`"9"` (SwarmBench `Agent_0`..). Start cells use the same seeded draws and order as
    SwarmBench's `spread`, assuming agents are placed in id order; this was not checked by running SwarmBench.
 9. **Variants v1 and v2, the sensor, the typed actions/checks, S and S'** do not exist in SwarmBench.
-10. Only the foraging task is ported (not transport, flocking, pursuit, synchronisation).
+10. **Memory asymmetry.** S and S' read structured fields and keep a self-built map memory from their own views;
+    model arms are stateless per tick, the board being the framework's only memory.
+11. Only the foraging task is ported (not transport, flocking, pursuit, synchronisation).
