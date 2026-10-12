@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { NavLink, useLocation } from "react-router-dom";
+import { Link, NavLink, useLocation } from "react-router-dom";
 import { ChevronRight, Moon, Search, Sun } from "lucide-react";
 import * as Collapsible from "@radix-ui/react-collapsible";
 import { cn } from "@/lib/utils";
@@ -31,11 +31,11 @@ function NavRow({ item, onNavigate }: { item: NavItem; onNavigate?: () => void }
       to={item.to}
       onClick={onNavigate}
       className={cn(
-        "group relative flex h-8 items-center gap-2.5 rounded-md px-2.5 text-[13px] transition-colors duration-fast",
+        "group relative flex h-8 items-center gap-2.5 rounded-full px-3 text-[13px] transition-colors duration-fast",
         active ? "text-foreground" : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
       )}
     >
-      <span className={cn("absolute inset-0 rounded-md bg-accent transition-opacity duration-base", active ? "opacity-100" : "opacity-0")} />
+      <span className={cn("absolute inset-0 rounded-full bg-accent transition-opacity duration-base", active ? "opacity-100" : "opacity-0")} />
       <item.icon className={cn("relative size-4 shrink-0", active ? "text-primary" : "opacity-80")} />
       <span className="relative truncate">{item.label}</span>
     </NavLink>
@@ -75,15 +75,15 @@ export function Sidebar({ onOpenPalette, onNavigate }: { onOpenPalette: () => vo
 
   return (
     <div className="flex h-full flex-col gap-4 px-3 py-4">
-      <div className="flex items-center gap-2.5 px-2">
-        <LogoMark className="text-primary" />
-        <span className="text-[15px] font-semibold tracking-[-0.01em]">Antelligence</span>
-      </div>
+      <Link to="/worlds" onClick={onNavigate} aria-label="Worlds" className="flex items-center gap-2.5 rounded-full px-2 py-1 transition-opacity hover:opacity-70">
+        <LogoMark className="size-4 text-foreground/90" />
+        <span className="text-xs font-light uppercase tracking-[0.28em]">Antelligence</span>
+      </Link>
 
       <button
         type="button"
         onClick={onOpenPalette}
-        className="flex h-8 items-center gap-2 rounded-md border bg-background/60 px-2.5 text-[13px] text-muted-foreground shadow-e1 transition-colors hover:border-foreground/20 hover:text-foreground"
+        className="flex h-8 items-center gap-2 rounded-full border bg-background/60 px-3 text-[13px] text-muted-foreground shadow-e1 transition-colors hover:border-foreground/20 hover:text-foreground"
       >
         <Search className="size-3.5" />
         <span className="flex-1 text-left">Search</span>
@@ -95,7 +95,7 @@ export function Sidebar({ onOpenPalette, onNavigate }: { onOpenPalette: () => vo
       </nav>
 
       <Collapsible.Root open={legacyOpen} onOpenChange={setLegacyOpen} className="flex flex-col gap-0.5">
-        <Collapsible.Trigger className="flex h-7 items-center gap-1.5 rounded-md px-2.5 text-2xs font-medium uppercase tracking-[0.08em] text-muted-foreground transition-colors hover:text-foreground">
+        <Collapsible.Trigger className="flex h-7 items-center gap-1.5 rounded-full px-3 text-2xs uppercase tracking-[0.2em] text-muted-foreground transition-colors hover:text-foreground">
           <ChevronRight className={cn("size-3 transition-transform duration-base", legacyOpen && "rotate-90")} />
           Legacy
         </Collapsible.Trigger>

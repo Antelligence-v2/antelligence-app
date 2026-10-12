@@ -7,7 +7,7 @@ import type { ParamValue, World, WorldOption } from "@/api/engine";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Kbd } from "@/design/Kbd";
-import { Page, PageHeader } from "@/design/PageHeader";
+import { Page, PhotoHeader } from "@/design/PageHeader";
 import { EmptyState, ErrorState } from "@/design/States";
 import { armLabel, humanize, selectsLlm, worldMeta } from "@/features/worlds/meta";
 import { ParamField } from "@/features/worlds/ParamField";
@@ -20,7 +20,7 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
   return (
     <section className="space-y-3">
       <div className="flex items-baseline justify-between gap-3">
-        <h2 className="text-2xs font-medium uppercase tracking-[0.08em] text-muted-foreground">{label}</h2>
+        <h2 className="text-2xs uppercase tracking-[0.2em] text-muted-foreground">{label}</h2>
         {hint && <p className="text-2xs text-muted-foreground">{hint}</p>}
       </div>
       {children}
@@ -137,8 +137,32 @@ function Launcher({ world }: { world: World }) {
   const preview = runJob.live;
 
   return (
-    <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_300px]">
-      <div className="space-y-8">
+    <div className="grid gap-6 lg:grid-cols-[340px_minmax(0,1fr)]">
+      {/* Left bar: run button on top, then every setting (like the original simulator pages). */}
+      <aside className="space-y-6 lg:sticky lg:top-6 lg:max-h-[calc(100dvh-3rem)] lg:self-start lg:overflow-y-auto lg:pr-1">
+        <div className="surface-edge overflow-hidden rounded-xl border bg-card">
+          <div className="relative p-4">
+            {pending && <div className="absolute inset-x-0 top-0 h-px animate-shimmer bg-[linear-gradient(90deg,transparent,hsl(var(--primary)),transparent)] bg-[length:200%_100%]" />}
+            <Button className="w-full rounded-full" onClick={() => void launch()} disabled={pending || (usesLlm && !model.trim())}>
+              {pending ? <Loader2 className="animate-spin" /> : <Play />}
+              {pending ? (job?.status === "queued" ? "Queued…" : `Running… t${job?.tick ?? 0}`) : "Launch run"}
+              {!pending && <Kbd className="ml-auto border-primary-foreground/20 bg-primary-foreground/10 text-primary-foreground/80">⌘↵</Kbd>}
+            </Button>
+            {pending && job?.max_ticks ? (
+              <div className="mt-3 space-y-1">
+                <div className="h-1 overflow-hidden rounded-full bg-surface-3">
+                  <div className="h-full bg-primary transition-[width] duration-300" style={{ width: `${progress * 100}%` }} />
+                </div>
+                <p className="numeric text-center font-mono text-2xs text-muted-foreground">tick {job.tick} / {job.max_ticks}{job.llm ? " · LLM" : ""}</p>
+              </div>
+            ) : (
+              <p className="mt-2.5 text-center text-2xs text-muted-foreground">
+                {usesLlm ? "LLM runs call your LiteLLM proxy; replays answer from the run's response cache." : "Runs locally and deterministically; results are research-grade, not clinical."}
+              </p>
+            )}
+          </div>
+        </div>
+        {runJob.error && <ErrorState error={runJob.error} />}
         <Field label="Arm" hint="Which coordination mechanisms are switched on">
           <ArmPicker world={world} value={arm} onChange={setArm} />
           {world.name === "ant_colony" && arm === "queen" && usesLlm && (
@@ -214,12 +238,24 @@ function Launcher({ world }: { world: World }) {
             </Button>
           </div>
         </Field>
-      </div>
+      </aside>
 
-      <aside className="lg:sticky lg:top-8 lg:self-start">
+      <section className="min-w-0 space-y-4">
+        {pending && preview && preview.frames.length > 0 ? (
+          <div className="surface-edge overflow-hidden rounded-xl border bg-card p-3">
+            <p className="px-1 pb-2 text-2xs uppercase tracking-[0.2em] text-muted-foreground">Live · tick {job?.tick ?? 0}</p>
+            <div className="mx-auto max-w-[640px]">
+              <SceneCanvas data={preview} position={preview.frames[preview.frames.length - 1].tick} layer={(preview.scene.kind as string) === "tumor" ? "drug" : "trail"} selected={null} onSelect={() => {}} />
+            </div>
+          </div>
+        ) : (
+          <div className="surface-edge flex aspect-[4/3] max-h-[560px] w-full items-center justify-center rounded-xl border border-dashed bg-card px-6 text-center text-2xs uppercase tracking-[0.2em] text-muted-foreground">
+            {pending ? "Starting…" : "Configure the colony on the left and press Launch run"}
+          </div>
+        )}
         <div className="surface-edge overflow-hidden rounded-xl border bg-card">
           <div className="space-y-3 p-5">
-            <h2 className="text-2xs font-medium uppercase tracking-[0.08em] text-muted-foreground">Run spec</h2>
+            <h2 className="text-2xs uppercase tracking-[0.2em] text-muted-foreground">Run spec</h2>
             <dl className="space-y-2 text-sm">
               {summary.map(([k, v]) => (
                 <div key={k} className="flex items-baseline justify-between gap-3">
@@ -229,35 +265,8 @@ function Launcher({ world }: { world: World }) {
               ))}
             </dl>
           </div>
-          <div className="relative border-t p-4">
-            {pending && <div className="absolute inset-x-0 top-0 h-px animate-shimmer bg-[linear-gradient(90deg,transparent,hsl(var(--primary)),transparent)] bg-[length:200%_100%]" />}
-            <Button className="w-full" onClick={() => void launch()} disabled={pending || (usesLlm && !model.trim())}>
-              {pending ? <Loader2 className="animate-spin" /> : <Play />}
-              {pending ? (job?.status === "queued" ? "Queued…" : `Running… t${job?.tick ?? 0}`) : "Launch run"}
-              {!pending && <Kbd className="ml-auto border-primary-foreground/20 bg-primary-foreground/10 text-primary-foreground/80">⌘↵</Kbd>}
-            </Button>
-            {pending && job?.max_ticks ? (
-              <div className="mt-3 space-y-1">
-                <div className="h-1 overflow-hidden rounded-full bg-surface-3">
-                  <div className="h-full bg-primary transition-[width] duration-300" style={{ width: `${progress * 100}%` }} />
-                </div>
-                <p className="numeric text-center font-mono text-2xs text-muted-foreground">tick {job.tick} / {job.max_ticks}{job.llm ? " · LLM" : ""}</p>
-              </div>
-            ) : (
-              <p className="mt-2.5 text-center text-2xs text-muted-foreground">
-                {usesLlm ? "LLM runs call your LiteLLM proxy; replays answer from the run's response cache." : "Runs locally and deterministically; results are research-grade, not clinical."}
-              </p>
-            )}
-          </div>
         </div>
-        {pending && preview && preview.frames.length > 0 && (
-          <div className="surface-edge mt-3 overflow-hidden rounded-xl border bg-card p-2">
-            <p className="px-1 pb-1.5 text-2xs font-medium uppercase tracking-[0.08em] text-muted-foreground">Live</p>
-            <SceneCanvas data={preview} position={preview.frames[preview.frames.length - 1].tick} layer={(preview.scene.kind as string) === "tumor" ? "drug" : "trail"} selected={null} onSelect={() => {}} />
-          </div>
-        )}
-        {runJob.error && <ErrorState className="mt-3" error={runJob.error} />}
-      </aside>
+      </section>
     </div>
   );
 }
@@ -270,16 +279,12 @@ export default function WorldLaunch() {
 
   return (
     <Page>
-      <div className="space-y-4">
-        <Link to="/worlds" className="inline-flex items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground">
-          <ArrowLeft className="size-3.5" /> Worlds
-        </Link>
-        <PageHeader
-          eyebrow="New run"
-          title={<span className="flex items-center gap-2.5"><meta.icon className="size-5 text-primary" />{meta.title}</span>}
-          description={world?.description ?? (worlds.isPending ? <Skeleton className="h-4 w-80" /> : undefined)}
-        />
-      </div>
+      <PhotoHeader
+        top={<Link to="/worlds" className="inline-flex items-center gap-1.5 transition-colors"><ArrowLeft className="size-3.5" /> Worlds</Link>}
+        eyebrow="New run"
+        title={meta.title}
+        description={world?.description ?? (worlds.isPending ? <Skeleton className="h-4 w-80 bg-white/15" /> : undefined)}
+      />
       {worlds.isError && <ErrorState error={worlds.error} onRetry={() => void worlds.refetch()} />}
       {worlds.isPending && <Skeleton className="h-96 w-full" />}
       {worlds.isSuccess && !world && (

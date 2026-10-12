@@ -3,10 +3,9 @@ import { Link, useParams, useSearchParams } from "react-router-dom";
 import { ChevronRight, RotateCcw, ShieldCheck } from "lucide-react";
 import { useRun, useRunEvents, useRunFrames, useVerifyRun } from "@/api/queries";
 import type { EngineEvent, Run } from "@/api/engine";
-import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Hash } from "@/design/Hash";
-import { Page } from "@/design/PageHeader";
+import { Page, PhotoHeader, photoButton } from "@/design/PageHeader";
 import { ErrorState } from "@/design/States";
 import { TrustBadge, VerdictBadge } from "@/features/runs/badges";
 import { Sparkline, TimeSeriesChart } from "@/features/runs/charts";
@@ -91,6 +90,22 @@ function TickActivity({ events }: { events: EngineEvent[] }) {
   );
 }
 
+/** Play / pause / scrub controls, shown above the scene. */
+function PlayBar({ events, playback }: { events: EngineEvent[]; playback: Playback }) {
+  const density = useMemo(() => {
+    const d = new Map<number, number>();
+    for (const [t, list] of eventsByTick(events)) d.set(t, list.filter((e) => e.type !== "observed" && e.type !== "tick_ended").length);
+    return d;
+  }, [events]);
+  const flagged = useMemo(() => new Set(events.filter((e) => e.type === "intent_blocked" || e.type === "policy_failed").map((e) => e.tick)), [events]);
+  if (playback.max <= playback.min) return null;
+  return (
+    <section className="surface-edge rounded-xl border bg-card p-4">
+      <Scrubber playback={playback} density={density} flagged={flagged} />
+    </section>
+  );
+}
+
 function Timeline({ run, series, events, playback }: { run: Run; series: TickPoint[]; events: EngineEvent[]; playback: Playback }) {
   const keys = useMemo(() => numericSeriesKeys(series), [series]);
   const [metric, setMetric] = useState<string | undefined>(worldMeta(run.spec.world).kpis[0]);
@@ -98,12 +113,6 @@ function Timeline({ run, series, events, playback }: { run: Run; series: TickPoi
   const ticks = useMemo(() => series.map((p) => p.tick), [series]);
   const values = useMemo(() => (active ? seriesValues(series, active) : []), [series, active]);
   const byTick = useMemo(() => eventsByTick(events), [events]);
-  const density = useMemo(() => {
-    const d = new Map<number, number>();
-    for (const [t, list] of byTick) d.set(t, list.filter((e) => e.type !== "observed" && e.type !== "tick_ended").length);
-    return d;
-  }, [byTick]);
-  const flagged = useMemo(() => new Set(events.filter((e) => e.type === "intent_blocked" || e.type === "policy_failed").map((e) => e.tick)), [events]);
 
   return (
     <section className="surface-edge overflow-hidden rounded-xl border bg-card">
@@ -133,7 +142,6 @@ function Timeline({ run, series, events, playback }: { run: Run; series: TickPoi
         ) : (
           <p className="py-10 text-center text-sm text-muted-foreground">No metric changes over time in this run.</p>
         )}
-        {playback.max > playback.min && <Scrubber playback={playback} density={density} flagged={flagged} />}
         <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-3">
           <div className="flex items-center gap-3">
             <span className="numeric whitespace-nowrap font-mono text-xs text-muted-foreground">tick {playback.tick}</span>
@@ -261,8 +269,9 @@ function RunBody({ run, events }: { run: Run; events: EngineEvent[] }) {
         })}
       </div>
       <SafetyStrip run={run} />
+      <PlayBar events={events} playback={playback} />
       {frames.data && (
-        <Viewport data={frames.data} position={playback.position} tick={playback.tick} selected={agent} onSelect={setAgent} />
+        <Viewport data={frames.data} position={playback.position} tick={playback.tick} playing={playback.playing} selected={agent} onSelect={setAgent} />
       )}
       {frames.isPending && <Skeleton className="h-[420px] rounded-xl" />}
       <Timeline run={run} series={series} events={events} playback={playback} />
@@ -284,46 +293,43 @@ function RunView({ run }: { run: Run }) {
 
   return (
     <Page className="space-y-6">
-      <nav className="flex items-center gap-1 text-xs text-muted-foreground">
-        <Link to="/worlds" className="hover:text-foreground">Worlds</Link>
-        <ChevronRight className="size-3" />
-        <Link to={`/w/${run.spec.world}`} className="hover:text-foreground">{meta.title}</Link>
-        <ChevronRight className="size-3" />
-        <Hash value={run.run_id} head={24} tail={0} className="text-xs" />
-      </nav>
-
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div className="space-y-2">
-          <h1 className="flex items-center gap-2.5 text-2xl font-semibold tracking-[-0.02em]">
-            <meta.icon className="size-5 text-primary" />
-            {meta.title}
-            <span className="text-muted-foreground/50">·</span>
-            <span>{armLabel(run.spec.arm)}</span>
-          </h1>
-          <p className="numeric text-sm text-muted-foreground">
+      <PhotoHeader
+        top={
+          <nav className="flex items-center gap-1">
+            <Link to="/worlds" className="transition-colors">Worlds</Link>
+            <ChevronRight className="size-3" />
+            <Link to={`/w/${run.spec.world}`} className="transition-colors">{meta.title}</Link>
+            <ChevronRight className="size-3" />
+            <Hash value={run.run_id} head={24} tail={0} className="text-xs text-white/60" />
+          </nav>
+        }
+        eyebrow={`${meta.title} · run`}
+        title={armLabel(run.spec.arm)}
+        description={
+          <span className="numeric">
             case {run.spec.case}
             {Object.entries(run.spec.params).map(([k, v]) => <span key={k}> · {humanize(k).toLowerCase()} {String(v)}</span>)}
             <span> · {run.ticks} ticks · {run.event_count.toLocaleString("en-US")} events · stopped: {run.stopped_reason ?? "—"}</span>
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <VerdictBadge verdict={run.verdict.verdict} />
-          <TrustBadge trust={run.bundle.trust} />
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              document.getElementById("provenance")?.scrollIntoView({ behavior: "smooth" });
-              if (!verify.result) verify.run();
-            }}
-          >
-            <ShieldCheck /> Verify
-          </Button>
-          <Button variant="outline" size="sm" asChild>
-            <Link to={`/w/${run.spec.world}`}><RotateCcw /> New run</Link>
-          </Button>
-        </div>
-      </header>
+          </span>
+        }
+        actions={
+          <>
+            <VerdictBadge verdict={run.verdict.verdict} />
+            <TrustBadge trust={run.bundle.trust} />
+            <button
+              type="button"
+              className={photoButton}
+              onClick={() => {
+                document.getElementById("provenance")?.scrollIntoView({ behavior: "smooth" });
+                if (!verify.result) verify.run();
+              }}
+            >
+              <ShieldCheck /> Verify
+            </button>
+            <Link to={`/w/${run.spec.world}`} className={photoButton}><RotateCcw /> New run</Link>
+          </>
+        }
+      />
 
       {events.isError && <ErrorState error={events.error} onRetry={() => void events.refetch()} />}
       {events.isPending && <BodySkeleton />}
