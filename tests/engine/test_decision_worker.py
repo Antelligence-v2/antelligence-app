@@ -144,3 +144,14 @@ def test_queen_goal_is_put_in_the_move_question():
         "Which action? Your group's goal: explore east, the old patch is empty")
     decide(worker(backend, use_queen=False), view([queen_signal(goal="ignored")]))
     assert backend.requests[-1].questions["move"].instructions == "Which action?"
+
+
+def test_task_instructions_prefix_the_move_question_with_and_without_goal():
+    backend = FakeBackend()
+    decide(worker(backend, instructions="Task: score points."), view())
+    assert backend.requests[0].questions["move"].instructions == "Task: score points. Which action?"
+    decide(worker(backend, instructions="Task: score points."), view([queen_signal(goal="go north")]))
+    assert backend.requests[1].questions["move"].instructions == \
+        "Task: score points. Which action? Your group's goal: go north"
+    decide(worker(backend), view())
+    assert backend.requests[2].questions["move"].instructions == "Which action?"

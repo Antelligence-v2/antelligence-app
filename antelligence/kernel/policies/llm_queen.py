@@ -46,7 +46,8 @@ class QueenReplyError(ValueError):
 
 class LLMQueen:
     def __init__(self, provider: Provider, model: str, *, groups: Mapping[str, Tuple[str, ...]],
-                 actions: Mapping[str, str], every: int, max_tokens: int = 300) -> None:
+                 actions: Mapping[str, str], every: int, max_tokens: int = 300,
+                 instructions: str = "") -> None:
         if every < 1 or max_tokens < 1 or not groups or not actions:
             raise ValueError("every and max_tokens must be positive; groups and actions must be non-empty")
         self.provider = provider
@@ -55,6 +56,9 @@ class LLMQueen:
         self.actions = dict(actions)
         self.every = every
         self.max_tokens = max_tokens
+        self.instructions = instructions.strip()  # the world's task text, so her goals serve the real objective
+        self.system = f"{SYSTEM}\n\nThe workers' task, as they were told it: {self.instructions}" \
+            if self.instructions else SYSTEM
         self.previous: Dict[str, Dict[str, Any]] = {}  # group -> {"goal", "allowed"}: her own past signals
         self._seen: set = set()  # report signal ids already shown to her
         self._reports: List[Dict[str, str]] = []  # reports seen since her last turn
@@ -62,7 +66,7 @@ class LLMQueen:
     def describe(self) -> Dict[str, Any]:
         return {"policy": "llm_queen", "model": self.model, "provider": self.provider.describe(),
                 "groups": {g: len(m) for g, m in sorted(self.groups.items())}, "actions": sorted(self.actions),
-                "every": self.every, "max_tokens": self.max_tokens}
+                "every": self.every, "max_tokens": self.max_tokens, "instructions": self.instructions}
 
     def _collect(self, view: LocalView) -> None:
         for s in view.signals:
@@ -76,7 +80,7 @@ class LLMQueen:
         counts = view.observation.get("counts", {})
         body = {"tick": view.tick, "counts": counts, "groups": {g: len(m) for g, m in sorted(self.groups.items())},
                 "actions": self.actions, "reports": self._reports[-MAX_REPORTS:], "your_previous_orders": self.previous}
-        return ChatRequest(model=self.model, messages=({"role": "system", "content": SYSTEM},
+        return ChatRequest(model=self.model, messages=({"role": "system", "content": self.system},
                                                        {"role": "user", "content": canonical_json(body)}),
                            max_tokens=self.max_tokens, temperature=0.0, seed=view.seed % 2_147_483_647,
                            response_format={"type": "json_object"})

@@ -25,17 +25,21 @@ SYSTEM = ("You control one agent. Read its state and choose exactly one action f
 
 
 class StateChatPolicy:
-    def __init__(self, provider: Provider, model: str, sensor: Sensor, *, max_tokens: int = 64) -> None:
+    def __init__(self, provider: Provider, model: str, sensor: Sensor, *, max_tokens: int = 64,
+                 instructions: str = "") -> None:
         if max_tokens < 1:
             raise ValueError("max_tokens must be positive")
+        self.instructions = instructions.strip()  # the world's task text, told to the model first
         self.provider = provider
         self.model = model
         self.sensor = sensor
         self.max_tokens = max_tokens
+        self.system = f"{self.instructions}\n\n{SYSTEM}" if self.instructions else SYSTEM
 
     def describe(self) -> Dict[str, Any]:
         return {"policy": "state_chat", "model": self.model, "provider": self.provider.describe(),
-                "sensor": self.sensor.describe(), "max_tokens": self.max_tokens}
+                "sensor": self.sensor.describe(), "max_tokens": self.max_tokens,
+                "instructions": self.instructions}
 
     def request(self, view: LocalView) -> ChatRequest:
         sensed = self.sensor.sense(view)
@@ -43,7 +47,7 @@ class StateChatPolicy:
         random.Random(view.seed).shuffle(order)
         menu = "\n".join(f"- {a}: {sensed.actions[a]}" for a in order)
         user = f"{sensed.text}\n\nActions:\n{menu}\n\nReply with JSON: " + canonical_json({"action": "<id>"})
-        return ChatRequest(model=self.model, messages=({"role": "system", "content": SYSTEM},
+        return ChatRequest(model=self.model, messages=({"role": "system", "content": self.system},
                                                        {"role": "user", "content": user}),
                            max_tokens=self.max_tokens, temperature=0.0, seed=view.seed % 2_147_483_647,
                            response_format={"type": "json_object"})
