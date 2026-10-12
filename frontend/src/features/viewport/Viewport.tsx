@@ -56,7 +56,8 @@ export function Viewport({ data, position, tick, playing = false, selected, onSe
   const [layer, setLayer] = useState<string | null>(fields.includes("drug") ? "drug" : fields.includes("trail") ? "trail" : fields[0] ?? null);
   useEffect(() => { if (layer && !fields.includes(layer)) setLayer(fields[0] ?? null); }, [fields, layer]);
   const has3D = (kind === "grid" || kind === "tumor") && canRender3D();
-  const [view, setView] = useState<"2d" | "3d">("2d");
+  // Tumor runs open in 3D; the 2D view stays one click away (and is the fallback without WebGL 2).
+  const [view, setView] = useState<"2d" | "3d">(kind === "tumor" ? "3d" : "2d");
 
   const frame = data.frames[Math.min(data.frames.length - 1, Math.max(0, tick - data.frames[0].tick))].world;
 
