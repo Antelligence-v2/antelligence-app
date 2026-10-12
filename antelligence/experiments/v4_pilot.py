@@ -17,6 +17,7 @@ import json
 import random
 import subprocess
 import time
+import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, ContextManager, Dict, Iterator, List, Mapping, Optional, Sequence, Tuple
@@ -282,7 +283,7 @@ class PolicySet:
 BuildPolicies = Callable[[CellSpec, PilotWorld, World], PolicySet]
 # ledger_tags(**tags) -> context manager that tags every ledger row written inside it (B1's ledger_context)
 LedgerTags = Callable[..., ContextManager[Any]]
-# ledger_rows(run_id) -> ledger rows written for that cell
+# ledger_rows(run_tag) -> ledger rows of that one execution (its unique run_tag, not the cell key)
 LedgerRows = Callable[[str], List[Dict[str, Any]]]
 # reconcile(run_id, ledger rows) -> fields merged into the cell (physical calls vs ledger rows)
 Reconcile = Callable[[str, List[Dict[str, Any]]], Dict[str, Any]]
@@ -333,7 +334,9 @@ async def arun_cell(spec: CellSpec, pilot_world: PilotWorld, build_policies: Bui
                        max_ticks=max_ticks or int(pilot_world.describe().get("max_ticks", 100)))
     scheduler = Scheduler(tap, built.policies, BoardField(), config, default_policy=built.default_policy)
     start = time.monotonic()
-    with ledger_tags(run=spec.run_id, arm=spec.arm, world=spec.world, seed=spec.seed, condition=spec.condition):
+    # unique per execution: a dev rerun of the same key must not merge its ledger rows with the first run's
+    run_tag = f"{spec.key}#{uuid.uuid4().hex[:8]}"
+    with ledger_tags(run=run_tag, arm=spec.arm, world=spec.world, seed=spec.seed, condition=spec.condition):
         result = await scheduler.arun()
     wall = time.monotonic() - start
     score = float(pilot_world.score(world))
@@ -341,11 +344,11 @@ async def arun_cell(spec: CellSpec, pilot_world: PilotWorld, build_policies: Bui
     if refs and spec.condition != "base" and arm.decider not in ("script", "script_adapted") \
             and "S" in refs and "S-prime" in refs and refs["S-prime"] > refs["S"]:
         g = (score - refs["S"]) / (refs["S-prime"] - refs["S"])
-    rows = ledger_rows(spec.run_id) if ledger_rows else []
+    rows = ledger_rows(run_tag) if ledger_rows else []
     led = _ledger_summary(rows)
     tapped = tap.summary()
     cell = {
-        **spec.to_dict(), "key": spec.key, "split": "eval" if spec.seed in EVAL_SEEDS else "dev",
+        **spec.to_dict(), "key": spec.key, "run_tag": run_tag, "split": "eval" if spec.seed in EVAL_SEEDS else "dev",
         "score": score, "g": g, "ticks": result.ticks, "wall_s": wall, "stopped_reason": result.stopped_reason,
         "policy_failures": result.policy_failures, **led,
         # wall-clock per physical model call (ledger rows), never a cache hit or a policy's bookkeeping
