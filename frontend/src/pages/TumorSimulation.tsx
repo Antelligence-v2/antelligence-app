@@ -74,7 +74,9 @@ const TumorSimulation = () => {
       setLoadingProgress(prev => Math.min(prev + 1, 90));
     }, 200);
     try {
-      const response = await axios.post(`${API_BASE_URL}/simulation/tumor/run`, config);
+      // Offline mode makes the backend reject LLM calls, so only ask for it when nothing needs a model.
+      const offline = config.agent_type === "Rule-Based" && !config.use_llm_queen;
+      const response = await axios.post(`${API_BASE_URL}/simulation/tumor/run`, { ...config, offline });
       setLoadingProgress(100);
       setSimulationResults(response.data);
       setCurrentStep(0);
