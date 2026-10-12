@@ -18,7 +18,7 @@ import asyncio
 import hashlib
 import inspect
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Mapping, Optional, Protocol, Tuple
+from typing import Any, Callable, Dict, List, Mapping, Optional, Protocol, Tuple
 
 from antelligence.kernel import events as ev
 from antelligence.kernel.canonical import content_hash
@@ -150,6 +150,8 @@ class Scheduler:
         scene = getattr(world, "scene", None)
         self.scene: Optional[Dict[str, Any]] = scene() if self.record_frames and callable(scene) else None
         self.frames: List[Dict[str, Any]] = []
+        # Progress hook for callers (e.g. live run jobs); not part of the run's identity.
+        self.on_tick: Optional[Callable[["Scheduler"], None]] = None
 
     # ------------------------------------------------------------------ config
     def _policy_for(self, agent_id: str) -> Policy:
@@ -195,6 +197,8 @@ class Scheduler:
                 stopped = "world_done"
                 break
             await self.step()
+            if self.on_tick is not None:
+                self.on_tick(self)
         else:
             if self.world.done(self.tick):
                 stopped = "world_done"

@@ -21,7 +21,7 @@ from antelligence.provenance.bundle import build_bundle
 from antelligence.provenance.outbox import ProvenanceOutbox
 
 CAVEATS = (
-    "Agents are rule policies unless stated otherwise; these are not LLM results.",
+    "Agents are rule policies unless the run's params select LLM agents (agent_type / queen_mode / model).",
     "Worlds are synthetic research models; tumor results are not clinical evidence.",
     "Sign-test p-values are per comparison and not corrected for multiple comparisons.",
     "Bundles are replayable provenance (trust_tier=local_replay, proof_ok=false), not cryptographic proofs.",
@@ -94,10 +94,14 @@ def run_id_for(spec: RunSpec) -> str:
 
 
 def execute_run(spec: RunSpec, *, store: Optional[EngineStore] = None, outbox: Optional[ProvenanceOutbox] = None,
-                experiment_id: Optional[str] = None) -> Dict[str, Any]:
+                experiment_id: Optional[str] = None,
+                on_start: Optional[Callable[[Any], None]] = None) -> Dict[str, Any]:
+    """``on_start(scheduler)`` lets a caller watch the run live (tick, frames)."""
     ws = world(spec.world)
     run_id = run_id_for(spec)
     scheduler = ws.build(spec, run_id)
+    if on_start is not None:
+        on_start(scheduler)
     result = scheduler.run()
     goal = bool(result.metrics.get(ws.success_metric))
     verdict = classify_episode(scheduler.log, goal_reached=goal).to_dict()

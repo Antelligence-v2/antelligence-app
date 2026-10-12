@@ -90,10 +90,14 @@ def replay(bundle: Mapping[str, Any]) -> Dict[str, Any]:
     try:
         spec = RunSpec(**bundle["spec"])
         spec_world = world(spec.world)
-        scheduler = spec_world.build(spec, run_id=bundle["run_id"])
+        from antelligence.providers import litellm
+        with litellm.offline():
+            scheduler = spec_world.build(spec, run_id=bundle["run_id"])
     except (KeyError, TypeError, ValueError) as exc:
         return {"replay_ok": False, "reason": "spec_unresolvable", "detail": str(exc)[:200]}
-    result = scheduler.run()
+    from antelligence.providers import litellm
+    with litellm.offline():  # model calls are answered from the run's response cache
+        result = scheduler.run()
     rebuilt = build_bundle(result, spec.to_dict(), world_description=scheduler.world.describe())
     base = {"replayed_trace_hash": result.trace_hash, "expected_trace_hash": bundle.get("trace_hash"),
             "event_count": result.event_count}
