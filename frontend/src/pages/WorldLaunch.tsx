@@ -89,7 +89,10 @@ function Launcher({ world }: { world: World }) {
   const runJob = useRunJob();
   const meta = worldMeta(world.name);
   const defaults = useMemo(() => Object.fromEntries(Object.entries(world.params).map(([k, b]) => [k, b.default])), [world]);
-  const optionDefaults = useMemo(() => Object.fromEntries(Object.entries(world.options ?? {}).map(([k, o]) => [k, o.default])), [world]);
+  // Like the original simulators' pages: LLM-driven agents by default whenever the backend has a key.
+  const optionDefaults = useMemo(() => Object.fromEntries(Object.entries(world.options ?? {}).map(([k, o]) => [
+    k, k === "agent_type" && world.llm?.available && o.allowed.includes("LLM-Powered") ? "LLM-Powered" : o.default,
+  ])), [world]);
   const [arm, setArm] = useState(world.baseline);
   const [caseId, setCaseId] = useState(world.default_cases[0] ?? 1);
   const [params, setParams] = useState<Record<string, number>>(defaults);
@@ -138,6 +141,9 @@ function Launcher({ world }: { world: World }) {
       <div className="space-y-8">
         <Field label="Arm" hint="Which coordination mechanisms are switched on">
           <ArmPicker world={world} value={arm} onChange={setArm} />
+          {world.name === "ant_colony" && arm === "queen" && usesLlm && (
+            <p className="text-2xs text-muted-foreground">As in the original sim, ants follow the Queen first, so with a Queen they rarely ask the model. Use “No queen” to see the model drive the ants.</p>
+          )}
         </Field>
 
         {Object.keys(world.options ?? {}).length > 0 && (
