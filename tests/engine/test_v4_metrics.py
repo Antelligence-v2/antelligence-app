@@ -131,3 +131,19 @@ def test_go_no_go_uses_only_seed_paired_keys():
     assert verdict["paired_keys"] == 2
     assert abs(verdict["arms"]["F-Jev"]["mean_g"] - 0.5) < 1e-9  # seed 3 (G = 1.0) is unpaired, so excluded
     assert verdict["verdict"] == "go" and verdict["go_arms"] == ["F-Jev"]
+
+
+def test_primary_bootstrap_uses_the_same_paired_keys_and_counts_undefined_g():
+    from antelligence.experiments.v4_metrics import aggregate
+
+    def cell(arm, seed, cond, score):
+        return {"world": "graph_coloring", "arm": arm, "seed": seed, "condition": cond, "score": score,
+                "latencies_s": [1.0]}
+    cells = []
+    for seed in (1, 2, 3):
+        cells += [cell("S", seed, "v1", 0.2), cell("S-prime", seed, "v1", 0.8 if seed != 3 else 0.22)]
+    cells += [cell(a, s, "v1", 0.5) for a in ("DS-all", "F-Jev", "F-Laya") for s in (1, 2, 3)]
+    out = aggregate(cells)
+    assert out["go_no_go"]["paired_keys"] == 2  # seed 3: S' - S = 0.02 < 0.05, G undefined for everyone
+    assert out["comparisons_mean_g_diff"]["F-Jev_vs_DS-all"]["pairs"] == 2
+    assert out["arms"]["F-Jev"]["g_undefined"] == 1
