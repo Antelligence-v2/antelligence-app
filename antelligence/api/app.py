@@ -18,7 +18,7 @@ import os
 import threading
 import uuid
 from pathlib import Path
-from typing import Annotated, Any, Callable, Dict, List, Optional, Union
+from typing import Annotated, Any, Dict, List, Optional, Union
 from urllib.parse import urlparse
 
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, Query, Request
@@ -103,13 +103,6 @@ class EngineService:
         spec = registry.RunSpec(body.world, body.arm, body.case, self._fresh(body.world, body.params))
         with self._lock:
             return execute_run(spec, store=self.store, outbox=self.outbox)
-
-    def run_spec(self, world: str, arm: str, case: int, params: Dict[str, Any],
-                 on_start: Optional[Callable[[Any], None]] = None) -> Dict[str, Any]:
-        """One run from Python callers (e.g. the original pages' endpoints), with a live hook."""
-        spec = registry.RunSpec(world, arm, case, self._fresh(world, params))
-        with self._lock:
-            return execute_run(spec, store=self.store, outbox=self.outbox, on_start=on_start)
 
     # Background single runs with live progress and frames.
     def start_run(self, body: RunRequest) -> Dict[str, Any]:
