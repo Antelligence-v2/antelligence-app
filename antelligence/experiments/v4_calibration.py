@@ -9,16 +9,26 @@ is the model's total probability over ``accept``. Rows keep the full ``probabili
 from __future__ import annotations
 
 import asyncio
+import dataclasses
 import random
 import time
 from typing import Any, Dict, List, Mapping, Sequence, Tuple
 
 from antelligence.experiments.pilot_contract import CONDITIONS, PilotWorld
 from antelligence.experiments.v4_pilot import DEV_SEEDS, WorldProxy, uses_eval_seeds
-from antelligence.kernel.decision import DecisionRequest
+from antelligence.kernel.decision import DecisionRequest, Question
 from antelligence.kernel.field import BoardField
 from antelligence.kernel.scheduler import RunConfig, Scheduler
 from antelligence.kernel.types import LocalView, Observation, World
+
+
+MOVE_ASK = "Which action?"  # what DecisionWorker appends to the task text (before any queen goal)
+
+
+def move_question(pilot_world: PilotWorld, question: Question) -> Question:
+    """The labelled move question as the framework arms ask it: task text + "Which action?" (Phase 0 must
+    measure the same question the arms face)."""
+    return dataclasses.replace(question, instructions=f"{pilot_world.instructions} {MOVE_ASK}")
 
 
 class _Harvester(WorldProxy):
@@ -35,8 +45,9 @@ class _Harvester(WorldProxy):
             view = LocalView(agent_id, tick, self.inner.revision, 0, obs.data)
             state = self.sensor.sense(view).text
             for lq in self.pilot_world.labelled_questions(self.inner, view, tick):
+                question = move_question(self.pilot_world, lq.question) if lq.kind == "move" else lq.question
                 self.items.append({"id": f"{agent_id}-t{tick}-{lq.qid}", "kind": lq.kind, "qtype": lq.question.type,
-                                   "state": state, "question": lq.question, "label": lq.label,
+                                   "state": state, "question": question, "label": lq.label,
                                    "accept": list(lq.accept), "tick": tick})
         return obs
 

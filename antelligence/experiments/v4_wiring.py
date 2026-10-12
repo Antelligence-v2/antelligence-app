@@ -295,7 +295,8 @@ def build_policies(spec: CellSpec, pilot_world: PilotWorld, world: World, *, fac
     if arm.decider == "every_agent":
         lane = factories.chat(spec, arm, "every_agent")
         return PolicySet(default_policy=StateChatPolicy(lane.provider, lane.model, sensor,
-                                                        max_tokens=EVERY_AGENT_TOKENS))
+                                                        max_tokens=EVERY_AGENT_TOKENS,
+                                                        instructions=pilot_world.instructions))
     if arm.decider != "decision_model":
         raise ValueError(f"unknown decider {arm.decider!r}")
     leaves = factories.leaves
@@ -307,9 +308,10 @@ def build_policies(spec: CellSpec, pilot_world: PilotWorld, world: World, *, fac
     if arm.queen:
         lane = factories.chat(spec, arm, "queen")
         queen = LLMQueen(lane.provider, lane.model, groups=groups, actions=pilot_world.actions, every=every,
-                         max_tokens=QUEEN_TOKENS)
+                         max_tokens=QUEEN_TOKENS, instructions=pilot_world.instructions)
     policies = framework_policies(world.agents(), groups, backend, sensor, arm.model, use_queen=arm.queen,
-                                  queen=queen, report_ttl=max(MIN_REPORT_TTL, every))
+                                  queen=queen, report_ttl=max(MIN_REPORT_TTL, every),
+                                  instructions=pilot_world.instructions)
     use_queen = arm.queen
     return PolicySet(policies=policies,
                      wrap_world=lambda inner: HiveWorld(inner, pilot_world.board_summary, queen=use_queen),

@@ -62,3 +62,25 @@ def test_choice_item_is_correct_for_any_accepted_answer_and_scores_the_accepted_
     assert wrong["correct"] is False and wrong["prob"] == pytest.approx(0.2)
     legacy = {**item, "accept": []}  # an item without an accept set falls back to its label
     assert c.asyncio.run(c.calibrate(Fixed({"a": 0.6, "b": 0.3, "c": 0.1}), "f", [legacy]))[0]["accept"] == ["a"]
+
+
+def test_harvested_move_questions_carry_the_task_text_the_workers_send():
+    import asyncio
+
+    from antelligence.kernel.policies.decision_worker import DecisionWorker
+    from antelligence.worlds.foraging_sb import FORAGING_SB
+    from antelligence.worlds.graph_coloring import GRAPH_COLORING
+    from tests.engine.hive_helpers import ChoiceSensor, FakeBackend
+
+    from antelligence.kernel.types import LocalView
+
+    for pw in (FORAGING_SB, GRAPH_COLORING):
+        items = c.harvest_questions({pw.name: pw}, total=40, seeds=[100])
+        moves = [i for i in items if i["kind"] == "move"]
+        assert moves and all(i["question"].instructions == f"{pw.instructions} Which action?" for i in moves)
+        assert all(not i["question"].instructions.startswith("Task:") for i in items if i["kind"] == "judgement")
+    backend = FakeBackend()
+    worker = DecisionWorker(backend, ChoiceSensor(), "g", model="m", instructions=GRAPH_COLORING.instructions)
+    asyncio.run(worker.decide(LocalView("w0", 2, 0, 1, {"tick": 2})))
+    assert backend.requests[0].questions["move"].instructions == c.move_question(
+        GRAPH_COLORING, Question("choice", "x", ("a", "b"))).instructions

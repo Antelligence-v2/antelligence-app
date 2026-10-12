@@ -194,7 +194,8 @@ def test_ledger_tags_reach_every_row_and_calls_reconcile(tmp_path, arm):
     assert cell["calls_physical"] == cell["calls_ledger_rows"] == cell["calls"] == len(rows)
     for r in rows:
         assert (r["run"], r["arm"], r["world"], r["seed"], r["condition"]) == (
-            f"graph_coloring-{arm}-s101-v2", arm, "graph_coloring", 101, "v2")
+            cell["run_tag"], arm, "graph_coloring", 101, "v2")
+        assert r["run"].startswith(f"graph_coloring|{arm}|101|v2#")
     roles = {r["role"] for r in rows}
     full = {"worker", "queen", "escalation"}
     expected = {"DS-all": {"every_agent"}, "Q-all-qwen3.5-9b": {"every_agent"}, "F-Laya": full, "F-Jev": full,
@@ -286,3 +287,14 @@ def test_calibration_backends(tmp_path):
         assert hooks.make_backend(name).describe()["model"]
     with pytest.raises(ValueError):
         hooks.make_backend("nope")
+
+
+@pytest.mark.parametrize("world", sorted(WORLDS))
+def test_every_model_arm_is_told_the_worlds_task(tmp_path, world):
+    task = WORLDS[world].instructions
+    _, _, _, ds = build(tmp_path, "DS-all", world)
+    assert ds.default_policy.instructions == task and ds.default_policy.system.startswith(task)
+    _, _, _, fw = build(tmp_path, "F-Jev", world)
+    assert fw.policies["queen"].instructions == task and task in fw.policies["queen"].system
+    workers = [v for k, v in fw.policies.items() if k != "queen"]
+    assert workers and all(isinstance(v, DecisionWorker) and v.instructions == task for v in workers)
