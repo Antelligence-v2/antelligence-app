@@ -1,5 +1,5 @@
 /** Network layer for the engine API: one axios instance, validated responses. */
-import axios from "axios";
+import type { AxiosInstance, AxiosRequestConfig } from "axios";
 import type { z } from "zod";
 import { API_BASE_URL } from "@/lib/runtime";
 import {
@@ -21,7 +21,13 @@ import {
   type RunRequest,
 } from "./engine";
 
-const http = axios.create({ baseURL: `${API_BASE_URL}/engine`, timeout: 120_000 });
+// axios loads on the first request, which keeps it out of the entry chunk every page pays for.
+let instance: Promise<AxiosInstance> | undefined;
+const client = () => (instance ??= import("axios").then(({ default: axios }) => axios.create({ baseURL: `${API_BASE_URL}/engine`, timeout: 120_000 })));
+const http = {
+  get: (url: string, config?: AxiosRequestConfig) => client().then((c) => c.get(url, config)),
+  post: (url: string, body?: unknown, config?: AxiosRequestConfig) => client().then((c) => c.post(url, body, config)),
+};
 
 async function call<S extends z.ZodTypeAny>(schema: S, request: Promise<{ data: unknown }>): Promise<z.infer<S>> {
   try {
