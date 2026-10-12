@@ -39,7 +39,7 @@ def test_paired_comparison_drops_missing_pairs_and_respects_direction():
 # -------------------------------------------------------------- registry
 def test_catalog_and_param_validation():
     names = {w["name"] for w in catalog()}
-    assert names == {"foraging", "tumor", "task_dag"}
+    assert names == {"ant_colony", "foraging", "tumor", "task_dag"}
     tumor = world("tumor")
     assert tumor.resolve_params({}) == {"max_steps": 150, "n_nanobots": 10, "agent_type": "Rule-Based", "queen_mode": "off"}
     for bad in ({"max_steps": 5}, {"n_nanobots": 0}, {"max_steps": True}, {"speed": 2}):
@@ -162,7 +162,7 @@ def client(tmp_path):
 
 
 def test_api_run_lifecycle(client):
-    assert client.get("/engine/health").json()["worlds"] == ["foraging", "task_dag", "tumor"]
+    assert client.get("/engine/health").json()["worlds"] == ["ant_colony", "foraging", "task_dag", "tumor"]
     assert {w["name"] for w in client.get("/engine/worlds").json()} == {"foraging", "task_dag", "tumor"}
     created = client.post("/engine/runs", json={"world": "foraging", "arm": "hive_memory", "case": 101})
     assert created.status_code == 201

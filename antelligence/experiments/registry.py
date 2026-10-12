@@ -129,6 +129,29 @@ def _tumor_needs_llm(params: Mapping[str, Any]) -> bool:
     return params.get("agent_type", "Rule-Based") != "Rule-Based" or params.get("queen_mode") == "llm"
 
 
+def _ant_colony(arm: str, case: int, *, run_id: str, grid_width: int, grid_height: int, n_ants: int, n_food: int,
+                n_predators: int, max_steps: int, pheromone_decay_pct: int, trail_deposit_x10: int,
+                alarm_deposit_x10: int, recruitment_deposit_x10: int, fear_deposit_x10: int, max_pheromone: int,
+                agent_type: str, predator_type: str, queen_brain: str, prompt_style: str, provider=None,
+                model: Optional[str] = None) -> Scheduler:
+    from antelligence.worlds.ant_colony import Deposits, build
+    deposits = Deposits(trail=trail_deposit_x10 / 10, alarm=alarm_deposit_x10 / 10,
+                        recruitment=recruitment_deposit_x10 / 10, fear=fear_deposit_x10 / 10,
+                        decay=pheromone_decay_pct / 100, max_value=float(max_pheromone))
+    return build(arm, case, run_id=run_id, width=grid_width, height=grid_height, n_ants=n_ants,
+                 n_food=min(n_food, grid_width * grid_height), n_predators=n_predators, max_steps=max_steps,
+                 agent_type=agent_type, predator_type=predator_type, queen_brain=queen_brain,
+                 prompt_style=prompt_style, deposits=deposits, provider=provider, model=model)
+
+
+def _ant_colony_needs_llm(params: Mapping[str, Any]) -> bool:
+    from antelligence.worlds.ant_colony import needs_llm
+    # The Queen's brain only matters on the queen arm, but an option can't see the arm,
+    # so an LLM queen_brain always counts (a no_queen run then simply makes no Queen calls).
+    return needs_llm(params.get("agent_type", "Rule-Based"), params.get("predator_type", "Rule-Based"),
+                     params.get("n_predators", 0), None, params.get("queen_brain", "heuristic"))
+
+
 def _task_dag(arm: str, case: int, *, run_id: str) -> Scheduler:
     from antelligence.worlds.task_dag import build
     return build(arm, case, run_id=run_id)
@@ -140,12 +163,44 @@ def _registry() -> Dict[str, WorldSpec]:
     from antelligence.worlds.tumor import ARMS as TUMOR_ARMS
     from antelligence.worlds.tumor.arms import AGENT_TYPES as TUMOR_AGENT_TYPES, QUEEN_MODES as TUMOR_QUEEN_MODES
 
+    from antelligence.worlds.ant_colony import (AGENT_TYPES as COLONY_AGENTS, ARMS as COLONY_ARMS,
+                                                PROMPT_STYLES, QUEEN_BRAINS, SEEDS as COLONY_SEEDS)
+
     return {
+        "ant_colony": WorldSpec(
+            name="ant_colony", arms=tuple(COLONY_ARMS), default_cases=tuple(COLONY_SEEDS), baseline="no_queen",
+            primary_metric="food_collected", lower_is_better=False, success_metric="all_food_collected",
+            params={"grid_width": (20, 5, 60), "grid_height": (20, 5, 60), "n_ants": (10, 1, 60),
+                    "n_food": (15, 1, 200), "n_predators": (0, 0, 10), "max_steps": (200, 10, 1000),
+                    "pheromone_decay_pct": (5, 1, 20), "trail_deposit_x10": (10, 1, 50),
+                    "alarm_deposit_x10": (20, 1, 50), "recruitment_deposit_x10": (15, 1, 50),
+                    "fear_deposit_x10": (30, 10, 100), "max_pheromone": (10, 5, 20)},
+            builder=_ant_colony,
+            description="The Antelligence ant colony: ants forage food clusters with trail, alarm, recruitment and "
+                        "fear pheromones, optional predators and a Queen. Rule-based, LLM-powered or hybrid ants.",
+            metric_label="food collected",
+            arm_descriptions={
+                "no_queen": "Ants forage on their own, steered only by pheromones and (LLM ants) the model.",
+                "queen": "A Queen at the nest guides every ant each tick: carriers home, the rest to the nearest food.",
+            },
+            options={"agent_type": ("Rule-Based", tuple(COLONY_AGENTS), "Ant brains"),
+                     "predator_type": ("Rule-Based", tuple(COLONY_AGENTS), "Predator brains"),
+                     "queen_brain": ("heuristic", tuple(QUEEN_BRAINS), "Queen brain"),
+                     "prompt_style": ("Adaptive", tuple(PROMPT_STYLES), "Prompt style")},
+            needs_llm=_ant_colony_needs_llm,
+            param_labels={"grid_width": "Grid width", "grid_height": "Grid height", "n_ants": "Ants",
+                          "n_food": "Food", "n_predators": "Predators", "max_steps": "Steps",
+                          "pheromone_decay_pct": "Pheromone decay (%/step)",
+                          "trail_deposit_x10": "Trail deposit (x0.1)", "alarm_deposit_x10": "Alarm deposit (x0.1)",
+                          "recruitment_deposit_x10": "Recruitment deposit (x0.1)",
+                          "fear_deposit_x10": "Fear deposit (x0.1)", "max_pheromone": "Max pheromone"},
+        ),
         "foraging": WorldSpec(
             name="foraging", arms=tuple(FORAGING_ARMS), default_cases=tuple(SEEDS), baseline="baseline",
             primary_metric="sweep_moves", lower_is_better=True, success_metric="success",
             params={"max_steps": (120, 10, 400)}, builder=_foraging,
-            description="E13 chain-prioritized foraging (10x10, 3 agents, 3 foods in order).",
+            description="Research benchmark (paper E13): 3 rule agents on a 10x10 grid must bring 3 foods to the nest "
+                        "in order. Measures whether shared memory and signals cut blind search. Not the ant colony.",
             metric_label="blind-search (sweep) moves",
             arm_descriptions={
                 "baseline": "Agents search alone; nothing is shared.",
