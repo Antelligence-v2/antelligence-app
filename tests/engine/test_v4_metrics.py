@@ -105,3 +105,29 @@ def test_aggregate_g_base_share_and_comparison():
     assert out["comparisons_mean_g_diff"]["F-Jev_vs_DS-all"]["mean_diff"] == pytest.approx(0.25)
     assert out["go_no_go"]["verdict"] == "go"  # F-Jev: G .65 >= .30 and 2 s < 4 s
     assert out["go_no_go"]["arms"]["F-Laya"]["mean_g"] is None  # absent arm
+
+
+def test_g_is_undefined_below_the_preregistered_min_gap():
+    from antelligence.experiments.v4_metrics import MIN_GAP, gap_recovered
+    assert gap_recovered(5.0, 4.0, 5.5, MIN_GAP["foraging_sb"]) is None  # S' - S = 1.5 < 2 deliveries
+    assert gap_recovered(6.0, 4.0, 8.0, MIN_GAP["foraging_sb"]) == 0.5
+    assert gap_recovered(0.5, 0.48, 0.5, MIN_GAP["graph_coloring"]) is None
+
+
+def test_go_no_go_uses_only_seed_paired_keys():
+    from antelligence.experiments.v4_metrics import aggregate
+
+    def cell(arm, seed, cond, score, lat=1.0):
+        return {"world": "graph_coloring", "arm": arm, "seed": seed, "condition": cond, "score": score,
+                "latencies_s": [lat]}
+    cells = []
+    for seed in (1, 2, 3):
+        cells += [cell("S", seed, "base", 0.5), cell("S", seed, "v1", 0.2), cell("S-prime", seed, "v1", 0.8)]
+    cells += [cell("DS-all", s, "v1", 0.5, 3.0) for s in (1, 2)]  # DS-all has seeds 1-2 only
+    cells += [cell("F-Jev", s, "v1", 0.5) for s in (1, 2)] + [cell("F-Jev", 3, "v1", 0.8)]
+    cells += [cell("F-Laya", s, "v1", 0.2) for s in (1, 2, 3)]
+    out = aggregate(cells)
+    verdict = out["go_no_go"]
+    assert verdict["paired_keys"] == 2
+    assert abs(verdict["arms"]["F-Jev"]["mean_g"] - 0.5) < 1e-9  # seed 3 (G = 1.0) is unpaired, so excluded
+    assert verdict["verdict"] == "go" and verdict["go_arms"] == ["F-Jev"]
