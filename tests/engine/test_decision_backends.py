@@ -298,7 +298,7 @@ def test_slm_backend_end_to_end_and_accounting():
     provider, _ = slm_provider()
     response = run(SLMBackend(provider, SLM, backoff_s=0).decide(slm_request(seed=9)))
     chat = provider.requests[0]
-    assert chat.max_tokens == 96 and chat.temperature == 0.0 and chat.seed == 9
+    assert chat.max_tokens == 148 and chat.temperature == 0.0 and chat.seed == 9
     prompt = chat.messages[1]["content"]
     assert "Carrying food: no." in prompt
     assert '"food_known": 0.83, "move": {"move north": p, "move south": p, "stay": p}' in prompt
