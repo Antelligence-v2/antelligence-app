@@ -475,7 +475,7 @@ def test_custom_thresholds_and_no_escalation_backend():
             EscalatingBackend(scripted(0.5, 0.9), **bad)
 
 
-def test_escalation_failure_propagates_and_rows_have_roles(tmp_path):
+def test_escalation_failure_keeps_the_primary_answer_and_rows_have_roles(tmp_path):
     writer = LedgerWriter(tmp_path / "l.jsonl")
     primary = LedgeredDecision(scripted(0.5, 0.9), writer, role="worker")
     esc = LedgeredDecision(scripted(0.5, 0.9, "esc"), writer, role="escalation")
@@ -485,5 +485,7 @@ def test_escalation_failure_propagates_and_rows_have_roles(tmp_path):
 
     def boom(request):
         raise DecisionError("down")
-    with pytest.raises(DecisionError):
-        run(EscalatingBackend(scripted(0.5, 0.9), FakeBackend(boom, model="esc")).decide(request))
+    out = run(EscalatingBackend(scripted(0.5, 0.9), FakeBackend(boom, model="esc")).decide(request))
+    assert out.answers["a"].p_yes == 0.5 and out.escalated == () and out.escalation_failed == ("a",)
+    assert out.accounting()["escalation_failed"] == ["a"]
+    assert "escalation_failed" not in run(EscalatingBackend(scripted(0.99, 0.9), esc).decide(request)).accounting()

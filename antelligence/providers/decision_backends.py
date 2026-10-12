@@ -468,13 +468,25 @@ class LedgeredDecision:
         return response
 
 
+@dataclasses.dataclass(frozen=True)
+class EscalatedResponse(DecisionResponse):
+    """A response that also names the questions whose escalation failed (the primary answer was kept)."""
+
+    escalation_failed: Tuple[str, ...] = ()
+
+    def accounting(self) -> Dict[str, Any]:
+        out = super().accounting()
+        return {**out, "escalation_failed": list(self.escalation_failed)} if self.escalation_failed else out
+
+
 class EscalatingBackend:
     """Primary backend plus an optional escalation backend for the questions it is unsure about.
 
     A noul is uncertain when ``lo < P(yes) < hi`` (boundaries are confident); a
     choice when ``confidence < c_min`` or missing; scores never escalate. Only the
     uncertain questions are re-asked, in their original option order, and the
-    escalation answers replace the primary's. A failing escalation raises.
+    escalation answers replace the primary's. If the escalation raises ``DecisionError`` the primary's answers
+    stand and the response is an :class:`EscalatedResponse` naming the questions whose escalation failed.
     ``escalation`` must report its model in ``describe()["model"]``.
     """
 
@@ -505,9 +517,12 @@ class EscalatingBackend:
         if not unsure:
             return first
         sub = DecisionRequest(str(self.escalation.describe()["model"]), request.state, unsure, request.seed)
-        second = await self.escalation.decide(sub)
-        merged = {**first.answers, **second.answers}
-        check_answers(request, merged)
+        try:
+            second = await self.escalation.decide(sub)
+            merged = {**first.answers, **second.answers}
+            check_answers(request, merged)
+        except DecisionError:  # e.g. an all-zero reply: keep the primary's answer rather than fail the whole decision
+            return EscalatedResponse(**vars(first), escalation_failed=tuple(sorted(unsure)))
         return dataclasses.replace(
             first, answers=merged, input_tokens=first.input_tokens + second.input_tokens,
             output_tokens=first.output_tokens + second.output_tokens, cost_usd=first.cost_usd + second.cost_usd,
