@@ -202,8 +202,10 @@ NORMALISE_RANGE = (0.5, 1.5)  # probability vectors summing inside this are resc
 
 
 def slm_max_tokens(request: DecisionRequest, cap: int = SLM_TOKEN_CAP) -> int:
-    """24 + 12 per noul + 10 per option of every choice/score question, at most ``cap``."""
-    need = 24 + sum(12 if q.type == "noul" else 10 * len(q.options) for q in request.questions.values())
+    """48 + 16 per noul + 14 per option of every choice/score question, at most ``cap``.
+
+    Sized from Phase 0: DeepSeek V4.1 Flash was cut off on 16/300 replies at 24 + 12/noul + 10/option."""
+    need = 48 + sum(16 if q.type == "noul" else 14 * len(q.options) for q in request.questions.values())
     return min(need, cap)
 
 

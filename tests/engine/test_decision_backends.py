@@ -373,10 +373,10 @@ def test_slm_length_and_parse_failures_are_not_retried():
 
 def test_slm_max_tokens_scales_with_options_and_respects_cap():
     request = slm_request()
-    assert slm_max_tokens(request) == 96
+    assert slm_max_tokens(request) == 148
     assert slm_max_tokens(request, cap=50) == 50
     big = DecisionRequest(SLM, "s", {"m": Question("choice", "?", tuple(f"o{i}" for i in range(7)))})
-    assert slm_max_tokens(big) == 94 and slm_max_tokens(slm_request(), 256) == 96
+    assert slm_max_tokens(big) == 146 and slm_max_tokens(slm_request(), 256) == 148
 
 
 # --- Fake ------------------------------------------------------------------
