@@ -80,6 +80,10 @@ ENV PYTHONPATH=/app
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 
+# Prod mounts volumes over these, so they must exist (owned by the app user)
+# before Docker seeds a new named volume from the image.
+RUN mkdir -p /app/data /app/simulation_cache
+
 # Set proper permissions
 RUN chown -R antelligence:antelligence /app
 USER antelligence
