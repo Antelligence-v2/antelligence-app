@@ -2,20 +2,23 @@
 # Optimized for AWS deployment with security and performance improvements
 
 # Stage 1: Frontend build
-FROM node:18-alpine AS frontend-builder
+FROM node:20-alpine AS frontend-builder
 
 # Set working directory
 WORKDIR /app/frontend
 
 # Copy frontend package files first for better caching
 COPY frontend/package*.json ./
-COPY frontend/bun.lockb ./
 
-# Install dependencies with production optimizations
-RUN npm ci --only=production --silent && npm cache clean --force
+# Build tooling (vite, typescript) lives in devDependencies, so install everything
+RUN npm ci --silent && npm cache clean --force
 
 # Copy frontend source code
 COPY frontend/ ./
+
+# Commit SHA shown in the frontend build label
+ARG GIT_SHA=unknown
+ENV VITE_GIT_SHA=$GIT_SHA
 
 # Build frontend to static files with optimizations
 RUN npm run build
@@ -76,6 +79,10 @@ MEMORY_ADDR=" > .env
 ENV PYTHONPATH=/app
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
+
+# Prod mounts volumes over these, so they must exist (owned by the app user)
+# before Docker seeds a new named volume from the image.
+RUN mkdir -p /app/data /app/simulation_cache
 
 # Set proper permissions
 RUN chown -R antelligence:antelligence /app
