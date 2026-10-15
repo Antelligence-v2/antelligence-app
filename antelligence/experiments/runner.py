@@ -31,6 +31,11 @@ CAVEATS = (
 SIGNIFICANCE = 0.05
 
 
+#: An arm whose model calls failed more often than this did not really run its LLM
+#: agents (they fell back to rules), so it can't be recommended as an LLM strategy.
+MAX_MODEL_FAILURE_RATE = 0.1
+
+
 def recommend(comparisons: Dict[str, Dict[str, Any]], arms_summary: Dict[str, Dict[str, Any]], *,
               baseline: str, metric_label: str, lower_is_better: bool) -> Dict[str, Any]:
     """Pick the strategy that works, or say that none did.
@@ -46,9 +51,13 @@ def recommend(comparisons: Dict[str, Dict[str, Any]], arms_summary: Dict[str, Di
         summary = arms_summary[arm]
         p = comp["sign_test_p"]
         significant = p is not None and p < SIGNIFICANCE
+        calls, failed = summary.get("model_calls", 0), summary.get("model_failures", 0)
         if summary["unsafe_applied"] or summary["policy_failures"]:
             verdict = "excluded"
             reason = "had unsafe acts or failed runs"
+        elif calls and failed > MAX_MODEL_FAILURE_RATE * calls:
+            verdict = "excluded"
+            reason = f"{failed} of {calls} model calls failed, so its agents mostly ran their fallback rules"
         elif significant and comp["wins"] > comp["losses"]:
             verdict = "better"
             reason = f"better on {comp['wins']} of {comp['pairs']} seeds (p = {p:.2g})"
@@ -71,6 +80,13 @@ def recommend(comparisons: Dict[str, Dict[str, Any]], arms_summary: Dict[str, Di
     min_p = 2 * 0.5 ** pairs if pairs else None  # smallest two-sided sign-test p at this many seeds
     underpowered = min_p is not None and min_p >= SIGNIFICANCE
 
+    base = arms_summary.get(baseline, {})
+    base_calls, base_failed = base.get("model_calls", 0), base.get("model_failures", 0)
+    if base_calls and base_failed > MAX_MODEL_FAILURE_RATE * base_calls:
+        summary = (f"No recommendation: {base_failed} of {base_calls} model calls in the baseline ({baseline}) failed, "
+                   f"so there is no working LLM baseline to compare against. Check the model proxy and re-run.")
+        return {"best_arm": None, "baseline": baseline, "summary": summary, "significance": SIGNIFICANCE,
+                "seeds": pairs, "underpowered": underpowered, "verdicts": verdicts}
     if better:
         best = max(better, key=lambda arm: (gain(arm), -(comparisons[arm]["sign_test_p"] or 1.0), arm))
         comp = comparisons[best]
@@ -119,6 +135,8 @@ def execute_run(spec: RunSpec, *, store: Optional[EngineStore] = None, outbox: O
         "verdict": verdict,
         "bundle_hash": bundle["bundle_hash"],
     }
+    if "model_calls" in result.extra:
+        record["model"] = {"calls": result.extra["model_calls"], "failures": result.extra["model_failures"]}
     if store is not None:
         frames = {"scene": scheduler.scene, "frames": scheduler.frames} if scheduler.frames else None
         store.save_run(record, bundle, scheduler.log, experiment_id=experiment_id, frames=frames)
@@ -142,8 +160,10 @@ def experiment_request(world_name: str, arms: Optional[Sequence[str]], cases: Se
         raise ValueError("baseline must be one of the arms")
     if any(isinstance(c, bool) or not isinstance(c, int) or c < 0 for c in cases):
         raise ValueError("cases must be nonnegative integers (seeds)")
-    return {"world": world_name, "arms": arms, "cases": cases, "baseline": baseline,
-            "params": ws.resolve_params(params or {})}
+    resolved = ws.resolve_params(params or {})
+    for arm in arms:
+        ws.check_arm(arm, resolved)
+    return {"world": world_name, "arms": arms, "cases": cases, "baseline": baseline, "params": resolved}
 
 
 def run_experiment(request: Dict[str, Any], *, store: Optional[EngineStore] = None,
@@ -196,6 +216,8 @@ def run_experiment(request: Dict[str, Any], *, store: Optional[EngineStore] = No
             "blocked_attempts": sum(r["verdict"]["blocked_attempts"] for r in records),
             "concurrent_blocks": sum(r["verdict"]["concurrent_blocks"] for r in records),
             "policy_failures": sum(r["verdict"]["policy_failures"] for r in records),
+            "model_calls": sum(r.get("model", {}).get("calls", 0) for r in records),
+            "model_failures": sum(r.get("model", {}).get("failures", 0) for r in records),
         }
     base = [r["metrics"].get(metric) for r in runs[request["baseline"]]]
     comparisons = {

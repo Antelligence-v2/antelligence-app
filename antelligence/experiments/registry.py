@@ -58,6 +58,16 @@ class WorldSpec:
     # resolved params -> whether the run needs a model (adds the "model" param)
     needs_llm: Optional[Callable[[Mapping[str, Any]], bool]] = None
     param_labels: Mapping[str, str] = field(default_factory=dict)
+    # (arm, resolved params) -> error message for combinations the builder would reject
+    arm_conflict: Optional[Callable[[str, Mapping[str, Any]], Optional[str]]] = None
+
+    def check_arm(self, arm: str, resolved: Mapping[str, Any]) -> None:
+        """Reject an arm/option combination before anything runs (not halfway through an experiment)."""
+        if arm not in self.arms:
+            raise ValueError(f"unknown arm {arm!r} for {self.name}")
+        problem = self.arm_conflict(arm, resolved) if self.arm_conflict is not None else None
+        if problem:
+            raise ValueError(problem)
 
     def resolve_params(self, params: Mapping[str, Any]) -> Dict[str, Any]:
         known = set(self.params) | set(self.options)
@@ -125,6 +135,12 @@ def _tumor(arm: str, case: int, *, run_id: str, max_steps: int, n_nanobots: int,
                  queen_mode=queen_mode, provider=provider, model=model)
 
 
+def _tumor_arm_conflict(arm: str, params: Mapping[str, Any]) -> Optional[str]:
+    if arm == "hive_queen" and params.get("queen_mode", "off") != "off":
+        return "hive_queen already has a Queen; set the legacy Queen option to off for this arm"
+    return None
+
+
 def _tumor_needs_llm(params: Mapping[str, Any]) -> bool:
     return params.get("agent_type", "Rule-Based") != "Rule-Based" or params.get("queen_mode") == "llm"
 
@@ -177,7 +193,8 @@ def _registry() -> Dict[str, WorldSpec]:
                     "fear_deposit_x10": (30, 10, 100), "max_pheromone": (10, 5, 20)},
             builder=_ant_colony,
             description="The Antelligence ant colony: ants forage food clusters with trail, alarm, recruitment and "
-                        "fear pheromones, optional predators and a Queen. Rule-based, LLM-powered or hybrid ants.",
+                        "fear pheromones, optional predators and a Queen. Rule-based, LLM-powered or hybrid ants. "
+                        "Food collected counts pickups only (the original page also counted each drop at the nest).",
             metric_label="food collected",
             arm_descriptions={
                 "no_queen": "Ants forage on their own, steered only by pheromones and (LLM ants) the model.",
@@ -218,6 +235,7 @@ def _registry() -> Dict[str, WorldSpec]:
             options={"agent_type": ("Rule-Based", TUMOR_AGENT_TYPES, "Nanobot brains"),
                      "queen_mode": ("off", TUMOR_QUEEN_MODES, "Queen")},
             needs_llm=_tumor_needs_llm,
+            arm_conflict=_tumor_arm_conflict,
             param_labels={"max_steps": "Steps", "n_nanobots": "Nanobots"},
             metric_label="average living tumor cells (lower = faster kill)",
             arm_descriptions={

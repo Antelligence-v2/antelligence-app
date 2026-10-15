@@ -8,6 +8,16 @@ answers every model call from its cache and never touches the network.
 
 Like legacy, it is lenient about what the proxy serves: model aliases and
 ``finish_reason="length"`` on one-word replies are accepted.
+
+Limits: each run is capped at ``ANTELLIGENCE_LLM_MAX_CALLS`` model calls (default
+20,000) and, if set, ``ANTELLIGENCE_LLM_MAX_TOKENS`` tokens; calls past the cap fall
+back to the agent's rule and count as failed. ``ANTELLIGENCE_LLM_MODELS`` (comma
+separated) restricts which models a run may name. ``ANTELLIGENCE_OFFLINE=1`` turns
+LLM runs off entirely; replay still works, since it needs no key.
+
+LLM runs are host-bound: the model's answers live in this host's per-run cache
+(``<data dir>/llm_cache/<run_id>.jsonl``), not in the bundle, so a bundle verifies
+only where that cache file is present.
 """
 
 from __future__ import annotations
@@ -17,10 +27,10 @@ import contextvars
 import os
 import re
 from pathlib import Path
-from typing import Iterator, Optional
+from typing import Any, Dict, Iterator, Optional
 
 from antelligence.providers.openai_compat import OpenAICompatProvider
-from antelligence.providers.wrappers import Cached
+from antelligence.providers.wrappers import Budgeted, Cached
 
 DEFAULT_API_BASE = "http://host.orb.internal:4000/v1"  # legacy LITELLM_API_BASE
 DEFAULT_MODEL = "meta-llama/Llama-3.3-70B-Instruct"  # legacy default
@@ -64,9 +74,35 @@ def _load_env() -> None:
             load_dotenv(ENV_FILE, override=False)
 
 
+_TRUE = {"1", "true", "yes", "on"}
+DEFAULT_MAX_CALLS = 20_000
+
+
+def offline_mode() -> bool:
+    """ANTELLIGENCE_OFFLINE: the process never calls a model (backend/main.py OFFLINE_MODE)."""
+    return os.getenv("ANTELLIGENCE_OFFLINE", "").strip().lower() in _TRUE
+
+
 def api_key() -> str:
     _load_env()
+    if offline_mode():
+        return ""
     return os.getenv("IO_SECRET_KEY") or os.getenv("LITELLM_API_KEY") or ""
+
+
+def _int_env(name: str) -> Optional[int]:
+    value = os.getenv(name, "").strip()
+    return int(value) if value.isdigit() and int(value) > 0 else None
+
+
+def max_calls() -> int:
+    return _int_env("ANTELLIGENCE_LLM_MAX_CALLS") or DEFAULT_MAX_CALLS
+
+
+def allowed_models() -> Optional[frozenset]:
+    """Models runs may name (ANTELLIGENCE_LLM_MODELS), or None for any the proxy routes."""
+    names = [m.strip() for m in os.getenv("ANTELLIGENCE_LLM_MODELS", "").split(",") if m.strip()]
+    return frozenset(names) if names else None
 
 
 def api_base() -> str:
@@ -81,19 +117,42 @@ def available() -> bool:
 def check_model(model: str) -> str:
     if not isinstance(model, str) or not MODEL_PATTERN.match(model):
         raise ValueError("model must be a model name like 'meta-llama/Llama-3.3-70B-Instruct'")
+    allowed = allowed_models()
+    if allowed is not None and model not in allowed:
+        raise ValueError(f"model {model!r} is not allowed here; choose one of: {', '.join(sorted(allowed))}")
     return model
 
 
-def provider_for_run(run_id: str) -> Cached:
+class _Proxy:
+    """The proxy, described by what it is rather than where it is.
+
+    The description goes into the hashed run config; the endpoint and allowlist
+    are deployment details, so moving the proxy must not invalidate past runs.
+    """
+
+    def __init__(self, inner: Any) -> None:
+        self.inner = inner
+
+    def describe(self) -> Dict[str, Any]:
+        return {"provider": "litellm"}
+
+    async def complete(self, request: Any) -> Any:
+        return await self.inner.complete(request)
+
+
+def provider_for_run(run_id: str) -> Budgeted:
     """The LiteLLM provider for one run, behind that run's response cache."""
     replaying = _offline.get()
     key = api_key()
     if not key and not replaying:
         raise LLMUnavailable("LLM agents need IO_SECRET_KEY (or LITELLM_API_KEY) set for the backend")
-    inner = OpenAICompatProvider(api_base(), api_key=key or None, timeout_s=30.0, max_concurrency=8,
-                                 require_model_match=False, require_stop=False)
+    inner = _Proxy(OpenAICompatProvider(api_base(), api_key=key or None, allowed_models=allowed_models(),
+                                        timeout_s=30.0, max_concurrency=8, require_model_match=False,
+                                        require_stop=False))
     path = None
     if _cache_dir is not None:
         safe = re.sub(r"[^A-Za-z0-9._-]", "_", run_id)
         path = _cache_dir / f"{safe}.jsonl"
-    return Cached(inner, path, offline=replaying)
+    # The budget sits outside the cache, so a replay trips it at the same call as the live run.
+    return Budgeted(Cached(inner, path, offline=replaying), max_calls=max_calls(),
+                    max_tokens=_int_env("ANTELLIGENCE_LLM_MAX_TOKENS"))

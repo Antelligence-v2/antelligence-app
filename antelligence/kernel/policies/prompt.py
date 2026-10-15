@@ -10,18 +10,33 @@ legacy word parsing.
 from __future__ import annotations
 
 import json
+import logging
 from typing import Any, Dict, Optional, Sequence, Tuple
 
-from antelligence.providers.base import ChatRequest, Provider
+from antelligence.kernel.types import PROVIDER_ERROR  # noqa: F401 (re-exported for policies)
+from antelligence.providers.base import ChatRequest, Provider, ProviderError
+
+logger = logging.getLogger(__name__)
 
 
 async def ask(provider: Provider, model: str, system: str, user: str, *, temperature: float,
-              max_tokens: int) -> Tuple[str, Dict[str, Any]]:
-    """One chat call. Raises ``ProviderError`` on transport or contract failure."""
+              max_tokens: int, seed: Optional[int] = None) -> Tuple[str, Dict[str, Any]]:
+    """One chat call. Raises ``ProviderError`` on transport or contract failure.
+
+    Pass the decision's ``seed`` (``view.seed``): it makes every decision its own
+    request, so an agent that sees the same prompt twice gets a fresh sample (as
+    legacy did) instead of the run cache's earlier answer. The cache then only
+    serves replay.
+    """
     request = ChatRequest(model=model, messages=({"role": "system", "content": system},
                                                  {"role": "user", "content": user}),
-                          max_tokens=max_tokens, temperature=temperature)
-    response = await provider.complete(request)
+                          max_tokens=max_tokens, temperature=temperature,
+                          seed=None if seed is None else seed % 2**31)
+    try:
+        response = await provider.complete(request)
+    except ProviderError as exc:
+        logger.warning("model call failed (%s): %s", model, exc)
+        raise
     return response.content, response.accounting()
 
 

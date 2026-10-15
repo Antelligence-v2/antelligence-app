@@ -186,7 +186,8 @@ class AntColonyWorld:
         }
 
     def done(self, tick: int) -> bool:
-        return tick >= self.max_steps or not self.foods
+        # With every ant caught nothing can change, but LLM predators and the Queen would keep calling the model.
+        return tick >= self.max_steps or not self.foods or not self.ants
 
     # ---------------------------------------------------------- visualization
     def scene(self) -> Dict[str, Any]:

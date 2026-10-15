@@ -70,7 +70,14 @@ def _local_only(request: Request) -> None:
         raise HTTPException(403, "Engine API rejects non-local origins")
 
 
+class QueueFull(RuntimeError):
+    """Too many runs are already waiting or running."""
+
+
 class EngineService:
+    #: Runs queued or running at once. Each can be a long LLM run, so more just pile up behind the lock.
+    MAX_ACTIVE_RUNS = 4
+
     def __init__(self, data_dir: Path) -> None:
         self.data_dir = Path(data_dir)
         self.store = EngineStore(self.data_dir)
@@ -108,16 +115,19 @@ class EngineService:
     def start_run(self, body: RunRequest) -> Dict[str, Any]:
         spec = registry.RunSpec(body.world, body.arm, body.case, self._fresh(body.world, body.params))
         ws = registry.world(body.world)
-        if body.arm not in ws.arms:
-            raise ValueError(f"unknown arm {body.arm!r} for {body.world}")
         params = ws.resolve_params(spec.params)
+        ws.check_arm(body.arm, params)
         job = {"job_id": uuid.uuid4().hex[:12], "status": "queued", "run_id": run_id_for(spec), "tick": 0,
                "max_ticks": params.get("max_steps"), "llm": ws.uses_llm(params), "error": None}
         with self._jobs_lock:
+            active = sum(j["status"] in ("queued", "running") for j in self._run_jobs.values())
+            if active >= self.MAX_ACTIVE_RUNS:
+                raise QueueFull(f"{active} runs are already queued or running; wait for one to finish")
             self._run_jobs[job["job_id"]] = job
-            for old in list(self._run_jobs)[:-self.MAX_JOBS]:
+            # Forget only finished jobs: a client may still be polling a queued or running one.
+            finished = [k for k, j in self._run_jobs.items() if j["status"] in ("done", "failed")]
+            for old in finished[:max(0, len(self._run_jobs) - self.MAX_JOBS)]:
                 self._run_jobs.pop(old, None)
-                self._watch.pop(old, None)
 
         def watch(scheduler) -> None:
             job.update(status="running", max_ticks=scheduler.config.max_ticks)
@@ -221,6 +231,8 @@ def make_router(service: EngineService) -> APIRouter:
     def start_run(body: RunRequest) -> Dict[str, Any]:
         try:
             return service.start_run(body)
+        except QueueFull as exc:
+            raise HTTPException(429, str(exc)) from exc
         except litellm.LLMUnavailable as exc:
             raise HTTPException(503, str(exc)) from exc
         except ValueError as exc:

@@ -21,7 +21,7 @@ from __future__ import annotations
 import math
 from typing import Any, Dict, List, Mapping, Optional
 
-from antelligence.kernel.policies.prompt import ask, json_object, one_word
+from antelligence.kernel.policies.prompt import PROVIDER_ERROR, ask, json_object, one_word
 from antelligence.kernel.types import Intent, LocalView
 from antelligence.providers.base import Provider, ProviderError
 from antelligence.worlds.tumor.policies import NanobotPolicy
@@ -118,9 +118,9 @@ class LegacyNanobot:
             return self.rule.decide(view)
         try:
             text, meta = await ask(self.provider, self.model, NANOBOT_SYSTEM, nanobot_prompt(obs),
-                                   temperature=0.3, max_tokens=10)
-        except ProviderError as exc:
-            return self._fallback(view, {"policy": "legacy_nanobot", "fallback": f"provider:{exc}"[:200]})
+                                   temperature=0.3, max_tokens=10, seed=view.seed)
+        except ProviderError:
+            return self._fallback(view, {"policy": "legacy_nanobot", "fallback": PROVIDER_ERROR})
         word = one_word(text, NANOBOT_WORDS) or "explore"  # legacy: anything else means explore
         meta = {"policy": "legacy_nanobot", "word": word, **meta}
         ctx = obs["legacy"]
@@ -162,9 +162,9 @@ class LegacyQueen:
             return _guide(_heuristic(obs), "heuristic")
         try:
             text, meta = await ask(self.provider, self.model, QUEEN_SYSTEM, queen_prompt(obs),
-                                   temperature=0.2, max_tokens=300)
-        except ProviderError as exc:
-            return _guide(_heuristic(obs), "heuristic", {"fallback": f"provider:{exc}"[:200]})
+                                   temperature=0.2, max_tokens=300, seed=view.seed)
+        except ProviderError:
+            return _guide(_heuristic(obs), "heuristic", {"fallback": PROVIDER_ERROR})
         meta = {"policy": "legacy_queen", **meta}
         parsed = json_object(text) or {}
         guidance = _parse_guidance(parsed.get("guidance"), obs)

@@ -21,7 +21,7 @@ from __future__ import annotations
 import random
 from typing import Any, Dict, List, Mapping, Optional, Sequence
 
-from antelligence.kernel.policies.prompt import ask, json_object, one_word
+from antelligence.kernel.policies.prompt import PROVIDER_ERROR, ask, json_object, one_word
 from antelligence.kernel.types import Intent, LocalView
 from antelligence.providers.base import Provider, ProviderError
 
@@ -88,11 +88,11 @@ class ColonyAnt(_Brain):
             return Intent("move", {"to": self._rule(obs, rng)})
         try:
             text, meta = await ask(self.provider, self.model, ANT_SYSTEM, ant_prompt(obs, self.prompt_style),
-                                   temperature=0.3, max_tokens=10)
-        except ProviderError as exc:
+                                   temperature=0.3, max_tokens=10, seed=view.seed)
+        except ProviderError:
             to = rng.choice(neighbors) if neighbors else pos
             return Intent("move", {"to": to, "api_error": True}, rationale="llm failed: random",
-                          meta={"policy": "colony_ant", "word": "random", "fallback": f"provider:{exc}"[:200]})
+                          meta={"policy": "colony_ant", "word": "random", "fallback": PROVIDER_ERROR})
         word = one_word(text, ANT_WORDS) or "random"
         meta = _llm_meta(meta, policy="colony_ant", word=word)
         if word == "toward" and neighbors:
@@ -158,11 +158,11 @@ class ColonyPredator(_Brain):
             return Intent("move", {"to": self._rule(obs)})
         try:
             text, meta = await ask(self.provider, self.model, PREDATOR_SYSTEM, predator_prompt(obs, self.prompt_style),
-                                   temperature=0.4, max_tokens=10)
+                                   temperature=0.4, max_tokens=10, seed=view.seed)
             word = one_word(text, PREDATOR_WORDS) or "hunt"
             meta = _llm_meta(meta, policy="colony_predator", word=word)
-        except ProviderError as exc:
-            word, meta = "hunt", {"policy": "colony_predator", "word": "hunt", "fallback": f"provider:{exc}"[:200]}
+        except ProviderError:
+            word, meta = "hunt", {"policy": "colony_predator", "word": "hunt", "fallback": PROVIDER_ERROR}
         if word == "hunt" and neighbors:
             to = _step_toward(neighbors, pos, obs["nearest_ant"]) if obs["nearest_ant"] else rng.choice(neighbors)
         elif word == "patrol" and neighbors:
@@ -233,9 +233,11 @@ class ColonyQueen:
             return self._heuristic(obs)
         try:
             text, meta = await ask(self.provider, self.model, QUEEN_SYSTEM, queen_prompt(obs),
-                                   temperature=0.1, max_tokens=300)
-        except ProviderError as exc:
-            return self._heuristic(obs, f"Queen LLM: API error ({str(exc)[:50]}), using heuristic")
+                                   temperature=0.1, max_tokens=300, seed=view.seed)
+        except ProviderError:
+            fallback = self._heuristic(obs, "Queen LLM: API error, using heuristic")
+            return Intent(fallback.action, fallback.params, rationale=fallback.rationale,
+                          meta={"policy": "colony_queen", "fallback": PROVIDER_ERROR})
         meta = _llm_meta(meta, policy="colony_queen")
         parsed = json_object(text)
         if parsed is None:
