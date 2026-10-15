@@ -11,7 +11,6 @@ import type { ViewModel } from "../../core/model";
 import type { Backend } from "../../core/quality";
 import { tumorViewModel, umToScene, UM, type TumorScene as TumorSceneData } from "./adapter";
 import { MAX_JUMP, TumorScene3D } from "./TumorScene3D";
-import { TUMOR_COLORS } from "./palette";
 
 /** Everything inside the canvas (these hooks need the R3F context). */
 function Scene({ model, tracks, scene, position, playing, layer, selected, onSelect, preset, follow, quality, autoRotate }: {
@@ -47,17 +46,11 @@ const pill = (active: boolean) => cn(
   active ? "border-primary/60 bg-primary/20 text-white" : "border-white/15 bg-black/35 text-white/70 hover:text-white",
 );
 
-const Swatch = ({ label, color }: { label: string; color: string }) => (
-  <span className="inline-flex items-center gap-1.5">
-    <span className="size-2 rounded-full" style={{ background: color, boxShadow: `0 0 6px ${color}` }} />{label}
-  </span>
-);
-
 /**
  * 3D replay of an engine tumor run, driven by the run page's playhead.
  * Selection is shared with the rest of the run UI (inspector, swimlanes).
  */
-export default function TumorView({ data, position, playing, layer, selected, onSelect, fallback, className }: {
+export default function TumorView({ data, position, playing, layer, selected, onSelect, fallback, className, active = true }: {
   data: Frames;
   /** The page's fractional playhead, in ticks. */
   position: number;
@@ -69,6 +62,8 @@ export default function TumorView({ data, position, playing, layer, selected, on
   /** Shown if the 3D renderer fails (the 2D scene). */
   fallback?: ReactNode;
   className?: string;
+  /** False pauses rendering while the view is hidden. */
+  active?: boolean;
 }) {
   const model = useMemo(() => tumorViewModel(data), [data]);
   const tracks = useMemo(() => new Tracks(model.frames, MAX_JUMP), [model]);
@@ -99,6 +94,7 @@ export default function TumorView({ data, position, playing, layer, selected, on
         onBackend={setBackend}
         onError={setError}
         fallback={fallback}
+        active={active}
       >
         <Scene
           model={model} tracks={tracks} scene={scene}
@@ -111,7 +107,7 @@ export default function TumorView({ data, position, playing, layer, selected, on
       <div className="pointer-events-none absolute inset-x-0 top-0 flex flex-wrap items-center gap-1 p-2">
         <div className="pointer-events-auto flex flex-wrap gap-1">
           {CAMERA_PRESETS.map((p) => (
-            <button key={p} type="button" className={pill(preset === p && !follow)} onClick={() => { setFollow(false); setPreset(p); }}>{p}</button>
+            <button key={p} type="button" aria-pressed={preset === p && !follow} className={pill(preset === p && !follow)} onClick={() => { setFollow(false); setPreset(p); }}>{p}</button>
           ))}
           <button type="button" className={pill(autoRotate)} aria-pressed={autoRotate} onClick={() => setAutoRotate((v) => !v)}>orbit</button>
           {selected && (
@@ -119,20 +115,13 @@ export default function TumorView({ data, position, playing, layer, selected, on
           )}
         </div>
         <div className="pointer-events-auto ml-auto flex items-center gap-1">
-          <button type="button" className={pill(quality === "high")} title="Ambient occlusion on/off"
+          <button type="button" aria-pressed={quality === "high"} className={pill(quality === "high")} title="Ambient occlusion on/off"
             onClick={() => setQuality((q) => (q === "high" ? "low" : "high"))}>
             {quality === "high" ? "fx high" : "fx low"}
           </button>
           <span className="rounded border border-white/15 bg-black/35 px-1.5 py-0.5 font-mono text-[10px] uppercase text-white/60 backdrop-blur"
             title="Rendering backend">{backend ?? "…"}</span>
         </div>
-      </div>
-
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 flex flex-wrap gap-x-3 gap-y-1 bg-gradient-to-t from-black/60 to-transparent px-3 pb-2 pt-6 text-[10px] text-white/75">
-        {Object.entries(TUMOR_COLORS.bot).map(([state, c]) => <Swatch key={state} label={state} color={c} />)}
-        <span className="w-full" />
-        {Object.entries(TUMOR_COLORS.cell).map(([phase, c]) => <Swatch key={phase} label={`${phase} cell`} color={c} />)}
-        <Swatch label="vessel" color={TUMOR_COLORS.vessel} />
       </div>
     </div>
   );

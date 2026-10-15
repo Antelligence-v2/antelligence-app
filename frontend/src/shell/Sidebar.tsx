@@ -75,7 +75,7 @@ export function Sidebar({ onOpenPalette, onNavigate }: { onOpenPalette: () => vo
 
   return (
     <div className="flex h-full flex-col gap-4 px-3 py-4">
-      <Link to="/worlds" onClick={onNavigate} aria-label="Worlds" className="flex items-center gap-2.5 rounded-full px-2 py-1 transition-opacity hover:opacity-70">
+      <Link to="/worlds" onClick={onNavigate} aria-label="Antelligence, go to Worlds" className="flex items-center gap-2.5 rounded-full px-2 py-1 transition-opacity hover:opacity-70">
         <LogoMark className="size-4 text-foreground/90" />
         <span className="text-xs font-light uppercase tracking-[0.28em]">Antelligence</span>
       </Link>

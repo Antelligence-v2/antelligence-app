@@ -25,7 +25,8 @@ export function canRender3D(): boolean {
       webgl2Support = false;
     }
   }
-  return webgl2Support || ("gpu" in navigator && window.isSecureContext);
+  // WebGPU alone isn't enough: navigator.gpu can exist with no adapter, and the fallback needs WebGL 2.
+  return webgl2Support;
 }
 
 /** The backend an initialized WebGPURenderer actually ended up on. */

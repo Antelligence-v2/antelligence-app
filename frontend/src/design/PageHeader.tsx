@@ -40,8 +40,8 @@ export function PhotoHeader({ eyebrow, title, description, actions, top, classNa
   className?: string;
 }) {
   return (
-    <header className={cn("relative overflow-hidden rounded-2xl bg-[#0b0f0a] text-white", className)}>
-      <img src="/ant-frontpage.jpg" alt="" className="absolute inset-0 size-full object-cover object-[40%_62%]" />
+    <header className={cn("dark relative overflow-hidden rounded-2xl bg-[#0b0f0a] text-white", className)}>
+      <img src={`${import.meta.env.BASE_URL}ant-frontpage.jpg`} alt="" decoding="async" className="absolute inset-0 size-full object-cover object-[40%_62%]" />
       <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/50 to-black/30" />
       {top && <div className="absolute left-6 top-5 text-xs text-white/60 md:left-10 [&_a:hover]:text-white">{top}</div>}
       <div className="relative flex flex-wrap items-end justify-between gap-4 px-6 pb-8 pt-20 md:px-10 md:pt-28">
@@ -50,7 +50,7 @@ export function PhotoHeader({ eyebrow, title, description, actions, top, classNa
           <h1 className="text-3xl font-extralight uppercase tracking-[0.18em] md:text-5xl">{title}</h1>
           {description && <p className="max-w-2xl text-sm leading-relaxed text-white/75">{description}</p>}
         </div>
-        {actions && <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>}
+        {actions && <div className="flex min-w-0 flex-wrap items-center gap-2">{actions}</div>}
       </div>
     </header>
   );

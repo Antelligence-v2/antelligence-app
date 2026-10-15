@@ -3,6 +3,7 @@ import { useFrame, type ThreeEvent } from "@react-three/fiber";
 import * as THREE from "three/webgpu";
 import type { Pose } from "./tracks";
 import type { PoseRef } from "./playhead";
+import { useInstanceColors } from "./instanceColors";
 
 export interface SwarmStyle {
   color: THREE.Color;
@@ -31,6 +32,7 @@ export function Swarm({ poses, match, style, capacity, selected, onSelect, castS
   const mesh = useRef<THREE.InstancedMesh>(null);
   const ids = useRef<string[]>([]);
   const tmp = useMemo(() => ({ o: new THREE.Object3D() }), []);
+  const colors = useInstanceColors(capacity);
 
   useFrame(({ clock }) => {
     const m = mesh.current;
@@ -72,6 +74,7 @@ export function Swarm({ poses, match, style, capacity, selected, onSelect, castS
       onPointerOver={onSelect && (() => (document.body.style.cursor = "pointer"))}
       onPointerOut={onSelect && (() => (document.body.style.cursor = ""))}
     >
+      <instancedBufferAttribute attach="instanceColor" args={colors} />
       {children}
     </instancedMesh>
   );

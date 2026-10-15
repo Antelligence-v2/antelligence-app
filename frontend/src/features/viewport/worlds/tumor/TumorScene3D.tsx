@@ -8,6 +8,7 @@ import {
 import type { FieldSeries, ViewModel, WorldEvent } from "../../core/model";
 import type { PoseRef } from "../../core/playhead";
 import { SelectionRing, Swarm } from "../../core/Swarm";
+import { useInstanceColors } from "../../core/instanceColors";
 import type { Pose } from "../../core/tracks";
 import { botGeometry, cellGeometry } from "./geometry";
 import { TUMOR_COLORS } from "./palette";
@@ -210,6 +211,7 @@ function Tails({ model, poses, playhead, colorOf }: {
   const paths = useMemo(() => botPaths(model), [model]);
   const tmp = useMemo(() => ({ o: new THREE.Object3D(), c: new THREE.Color(), d: new THREE.Color() }), []);
   const capacity = Math.max(1, paths.ids.length * TAIL);
+  const colors = useInstanceColors(capacity);
   const steps = model.steps;
 
   useFrame(() => {
@@ -248,6 +250,7 @@ function Tails({ model, poses, playhead, colorOf }: {
 
   return (
     <instancedMesh ref={mesh} args={[undefined, undefined, capacity]} frustumCulled={false}>
+      <instancedBufferAttribute attach="instanceColor" args={colors} />
       <sphereGeometry args={[0.016, 8, 6]} />
       <meshStandardNodeMaterial color="#000000" emissiveNode={instanceColor.mul(1.4)} transparent blending={THREE.AdditiveBlending} depthWrite={false} />
     </instancedMesh>
@@ -304,6 +307,7 @@ function KillBursts({ events, playhead }: { events: WorldEvent[]; playhead: Reac
   const kills = useMemo(() => events.filter((e) => e.kind === "kill").sort((a, b) => a.step - b.step), [events]);
   const tmp = useMemo(() => ({ o: new THREE.Object3D(), c: new THREE.Color(), base: new THREE.Color(TUMOR_COLORS.cell.apoptotic) }), []);
   const capacity = 64;
+  const colors = useInstanceColors(capacity);
   useFrame(() => {
     const m = mesh.current;
     if (!m) return;
@@ -328,6 +332,7 @@ function KillBursts({ events, playhead }: { events: WorldEvent[]; playhead: Reac
   });
   return (
     <instancedMesh ref={mesh} args={[undefined, undefined, capacity]} frustumCulled={false}>
+      <instancedBufferAttribute attach="instanceColor" args={colors} />
       <ringGeometry args={[0.07, 0.085, 40]} />
       <meshStandardNodeMaterial color="#000000" emissiveNode={instanceColor.mul(2.5)} transparent blending={THREE.AdditiveBlending} depthWrite={false} side={THREE.DoubleSide} />
     </instancedMesh>

@@ -9,7 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Kbd } from "@/design/Kbd";
 import { Page, PhotoHeader } from "@/design/PageHeader";
 import { EmptyState, ErrorState } from "@/design/States";
-import { armLabel, humanize, selectsLlm, worldMeta } from "@/features/worlds/meta";
+import { armLabel, humanize, optionLabel, selectsLlm, worldMeta } from "@/features/worlds/meta";
 import { ParamField } from "@/features/worlds/ParamField";
 import { SceneCanvas } from "@/features/viewport/Viewport";
 import { cn } from "@/lib/utils";
@@ -76,7 +76,7 @@ function OptionPicker({ name, option, value, onChange }: { name: string; option:
               v === value ? "bg-primary/10 text-foreground ring-1 ring-primary/40" : "text-muted-foreground hover:bg-surface-2 hover:text-foreground",
             )}
           >
-            {humanize(v)}
+            {optionLabel(v)}
           </button>
         ))}
       </div>
@@ -129,7 +129,7 @@ function Launcher({ world }: { world: World }) {
     ["Arm", armLabel(arm)],
     ["Case (seed)", String(caseId)],
     ...Object.entries(params).map(([k, v]) => [world.param_labels?.[k] ?? humanize(k), String(v)] as [string, string]),
-    ...Object.entries(effective).map(([k, v]) => [world.options?.[k]?.label ?? humanize(k), humanize(v)] as [string, string]),
+    ...Object.entries(effective).map(([k, v]) => [world.options?.[k]?.label ?? humanize(k), optionLabel(v)] as [string, string]),
     ["Policy", usesLlm ? `LLM · ${model || "no model"}` : "Rule (no LLM calls)"],
   ];
   const job = runJob.job;

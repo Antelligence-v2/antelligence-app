@@ -49,7 +49,7 @@ const pill = (active: boolean) => cn(
  * 3D replay of an engine foraging run, driven by the run page's playhead.
  * Selection is shared with the rest of the run UI (inspector, swimlanes).
  */
-export default function ForagingView({ data, position, playing, selected, onSelect, fallback, className }: {
+export default function ForagingView({ data, position, playing, selected, onSelect, fallback, className, active = true }: {
   data: Frames;
   /** The page's fractional playhead, in ticks. */
   position: number;
@@ -59,6 +59,8 @@ export default function ForagingView({ data, position, playing, selected, onSele
   /** Shown if the 3D renderer fails (the 2D scene). */
   fallback?: ReactNode;
   className?: string;
+  /** False pauses rendering while the view is hidden. */
+  active?: boolean;
 }) {
   const model = useMemo(() => foragingViewModel(data), [data]);
   const tracks = useMemo(() => new Tracks(model.frames), [model]);
@@ -89,6 +91,7 @@ export default function ForagingView({ data, position, playing, selected, onSele
         onBackend={setBackend}
         onError={setError}
         fallback={fallback}
+        active={active}
       >
         <Scene
           model={model} tracks={tracks} scene={scene}
@@ -101,7 +104,7 @@ export default function ForagingView({ data, position, playing, selected, onSele
       <div className="pointer-events-none absolute inset-x-0 top-0 flex flex-wrap items-center gap-1 p-2">
         <div className="pointer-events-auto flex flex-wrap gap-1">
           {CAMERA_PRESETS.map((p) => (
-            <button key={p} type="button" className={pill(preset === p && !follow)} onClick={() => { setFollow(false); setPreset(p); }}>{p}</button>
+            <button key={p} type="button" aria-pressed={preset === p && !follow} className={pill(preset === p && !follow)} onClick={() => { setFollow(false); setPreset(p); }}>{p}</button>
           ))}
           <button type="button" className={pill(autoRotate)} aria-pressed={autoRotate} onClick={() => setAutoRotate((v) => !v)}>orbit</button>
           {selected && (
@@ -109,7 +112,7 @@ export default function ForagingView({ data, position, playing, selected, onSele
           )}
         </div>
         <div className="pointer-events-auto ml-auto flex items-center gap-1">
-          <button type="button" className={pill(quality === "high")} title="Ambient occlusion on/off"
+          <button type="button" aria-pressed={quality === "high"} className={pill(quality === "high")} title="Ambient occlusion on/off"
             onClick={() => setQuality((q) => (q === "high" ? "low" : "high"))}>
             {quality === "high" ? "fx high" : "fx low"}
           </button>

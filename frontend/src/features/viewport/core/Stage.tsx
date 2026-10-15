@@ -31,7 +31,7 @@ class RendererBoundary extends Component<
  * The shared 3D canvas: a WebGPURenderer that falls back to WebGL 2 on its own.
  * Children are scene content; worlds never create their own renderer.
  */
-export function Stage({ children, fallback = null, onBackend, onError, camera, className }: {
+export function Stage({ children, fallback = null, onBackend, onError, camera, className, active = true }: {
   children: ReactNode;
   /** Shown instead of the canvas if the renderer throws (e.g. the 2D view). */
   fallback?: ReactNode;
@@ -39,6 +39,8 @@ export function Stage({ children, fallback = null, onBackend, onError, camera, c
   onError?: (message: string) => void;
   camera?: { position: [number, number, number]; fov?: number };
   className?: string;
+  /** False pauses rendering (the canvas stays mounted, e.g. while the 2D view is shown). */
+  active?: boolean;
 }) {
   return (
     <RendererBoundary fallback={fallback} onError={onError}>
@@ -46,7 +48,8 @@ export function Stage({ children, fallback = null, onBackend, onError, camera, c
         className={className}
         camera={camera ?? { position: [6, 5, 6], fov: 40 }}
         dpr={[1, 2]}
-        shadows
+        frameloop={active ? "always" : "never"}
+        shadows="percentage"
         gl={async ({ canvas }) => {
           const renderer = new THREE.WebGPURenderer({
             canvas: canvas as HTMLCanvasElement,
@@ -62,6 +65,9 @@ export function Stage({ children, fallback = null, onBackend, onError, camera, c
             onError?.(`renderer init failed: ${message}`);
             throw error;
           }
+          // Losing the GPU after init (driver reset, too many live contexts) goes through
+          // the same fallback as an init failure instead of leaving a blank panel.
+          renderer.onDeviceLost = (info: { message?: string }) => onError?.(`GPU device lost: ${info.message ?? "unknown reason"}`);
           onBackend?.(backendOf(renderer));
           return renderer;
         }}

@@ -25,15 +25,16 @@ export function Pipeline({ quality = "high", aoStrength = 0.8, bloomStrength = 0
   const scene = useThree((s) => s.scene);
   const camera = useThree((s) => s.camera);
 
-  const pipeline = useMemo(() => {
+  const { pipeline, nodes } = useMemo(() => {
     const p = new THREE.RenderPipeline(gl);
     const scenePass = pass(scene, camera);
     scenePass.setMRT(mrt({ output, emissive, normal: normalView }));
     const color = scenePass.getTextureNode("output");
 
     let lit = color.rgb;
+    let aoPass: ReturnType<typeof ao> | null = null;
     if (quality === "high") {
-      const aoPass = ao(scenePass.getTextureNode("depth"), scenePass.getTextureNode("normal"), camera);
+      aoPass = ao(scenePass.getTextureNode("depth"), scenePass.getTextureNode("normal"), camera);
       aoPass.resolutionScale = 0.5;
       lit = lit.mul(mix(float(1), aoPass.getTextureNode().r, aoStrength));
     }
@@ -41,11 +42,16 @@ export function Pipeline({ quality = "high", aoStrength = 0.8, bloomStrength = 0
     const composed = vec4(lit.add(glow.rgb), color.a);
 
     p.outputColorTransform = false; // tone map before SMAA, which expects display-referred color
-    p.outputNode = smaa(renderOutput(composed));
-    return p;
+    const aa = smaa(renderOutput(composed));
+    p.outputNode = aa;
+    return { pipeline: p, nodes: [scenePass, aoPass, glow, aa] };
   }, [gl, scene, camera, quality, aoStrength, bloomStrength]);
 
-  useEffect(() => () => pipeline.dispose(), [pipeline]);
+  // RenderPipeline.dispose() only frees its own quad; each pass owns render targets.
+  useEffect(() => () => {
+    pipeline.dispose();
+    for (const node of nodes) node?.dispose();
+  }, [pipeline, nodes]);
   useFrame(() => pipeline.render(), 1);
   return null;
 }

@@ -25,6 +25,13 @@ export function humanize(id: string): string {
   return words.charAt(0).toUpperCase() + words.slice(1);
 }
 
+const OPTION_LABELS: Record<string, string> = { llm: "LLM", rule: "Rule-based", "Rule-Based": "Rule-based", "LLM-Powered": "LLM-powered" };
+
+/** Option values as shown on buttons: keeps "LLM" and hyphenated names intact. */
+export function optionLabel(value: string): string {
+  return OPTION_LABELS[value] ?? humanize(value);
+}
+
 /** Arm ids read better as title words: hive_memory_signals → "Hive memory + signals". */
 export function armLabel(arm: string): string {
   return humanize(arm.replace(/_signals$/, " + signals").replace(/^hive_memory \+/, "hive memory +"));

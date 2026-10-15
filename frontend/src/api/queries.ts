@@ -123,27 +123,35 @@ export function useRunJob() {
   const [job, setJob] = useState<RunJob | null>(null);
   const [live, setLive] = useState<Frames | null>(null);
   const [error, setError] = useState<ApiError | null>(null);
+  // True from the click until the job ends, including the start request's round trip,
+  // so a double-click or a second ⌘↵ can't launch another run.
+  const [busy, setBusy] = useState(false);
+  const inFlight = useRef(false);
   const alive = useRef(true);
   useEffect(() => () => { alive.current = false; }, []);
 
   const start = useCallback(async (body: RunRequest): Promise<string | null> => {
+    if (inFlight.current) return null;
+    inFlight.current = true;
+    setBusy(true);
     setError(null);
     setLive(null);
     try {
       let current = await engine.startRun(body);
       setJob(current);
       let scene: Record<string, unknown> | null = null;
-      let frames: Frames["frames"] = [];
+      const frames: Frames["frames"] = [];
       while (current.status === "queued" || current.status === "running") {
         await new Promise((resolve) => setTimeout(resolve, 400));
         if (!alive.current) return null;
-        current = await engine.runJob(current.job_id);
+        current = await withRetry(() => engine.runJob(current.job_id));
         if (current.status === "running") {
-          const page = await engine.liveFrames(current.job_id, frames.length);
+          const id = current.job_id;
+          const page = await withRetry(() => engine.liveFrames(id, frames.length));
           if (page && page.frames.length) {
             scene = page.scene;
-            frames = [...frames, ...page.frames];
-            if (alive.current) setLive({ run_id: current.run_id, scene, frames });
+            frames.push(...page.frames);
+            if (alive.current) setLive({ run_id: current.run_id, scene, frames: frames.slice() });
           }
         }
         if (alive.current) setJob(current);
@@ -154,9 +162,26 @@ export function useRunJob() {
       const err = toApiError(e);
       if (alive.current) setError(err);
       return null;
+    } finally {
+      inFlight.current = false;
+      if (alive.current) setBusy(false);
     }
   }, []);
 
-  const running = job?.status === "queued" || job?.status === "running";
+  const running = busy || job?.status === "queued" || job?.status === "running";
   return { start, job, live, running, error };
+}
+
+/** Retries a poll a few times with backoff, so one dropped request doesn't end the watch. */
+async function withRetry<T>(call: () => Promise<T>, attempts = 4): Promise<T> {
+  for (let i = 0; ; i++) {
+    try {
+      return await call();
+    } catch (error) {
+      const status = toApiError(error).status;
+      // A 4xx is an answer, not a blip (404 on frames is handled by the caller as null).
+      if (i + 1 >= attempts || (status !== null && status < 500)) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 500 * 2 ** i));
+    }
+  }
 }
