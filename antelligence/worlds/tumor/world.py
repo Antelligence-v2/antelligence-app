@@ -34,6 +34,8 @@ from antelligence.worlds.tumor.physics import TumorPhysics
 
 SEARCHING, TARGETING, DELIVERING, RETURNING, RELOADING = "searching", "targeting", "delivering", "returning", "reloading"
 QUEEN = "queen"
+LEGACY_QUEEN_EVERY = 10  # legacy QueenNanobot guided every 10 steps
+LEGACY_TARGET_REACH = 120.0  # legacy LLM "target" searched hypoxic cells within 120 µm
 ZONE = 50.0  # µm; evidence about "where tumor cells are" is kept per 50 µm zone
 
 
@@ -56,6 +58,8 @@ class Body:
     target_cell: Optional[int] = None
     target_vessel: Optional[int] = None
     deliveries: int = 0
+    guidance: Optional[Tuple[float, float]] = None  # legacy Queen direction, valid for one tick
+    guidance_tick: int = -1
     drug_delivered: float = 0.0
     previous_direction: np.ndarray = field(default_factory=lambda: np.zeros(2))
 
@@ -76,7 +80,19 @@ class TumorWorld:
         hearing: float = 0.0,
         queen: bool = False,
         legacy_payload_deadlock: bool = False,
+        legacy_agents: bool = False,
+        legacy_queen: bool = False,
     ) -> None:
+        # legacy_agents: observations carry the legacy LLM prompt's context
+        # (local chemistry, cell types, immune activity, BBB) and "target" may
+        # reach LEGACY_TARGET_REACH. legacy_queen: an omniscient, body-less Queen
+        # that steers searching bots every LEGACY_QUEEN_EVERY ticks, as in
+        # backend/nanobot_simulation.QueenNanobot. Both default off so rule runs
+        # (and their stored bundles) are unchanged.
+        if queen and legacy_queen:
+            raise ValueError("choose either the hive Queen or the legacy Queen, not both")
+        self.legacy_agents = legacy_agents
+        self.legacy_queen = legacy_queen
         # Legacy bots returned to reload only when payload < 2.0 but could only
         # target when payload > 2.0; 20 - 6 x 3 = exactly 2.0, so after one payload
         # every bot searched forever. The engine returns at <= 2.0. Set True only
@@ -126,12 +142,14 @@ class TumorWorld:
         return self._revision
 
     def agents(self) -> List[str]:
-        return sorted(self.bodies) + ([QUEEN] if self.queen else [])
+        return sorted(self.bodies) + ([QUEEN] if self.queen or self.legacy_queen else [])
 
     def describe(self) -> Dict[str, Any]:
         return {"world": "tumor", "version": 1, "seed": self.seed, "n_nanobots": self.n_nanobots,
                 "max_steps": self.max_steps, "sense_radius": self.sense_radius, "hearing": self.hearing,
-                "queen": self.queen, "legacy_payload_deadlock": self.legacy_payload_deadlock, **self.config}
+                "queen": self.queen, "legacy_payload_deadlock": self.legacy_payload_deadlock, **self.config,
+                **({"legacy_agents": True} if self.legacy_agents else {}),
+                **({"legacy_queen": True} if self.legacy_queen else {})}
 
     # ---------------------------------------------------------- visualization
     FRAME_FIELDS = ("drug", "oxygen", "trail_pheromone", "alarm_pheromone", "recruitment_pheromone")
@@ -165,6 +183,8 @@ class TumorWorld:
     def observe(self, agent_id: str, tick: int) -> Observation:
         self._ensure_prepared(tick)
         if agent_id == QUEEN:
+            if self.legacy_queen:
+                return Observation(self._legacy_queen_view(tick), SenseQuery(pos=self.center, kinds=frozenset()))
             return Observation({"role": QUEEN}, SenseQuery(pos=self.center, radius=self.domain[1] * 2))
         body = self.bodies[agent_id]
         pos = (float(body.position[0]), float(body.position[1]))
@@ -192,12 +212,19 @@ class TumorWorld:
             "anatomy": {"tumor_center": list(self.center), "tumor_radius": self.tumor_radius,
                         "vessels": [list(v) for v in self.vessels]},
         }
+        if self.legacy_agents:
+            data["legacy"] = self._legacy_context(body, pos)
+        if self.legacy_queen:
+            data["queen_guidance"] = (list(body.guidance) if body.guidance is not None
+                                      and body.guidance_tick == tick - 1 else None)
         sense = SenseQuery(pos=pos, radius=self.hearing) if self.hearing > 0 else SenseQuery(pos=pos, kinds=frozenset())
         return Observation(data, sense)
 
     def apply(self, agent_id: str, intent: Intent, tick: int) -> Outcome:
         self._ensure_prepared(tick)
         if agent_id == QUEEN:
+            if self.legacy_queen and intent.action == "guide":
+                return self._guide(intent.params.get("guidance"), tick)
             return Outcome(intent.action == "noop", None if intent.action == "noop" else "queen_cannot_act")
         body = self.bodies[agent_id]
         if body.state == SEARCHING and not self.legacy_payload_deadlock and body.payload <= 2.0:
@@ -262,7 +289,8 @@ class TumorWorld:
         pos = (body.position[0], body.position[1])
         if cell is None or not cell.is_alive:
             return Outcome(False, "no_such_living_cell")
-        if _dist(pos, cell.position) > self.sense_radius:
+        reach = max(self.sense_radius, LEGACY_TARGET_REACH) if self.legacy_agents else self.sense_radius
+        if _dist(pos, cell.position) > reach:
             return Outcome(False, "cell_not_sensed")
         if body.payload <= 2.0:
             return Outcome(False, "payload_too_low")
@@ -412,6 +440,93 @@ class TumorWorld:
                 distance = np.linalg.norm(to_vessel)
                 if distance > 100.0:
                     body.position = pos + to_vessel / distance * body.speed * 0.5
+
+    # ------------------------------------------------------- legacy context
+    def _legacy_context(self, body: Body, pos: Tuple[float, float]) -> Dict[str, Any]:
+        """What the legacy nanobot LLM prompt reads about its surroundings."""
+        p = self.physics
+        local = {name: round(p.concentration(name, pos), 4)
+                 for name in ("oxygen", "drug", "trail_pheromone", "alarm_pheromone", "ifn_gamma", "tnf_alpha",
+                              "perforin", "drug_a", "drug_b")}
+        near = p.cells_near(pos, 50.0)
+        types: Dict[str, int] = {}
+        for c in near:
+            types[c.cell_type.value] = types.get(c.cell_type.value, 0) + 1
+        immune = [i for i in p.geometry.immune_cells
+                  if i.is_active and _dist(pos, i.position) < 50.0]
+        vessel = p.geometry.find_nearest_vessel((pos[0], pos[1], 0.0))
+        far = None
+        best = LEGACY_TARGET_REACH
+        for c in p.living_cells():
+            if c.phase.value != "hypoxic" or _dist(c.position, self.center) > self.tumor_radius:
+                continue
+            d = _dist(pos, c.position)
+            if d <= best:
+                best, far = d, c
+        return {
+            "local": local,
+            "trail_direction": _round2(p.gradient("trail_pheromone", pos)),
+            "deliveries": body.deliveries,
+            "cells_within_50": len(near),
+            "cell_types_within_50": dict(sorted(types.items())),
+            "avg_resistance_within_50": round(float(np.mean([c.resistance_level for c in near])), 4) if near else 0.0,
+            "active_immune_within_50": len(immune),
+            "immune_activation_within_50": round(float(np.mean([i.activation_level for i in immune])), 4)
+            if immune else 0.0,
+            "nearest_vessel_bbb": round(float(vessel.bbb_permeability), 4) if vessel is not None else 0.1,
+            "nearest_hypoxic_within_reach": None if far is None else
+            {"id": far.cell_id, "pos": [round(far.position[0], 3), round(far.position[1], 3)]},
+        }
+
+    def _legacy_queen_view(self, tick: int) -> Dict[str, Any]:
+        """The legacy Queen saw the whole tumor; only computed on her turns."""
+        if tick % LEGACY_QUEEN_EVERY:
+            return {"role": "legacy_queen", "turn": False}
+        g = self.physics.geometry
+        living = self.physics.living_cells()
+        types: Dict[str, int] = {}
+        for c in living:
+            types[c.cell_type.value] = types.get(c.cell_type.value, 0) + 1
+        immune: Dict[str, int] = {}
+        for i in g.immune_cells:
+            immune[i.cell_type.value] = immune.get(i.cell_type.value, 0) + 1
+        xy = lambda p: [round(float(p[0]), 1), round(float(p[1]), 1)]  # noqa: E731
+        stats = self.physics.statistics()
+        return {
+            "role": "legacy_queen",
+            "turn": True,
+            "total_cells": stats["total_cells"],
+            "living_cells": stats["living_cells"],
+            "cell_types": dict(sorted(types.items())),
+            "immune_types": dict(sorted(immune.items())),
+            "hypoxic": [xy(c.position) for c in living if c.phase.value == "hypoxic"],
+            "stem": [xy(c.position) for c in living if c.cell_type.value == "stem_cell"],
+            "resistant": [xy(c.position) for c in living if c.resistance_level > 0.5],
+            "immune_active": [xy(i.position) for i in g.immune_cells if i.is_active and i.activation_level > 0.7],
+            "deliveries": sum(b.deliveries for b in self.bodies.values()),
+            "drug_delivered": round(sum(b.drug_delivered for b in self.bodies.values()), 3),
+            "cells_killed": self.physics.initial_living - stats["living_cells"],
+            "bots": {name: {"pos": xy(b.position), "state": b.state, "payload": round(b.payload, 3),
+                            "max_payload": b.max_payload} for name, b in sorted(self.bodies.items())},
+        }
+
+    def _guide(self, guidance: Any, tick: int) -> Outcome:
+        if not isinstance(guidance, dict):
+            self.counters["invalid_actions"] += 1
+            return Outcome(False, "bad_guidance")
+        guided = []
+        for name, direction in sorted(guidance.items()):
+            body = self.bodies.get(name)
+            if body is None or not (isinstance(direction, list) and len(direction) == 2 and all(
+                    isinstance(c, (int, float)) and not isinstance(c, bool) and math.isfinite(c) for c in direction)):
+                continue
+            norm = math.hypot(direction[0], direction[1])
+            if norm == 0:
+                continue
+            body.guidance = (direction[0] / norm, direction[1] / norm)
+            body.guidance_tick = tick
+            guided.append(name)
+        return Outcome(True, effects={"guided": guided})
 
 
 def _dist(a, b) -> float:

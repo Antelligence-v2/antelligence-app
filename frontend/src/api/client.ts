@@ -1,11 +1,13 @@
 /** Network layer for the engine API: one axios instance, validated responses. */
-import axios from "axios";
+import type { AxiosInstance, AxiosRequestConfig } from "axios";
 import type { z } from "zod";
 import { API_BASE_URL } from "@/lib/runtime";
 import {
   EventPageSchema,
   FramesSchema,
   HealthSchema,
+  LiveFramesSchema,
+  RunJobSchema,
   ExperimentJobSchema,
   ExperimentListItemSchema,
   ExperimentSchema,
@@ -19,7 +21,13 @@ import {
   type RunRequest,
 } from "./engine";
 
-const http = axios.create({ baseURL: `${API_BASE_URL}/engine`, timeout: 120_000 });
+// axios loads on the first request, which keeps it out of the entry chunk every page pays for.
+let instance: Promise<AxiosInstance> | undefined;
+const client = () => (instance ??= import("axios").then(({ default: axios }) => axios.create({ baseURL: `${API_BASE_URL}/engine`, timeout: 120_000 })));
+const http = {
+  get: (url: string, config?: AxiosRequestConfig) => client().then((c) => c.get(url, config)),
+  post: (url: string, body?: unknown, config?: AxiosRequestConfig) => client().then((c) => c.post(url, body, config)),
+};
 
 async function call<S extends z.ZodTypeAny>(schema: S, request: Promise<{ data: unknown }>): Promise<z.infer<S>> {
   try {
@@ -44,6 +52,17 @@ export const engine = {
       return await call(FramesSchema, http.get(`/runs/${encodeURIComponent(runId)}/frames`, { signal }));
     } catch (error) {
       if (error instanceof ApiError && error.status === 404 && /no frames/.test(error.message)) return null;
+      throw error;
+    }
+  },
+  startRun: (body: RunRequest) => call(RunJobSchema, http.post("/runs/jobs", body)),
+  runJob: (jobId: string) => call(RunJobSchema, http.get(`/runs/jobs/${encodeURIComponent(jobId)}`)),
+  /** null while the run has not started (queued) or once it has finished. */
+  liveFrames: async (jobId: string, since: number) => {
+    try {
+      return await call(LiveFramesSchema, http.get(`/runs/jobs/${encodeURIComponent(jobId)}/frames`, { params: { since } }));
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 404) return null;
       throw error;
     }
   },

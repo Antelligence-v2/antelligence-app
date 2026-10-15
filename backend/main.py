@@ -99,8 +99,10 @@ from backend.research_api import ResearchService, make_router
 RESEARCH_SERVICE = ResearchService(Path(os.environ.get("ANTELLIGENCE_RESEARCH_DB", _DEFAULT_DB_PATH)))
 app.include_router(make_router(RESEARCH_SERVICE))
 
-# Engine: cross-world swarm experiments with replayable provenance. Local-only,
-# rule-policy worlds only, bounded; see antelligence/api/app.py.
+# Engine: cross-world swarm experiments with replayable provenance. Local-only
+# (loopback clients). Runs rule or LLM agents; LLM runs are capped per run
+# (ANTELLIGENCE_LLM_MAX_CALLS) and off under ANTELLIGENCE_OFFLINE=1; see
+# antelligence/api/app.py and antelligence/providers/litellm.py.
 from antelligence.api.app import EngineService, make_router as make_engine_router
 ENGINE_SERVICE = EngineService(Path(os.environ.get("ANTELLIGENCE_ENGINE_DATA", project_root / "data" / "engine")))
 app.include_router(make_engine_router(ENGINE_SERVICE))

@@ -3,12 +3,12 @@ import { ArrowDown, ArrowRight, ArrowUp, ArrowUpRight } from "lucide-react";
 import { useWorlds } from "@/api/queries";
 import type { World } from "@/api/engine";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Page, PageHeader } from "@/design/PageHeader";
+import { Page, PhotoHeader } from "@/design/PageHeader";
 import { ErrorState } from "@/design/States";
 import { armLabel, humanize, worldMeta } from "@/features/worlds/meta";
 import { PRIMARY_NAV } from "@/shell/nav";
 
-function WorldCard({ world }: { world: World }) {
+function WorldCard({ world, index }: { world: World; index: number }) {
   const meta = worldMeta(world.name);
   const Direction = world.lower_is_better ? ArrowDown : ArrowUp;
   return (
@@ -17,13 +17,14 @@ function WorldCard({ world }: { world: World }) {
       className="surface-edge group relative flex flex-col gap-5 rounded-xl border bg-card p-5 transition-[border-color,background-color,transform] duration-base ease-out-expo hover:-translate-y-0.5 hover:border-foreground/15 hover:bg-surface-2"
     >
       <div className="flex items-start justify-between gap-3">
-        <div className="flex size-9 items-center justify-center rounded-lg border bg-surface-2 text-primary transition-colors group-hover:border-primary/30">
-          <meta.icon className="size-[18px]" />
-        </div>
-        <ArrowRight className="size-4 -translate-x-1 text-muted-foreground opacity-0 transition-[opacity,transform] duration-base group-hover:translate-x-0 group-hover:opacity-100" />
+        <span className="numeric font-mono text-2xs text-muted-foreground">{String(index + 1).padStart(2, "0")}</span>
+        <meta.icon className="size-4 text-muted-foreground transition-colors group-hover:text-primary" />
       </div>
-      <div className="space-y-1.5">
-        <h2 className="text-[15px] font-semibold tracking-[-0.01em]">{meta.title}</h2>
+      <div className="space-y-2">
+        <h2 className="flex items-center gap-2 text-lg font-light uppercase tracking-[0.14em]">
+          {meta.title}
+          <ArrowRight className="size-4 -translate-x-1 opacity-0 transition-[opacity,transform] duration-base group-hover:translate-x-0 group-hover:opacity-100" />
+        </h2>
         <p className="text-sm leading-relaxed text-muted-foreground">{world.description}</p>
       </div>
       <div className="mt-auto flex flex-wrap gap-1.5">
@@ -74,7 +75,7 @@ export default function Worlds() {
 
   return (
     <Page>
-      <PageHeader
+      <PhotoHeader
         eyebrow="Antelligence engine"
         title="Worlds"
         description="Every world runs on one kernel: agents see only local views, coordinate through typed expiring signals, and a model-free verifier owns outcomes. Every run is hash-chained and replayable."
@@ -86,7 +87,7 @@ export default function Worlds() {
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {worlds.isPending
             ? Array.from({ length: 3 }, (_, i) => <CardSkeleton key={i} />)
-            : worlds.data.map((world) => <WorldCard key={world.name} world={world} />)}
+            : worlds.data.map((world, i) => <WorldCard key={world.name} world={world} index={i} />)}
         </div>
       )}
 

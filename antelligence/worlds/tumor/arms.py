@@ -21,10 +21,14 @@ from antelligence.kernel.policies import QueenEmitter
 from antelligence.kernel.scheduler import RunConfig, Scheduler
 from antelligence.kernel.types import Policy
 from antelligence.kernel.verifier import EvidenceGate
+from antelligence.providers.base import Provider
+from antelligence.worlds.tumor.legacy import LegacyNanobot, LegacyQueen
 from antelligence.worlds.tumor.policies import NanobotPolicy
 from antelligence.worlds.tumor.world import QUEEN, ZONE, TumorWorld, zone_subject
 
 ARMS = ("no_bots", "rule", "pheromone", "signals", "hive", "hive_queen")
+AGENT_TYPES = ("Rule-Based", "LLM-Powered", "Hybrid")  # legacy names
+QUEEN_MODES = ("off", "heuristic", "llm")
 HEARING = 150.0
 RECALL_RADIUS = 250.0
 
@@ -65,10 +69,29 @@ def build(
     max_steps: int = 100,
     policy_factory: Callable[[str], Policy] = default_policy,
     run_id: Optional[str] = None,
+    agent_type: str = "Rule-Based",
+    queen_mode: str = "off",
+    provider: Optional[Provider] = None,
+    model: Optional[str] = None,
     **world_kwargs,
 ) -> Scheduler:
+    """``agent_type`` and ``queen_mode`` select the legacy brains (see legacy.py);
+    the defaults build the plain rule arms exactly as before."""
     if arm not in ARMS:
         raise ValueError(f"unknown arm {arm!r}")
+    if agent_type not in AGENT_TYPES:
+        raise ValueError(f"agent_type must be one of {AGENT_TYPES}")
+    if queen_mode not in QUEEN_MODES:
+        raise ValueError(f"queen_mode must be one of {QUEEN_MODES}")
+    if queen_mode != "off" and arm == "hive_queen":
+        raise ValueError("hive_queen already has a Queen; use queen_mode=off")
+    needs_llm = agent_type != "Rule-Based" or queen_mode == "llm"
+    if needs_llm and (provider is None or not model):
+        raise ValueError("LLM agents need a provider and a model")
+    legacy = agent_type != "Rule-Based" or queen_mode != "off"
+    if legacy:
+        world_kwargs = {**world_kwargs, "legacy_agents": agent_type != "Rule-Based",
+                        "legacy_queen": queen_mode != "off"}
     coordinated = arm in ("signals", "hive", "hive_queen")
     world = TumorWorld(
         seed,
@@ -93,7 +116,14 @@ def build(
         )
     elif coordinated:
         components = dict(admission=AdmissionPolicy(kinds=kinds, max_ttl=30, max_per_sender_per_tick=4))
-    policies = {}
+    policies: dict = {}
+    if legacy and arm != "no_bots":
+        bots = sorted(name for name in world.agents() if name != QUEEN)
+        for i, name in enumerate(bots):
+            llm = agent_type == "LLM-Powered" or (agent_type == "Hybrid" and i < len(bots) // 2)
+            policies[name] = LegacyNanobot(policy_factory(arm), provider if llm else None, model if llm else None)
+    if queen_mode != "off":
+        policies[QUEEN] = LegacyQueen(provider, model) if queen_mode == "llm" else LegacyQueen()
     if arm == "hive_queen":
         policies[QUEEN] = QueenEmitter(report_kind="found", cell_size=ZONE * 2, min_reports=2, every=5, ttl=10)
     return Scheduler(world, policies, GridField(), config, default_policy=policy_factory(arm), **components)

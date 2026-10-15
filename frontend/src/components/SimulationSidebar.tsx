@@ -69,6 +69,25 @@ export const SimulationSidebar: React.FC<SimulationSidebarProps> = ({
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
+        <div className="mt-3">
+          <Button
+            onClick={onRunSimulation}
+            disabled={isLoading}
+            className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white shadow-lg transition-all duration-300 hover:shadow-xl hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isLoading ? (
+              <>
+                <span className="animate-spin mr-2">🐜</span>
+                Running...
+              </>
+            ) : (
+              <>
+                <span className="animate-bounce mr-2">🚀</span>
+                Run Simulation
+              </>
+            )}
+          </Button>
+        </div>
       </div>
 
       {/* Content */}
@@ -384,26 +403,6 @@ export const SimulationSidebar: React.FC<SimulationSidebarProps> = ({
         </div>
       </div>
 
-      {/* Run Button */}
-      <div className="p-4 border-t border-amber-200 dark:border-amber-700 bg-gradient-to-r from-amber-100/50 to-orange-100/50 dark:from-amber-800/20 dark:to-orange-800/20">
-        <Button
-          onClick={onRunSimulation}
-          disabled={isLoading}
-          className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white shadow-lg transition-all duration-300 hover:shadow-xl hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {isLoading ? (
-            <>
-              <span className="animate-spin mr-2">🐜</span>
-              Running...
-            </>
-          ) : (
-            <>
-              <span className="animate-bounce mr-2">🚀</span>
-              Run Simulation
-            </>
-          )}
-        </Button>
-      </div>
     </div>
   );
 };

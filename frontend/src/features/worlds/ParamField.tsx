@@ -4,8 +4,9 @@ import { Slider } from "@/components/ui/slider";
 import { humanize } from "./meta";
 
 /** Integer world parameter: slider plus a numeric input clamped to the engine's bounds. */
-export function ParamField({ name, bounds, value, onChange }: {
+export function ParamField({ name, label, bounds, value, onChange }: {
   name: string;
+  label?: string;
   bounds: ParamBounds;
   value: number;
   onChange: (v: number) => void;
@@ -19,7 +20,7 @@ export function ParamField({ name, bounds, value, onChange }: {
   return (
     <div className="space-y-2.5">
       <div className="flex items-center justify-between gap-3">
-        <label htmlFor={`param-${name}`} className="text-sm">{humanize(name)}</label>
+        <label htmlFor={`param-${name}`} className="text-sm">{label ?? humanize(name)}</label>
         <input
           id={`param-${name}`}
           inputMode="numeric"
@@ -30,7 +31,7 @@ export function ParamField({ name, bounds, value, onChange }: {
           className="numeric h-7 w-20 rounded-md border bg-transparent px-2 text-right font-mono text-xs outline-none transition-colors focus:border-ring"
         />
       </div>
-      <Slider min={bounds.min} max={bounds.max} step={1} value={[value]} onValueChange={([v]) => onChange(v)} aria-label={humanize(name)} />
+      <Slider min={bounds.min} max={bounds.max} step={1} value={[value]} onValueChange={([v]) => onChange(v)} aria-label={label ?? humanize(name)} />
       <div className="numeric flex justify-between font-mono text-2xs text-muted-foreground">
         <span>{bounds.min}</span>
         <span>default {bounds.default}</span>

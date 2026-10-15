@@ -14,7 +14,7 @@ export type NavItem = {
 
 /** Engine-native product surfaces. */
 export const PRIMARY_NAV: NavItem[] = [
-  { to: "/worlds", label: "Worlds", icon: Orbit, chord: "g w", description: "Launch runs on engine worlds", matches: ["/w", "/runs"] },
+  { to: "/worlds", label: "Worlds", icon: Orbit, chord: "g w", description: "Ant colony, tumor and benchmarks, with LLM, rule or hybrid agents", matches: ["/w", "/runs"] },
   { to: "/lab", label: "Experiments", icon: FlaskConical, chord: "g e", description: "Compare arms across seeded cases" },
   { to: "/research", label: "Research", icon: MessagesSquare, chord: "g r", description: "Compare LLM swarms on reference tasks" },
 ];
@@ -24,7 +24,7 @@ export const LEGACY_NAV: NavItem[] = [
   { to: "/tumor", label: "Tumor playback", icon: ScanLine, description: "Legacy single tumor run" },
   { to: "/tumor-hunt", label: "Tumor hunt", icon: Crosshair, description: "Legacy wave-spawn hunt" },
   { to: "/experiments", label: "Experiment Lab v1", icon: FlaskRound, description: "Legacy three-arm tumor experiments" },
-  { to: "/ants", label: "Ant colony", icon: Bug, description: "Original ant foraging simulator" },
+  { to: "/ants", label: "Ant colony (legacy)", icon: Bug, description: "Original ant page; the engine port is under Worlds" },
   { to: "/comparison", label: "Ant comparison", icon: GitCompareArrows, description: "Queen vs no-queen ant runs" },
 ];
 

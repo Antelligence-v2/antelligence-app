@@ -28,8 +28,8 @@ export function usePlayback(min: number, max: number, initial?: number): Playbac
   const [position, setPosition] = useState(() => clamp(initial ?? max));
   const [playing, setPlaying] = useState(false);
   const [speed, setSpeed] = useState<number>(10);
-  const raf = useRef<number>();
-  const last = useRef<number>();
+  const raf = useRef<number | undefined>(undefined);
+  const last = useRef<number | undefined>(undefined);
 
   useEffect(() => setPosition((p) => clamp(p)), [clamp]);
 

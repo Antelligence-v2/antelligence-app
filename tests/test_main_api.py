@@ -387,4 +387,4 @@ def test_engine_router_is_mounted_in_the_main_app():
     client = TestClient(main_module.app)
     health = client.get("/engine/health")
     assert health.status_code == 200
-    assert health.json()["worlds"] == ["foraging", "task_dag", "tumor"]
+    assert health.json()["worlds"] == ["ant_colony", "foraging", "task_dag", "tumor"]

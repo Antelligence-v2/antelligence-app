@@ -4,8 +4,11 @@ Run with ``uvicorn antelligence.api.app:app --host 127.0.0.1 --port 8002`` or
 mount :func:`make_router` into another FastAPI app. Data lives under
 ``ANTELLIGENCE_ENGINE_DATA`` (read once, when the default app is created).
 
-Every endpoint is bounded: registered rule-policy worlds only, capped arms,
-cases and steps. Nothing here calls a model, a chain, or the network.
+Every endpoint is bounded: registered worlds only, capped arms, cases and
+steps. Runs whose params select LLM agents call the LiteLLM proxy configured
+like the legacy simulators (``antelligence.providers.litellm``); everything
+else is local and model-free. Long runs go through ``/runs/jobs``, which
+reports progress and serves frames while the run is still going.
 """
 
 from __future__ import annotations
@@ -15,22 +18,24 @@ import os
 import threading
 import uuid
 from pathlib import Path
-from typing import Annotated, Any, Dict, List, Optional
+from typing import Annotated, Any, Dict, List, Optional, Union
 from urllib.parse import urlparse
 
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, Query, Request
 from fastapi.concurrency import run_in_threadpool
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, StrictInt
 
 from antelligence.experiments import registry
-from antelligence.experiments.runner import execute_run, experiment_request, run_experiment
+from antelligence.experiments.runner import execute_run, experiment_request, run_experiment, run_id_for
 from antelligence.experiments.store import EngineStore
 from antelligence.kernel.events import EventLogError
 from antelligence.provenance.bundle import replay
 from antelligence.provenance.outbox import LocalFilePublisher, ProvenanceOutbox
+from antelligence.providers import litellm
 
 MAX_ARMS = 6
 MAX_CASES = 20
+ParamValue = Union[StrictInt, Annotated[str, Field(max_length=120)]]
 
 
 class RunRequest(BaseModel):
@@ -38,7 +43,7 @@ class RunRequest(BaseModel):
     world: str
     arm: str
     case: int = Field(ge=0, le=2**31 - 1)
-    params: Dict[str, int] = Field(default_factory=dict)
+    params: Dict[str, ParamValue] = Field(default_factory=dict)
 
 
 class ExperimentBody(BaseModel):
@@ -48,7 +53,7 @@ class ExperimentBody(BaseModel):
     cases: Optional[List[Annotated[int, Field(ge=0, le=2**31 - 1)]]] = Field(default=None, min_length=1,
                                                                              max_length=MAX_CASES)
     baseline: Optional[str] = None
-    params: Dict[str, int] = Field(default_factory=dict)
+    params: Dict[str, ParamValue] = Field(default_factory=dict)
     force: bool = False  # re-run even if a report for this request and engine version exists
 
 
@@ -65,7 +70,14 @@ def _local_only(request: Request) -> None:
         raise HTTPException(403, "Engine API rejects non-local origins")
 
 
+class QueueFull(RuntimeError):
+    """Too many runs are already waiting or running."""
+
+
 class EngineService:
+    #: Runs queued or running at once. Each can be a long LLM run, so more just pile up behind the lock.
+    MAX_ACTIVE_RUNS = 4
+
     def __init__(self, data_dir: Path) -> None:
         self.data_dir = Path(data_dir)
         self.store = EngineStore(self.data_dir)
@@ -74,16 +86,78 @@ class EngineService:
         self._lock = threading.Lock()  # one CPU-bound run at a time; keeps the host responsive and ordered
         self._jobs: Dict[str, Dict[str, Any]] = {}
         self._jobs_lock = threading.Lock()
+        self._run_jobs: Dict[str, Dict[str, Any]] = {}
+        self._watch: Dict[str, Any] = {}  # job_id -> live Scheduler
+        litellm.configure(self.data_dir / "llm_cache")
 
     def verify(self, bundle: Dict[str, Any]) -> Dict[str, Any]:
         # Replays use the same global-state-sensitive worlds as runs, so they share the lock.
         with self._lock:
             return replay(bundle)
 
+    @staticmethod
+    def _fresh(world_name: str, params: Dict[str, Any]) -> Dict[str, Any]:
+        """LLM runs are never cached: a nonce gives every launch its own run id and response cache."""
+        ws = registry.world(world_name)
+        resolved = ws.resolve_params(params)
+        if ws.uses_llm(resolved):
+            if not litellm.available():
+                raise litellm.LLMUnavailable("LLM agents need IO_SECRET_KEY (or LITELLM_API_KEY) set for the backend")
+            return {**params, "nonce": uuid.uuid4().hex[:16]}
+        return dict(params)
+
     def run(self, body: RunRequest) -> Dict[str, Any]:
-        spec = registry.RunSpec(body.world, body.arm, body.case, body.params)
+        spec = registry.RunSpec(body.world, body.arm, body.case, self._fresh(body.world, body.params))
         with self._lock:
             return execute_run(spec, store=self.store, outbox=self.outbox)
+
+    # Background single runs with live progress and frames.
+    def start_run(self, body: RunRequest) -> Dict[str, Any]:
+        spec = registry.RunSpec(body.world, body.arm, body.case, self._fresh(body.world, body.params))
+        ws = registry.world(body.world)
+        params = ws.resolve_params(spec.params)
+        ws.check_arm(body.arm, params)
+        job = {"job_id": uuid.uuid4().hex[:12], "status": "queued", "run_id": run_id_for(spec), "tick": 0,
+               "max_ticks": params.get("max_steps"), "llm": ws.uses_llm(params), "error": None}
+        with self._jobs_lock:
+            active = sum(j["status"] in ("queued", "running") for j in self._run_jobs.values())
+            if active >= self.MAX_ACTIVE_RUNS:
+                raise QueueFull(f"{active} runs are already queued or running; wait for one to finish")
+            self._run_jobs[job["job_id"]] = job
+            # Forget only finished jobs: a client may still be polling a queued or running one.
+            finished = [k for k, j in self._run_jobs.items() if j["status"] in ("done", "failed")]
+            for old in finished[:max(0, len(self._run_jobs) - self.MAX_JOBS)]:
+                self._run_jobs.pop(old, None)
+
+        def watch(scheduler) -> None:
+            job.update(status="running", max_ticks=scheduler.config.max_ticks)
+            self._watch[job["job_id"]] = scheduler
+            scheduler.on_tick = lambda s: job.update(tick=s.tick)
+
+        def work() -> None:
+            try:
+                with self._lock:
+                    execute_run(spec, store=self.store, outbox=self.outbox, on_start=watch)
+                job.update(status="done")
+            except Exception as exc:  # surfaced to the client via the job
+                job.update(status="failed", error=f"{type(exc).__name__}: {exc}"[:500])
+            finally:
+                self._watch.pop(job["job_id"], None)
+
+        threading.Thread(target=work, name=f"run-{job['job_id']}", daemon=True).start()
+        return dict(job)
+
+    def run_job(self, job_id: str) -> Optional[Dict[str, Any]]:
+        with self._jobs_lock:
+            job = self._run_jobs.get(job_id)
+            return dict(job) if job else None
+
+    def live_frames(self, job_id: str, since: int) -> Optional[Dict[str, Any]]:
+        scheduler = self._watch.get(job_id)
+        if scheduler is None or scheduler.scene is None:
+            return None
+        frames = list(scheduler.frames)  # list() of a list being appended to is safe under the GIL
+        return {"scene": scheduler.scene, "frames": frames[since:], "total": len(frames)}
 
     def _request(self, body: ExperimentBody) -> Dict[str, Any]:
         ws = registry.world(body.world)
@@ -92,6 +166,7 @@ class EngineService:
 
     def experiment(self, body: ExperimentBody) -> Dict[str, Any]:
         request = self._request(body)
+        request["params"] = self._fresh(body.world, request["params"] or {})
         with self._lock:
             return run_experiment(request, store=self.store, outbox=self.outbox, force=body.force)
 
@@ -100,6 +175,7 @@ class EngineService:
 
     def start_experiment(self, body: ExperimentBody) -> Dict[str, Any]:
         request = self._request(body)
+        request["params"] = self._fresh(body.world, request["params"] or {})
         # Validate up front so bad requests fail with 422 instead of inside the thread.
         normalized = experiment_request(request["world"], request["arms"], request["cases"],
                                         params=request["params"], baseline=request["baseline"])
@@ -146,8 +222,37 @@ def make_router(service: EngineService) -> APIRouter:
     async def create_run(body: RunRequest) -> Dict[str, Any]:
         try:
             return await run_in_threadpool(service.run, body)
+        except litellm.LLMUnavailable as exc:
+            raise HTTPException(503, str(exc)) from exc
         except ValueError as exc:
             raise HTTPException(422, str(exc)) from exc
+
+    @router.post("/runs/jobs", status_code=202)
+    def start_run(body: RunRequest) -> Dict[str, Any]:
+        try:
+            return service.start_run(body)
+        except QueueFull as exc:
+            raise HTTPException(429, str(exc)) from exc
+        except litellm.LLMUnavailable as exc:
+            raise HTTPException(503, str(exc)) from exc
+        except ValueError as exc:
+            raise HTTPException(422, str(exc)) from exc
+
+    @router.get("/runs/jobs/{job_id}")
+    def get_run_job(job_id: str) -> Dict[str, Any]:
+        job = service.run_job(job_id)
+        if job is None:
+            raise HTTPException(404, "job not found")
+        return job
+
+    @router.get("/runs/jobs/{job_id}/frames")
+    def get_live_frames(job_id: str, since: int = Query(0, ge=0)) -> Dict[str, Any]:
+        if service.run_job(job_id) is None:
+            raise HTTPException(404, "job not found")
+        frames = service.live_frames(job_id, since)
+        if frames is None:
+            raise HTTPException(404, "no live frames (run not started, finished, or non-spatial)")
+        return frames
 
     @router.get("/runs/{run_id}")
     def get_run(run_id: str) -> Dict[str, Any]:
@@ -197,6 +302,8 @@ def make_router(service: EngineService) -> APIRouter:
     async def create_experiment(body: ExperimentBody) -> Dict[str, Any]:
         try:
             return await run_in_threadpool(service.experiment, body)
+        except litellm.LLMUnavailable as exc:
+            raise HTTPException(503, str(exc)) from exc
         except ValueError as exc:
             raise HTTPException(422, str(exc)) from exc
 
@@ -204,6 +311,8 @@ def make_router(service: EngineService) -> APIRouter:
     def start_experiment(body: ExperimentBody) -> Dict[str, Any]:
         try:
             return service.start_experiment(body)
+        except litellm.LLMUnavailable as exc:
+            raise HTTPException(503, str(exc)) from exc
         except ValueError as exc:
             raise HTTPException(422, str(exc)) from exc
 

@@ -13,6 +13,11 @@ from antelligence.kernel.canonical import plain
 from antelligence.kernel.field import SenseQuery
 from antelligence.kernel.signal import Signal, SignalDraft
 
+#: The ``fallback`` code a policy logs when its model call failed. A fixed code,
+#: never the exception text: the event log is hashed, and the text of a 429 or a
+#: timeout would differ on replay (a cache miss), so the run could never verify.
+PROVIDER_ERROR = "provider_error"
+
 NOOP = "noop"
 
 

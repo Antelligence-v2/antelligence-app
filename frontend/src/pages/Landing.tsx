@@ -21,7 +21,8 @@ export default function Landing() {
   return (
     <main className="relative h-dvh w-full overflow-hidden bg-[#0b0f0a] text-white">
       <img
-        src="/ant-frontpage.jpg"
+        src={`${import.meta.env.BASE_URL}ant-frontpage.jpg`}
+        decoding="async"
         alt=""
         onLoad={() => setLoaded(true)}
         className={cn(

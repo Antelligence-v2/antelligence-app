@@ -18,14 +18,14 @@ import asyncio
 import hashlib
 import inspect
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Mapping, Optional, Protocol, Tuple
+from typing import Any, Callable, Dict, List, Mapping, Optional, Protocol, Tuple
 
 from antelligence.kernel import events as ev
 from antelligence.kernel.canonical import content_hash
 from antelligence.kernel.field import FieldFullError, SignalField
 from antelligence.kernel.frames import signal_marks
 from antelligence.kernel.signal import Signal, SignalError
-from antelligence.kernel.types import NOOP, Intent, LocalView, Outcome, Policy, World
+from antelligence.kernel.types import NOOP, PROVIDER_ERROR, Intent, LocalView, Outcome, Policy, World
 
 
 class Admission(Protocol):
@@ -142,6 +142,10 @@ class Scheduler:
         self.log = log if log is not None else ev.EventLog()
         self.tick = 0
         self.policy_failures = 0
+        # Model calls made by policies, and how many failed and fell back to a rule.
+        # A run where most calls failed is not an LLM run, whatever its arm says.
+        self.model_calls = 0
+        self.model_failures = 0
         self.signals_deposited = 0
         self.signals_rejected = 0
         self._started = False
@@ -150,6 +154,8 @@ class Scheduler:
         scene = getattr(world, "scene", None)
         self.scene: Optional[Dict[str, Any]] = scene() if self.record_frames and callable(scene) else None
         self.frames: List[Dict[str, Any]] = []
+        # Progress hook for callers (e.g. live run jobs); not part of the run's identity.
+        self.on_tick: Optional[Callable[["Scheduler"], None]] = None
 
     # ------------------------------------------------------------------ config
     def _policy_for(self, agent_id: str) -> Policy:
@@ -195,6 +201,8 @@ class Scheduler:
                 stopped = "world_done"
                 break
             await self.step()
+            if self.on_tick is not None:
+                self.on_tick(self)
         else:
             if self.world.done(self.tick):
                 stopped = "world_done"
@@ -213,8 +221,19 @@ class Scheduler:
             signals_deposited=self.signals_deposited,
             signals_rejected=self.signals_rejected,
             stopped_reason=stopped,
-            extra={"intents_blocked": self.intents_blocked},
+            extra={"intents_blocked": self.intents_blocked,
+                   # Only LLM runs carry these, so rule-run bundles stay byte-identical.
+                   **({"model_calls": self.model_calls, "model_failures": self.model_failures}
+                      if self.model_calls else {})},
         )
+
+    def _count_model_call(self, intent: Intent) -> None:
+        meta = intent.meta or {}
+        fallback = meta.get("fallback")
+        failed = isinstance(fallback, str) and (fallback == PROVIDER_ERROR or fallback.startswith("provider:"))
+        if failed or "request_hash" in meta:
+            self.model_calls += 1
+            self.model_failures += int(failed)
 
     async def step(self) -> None:
         self.tick += 1
@@ -261,6 +280,7 @@ class Scheduler:
         # Phase 2: apply in deterministic order.
         for view, intent in zip(views, intents):
             agent_id = view.agent_id
+            self._count_model_call(intent)
             if intent.action != NOOP or intent.rationale or intent.meta:
                 self.log.append(ev.DECIDED, tick, intent.to_dict(), agent_id)
             blocked = self.gate.check(agent_id, intent, tick) if self.gate is not None else None

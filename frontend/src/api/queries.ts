@@ -2,7 +2,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { QueryClient, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { engine } from "./client";
-import { toApiError, type ApiError, type Experiment, type ExperimentBody, type ExperimentJob, type RunRequest } from "./engine";
+import {
+  toApiError, type ApiError, type Experiment, type ExperimentBody, type ExperimentJob, type Frames, type RunJob, type RunRequest,
+} from "./engine";
 
 export const keys = {
   health: ["engine", "health"] as const,
@@ -110,4 +112,76 @@ export function useExperimentJob() {
 
   const running = job?.status === "running";
   return { start, job, running, error, reset: () => { setJob(null); setError(null); } };
+}
+
+/**
+ * Runs one engine run as a background job: polls progress and streams the
+ * frames recorded so far, so a long (LLM) run can be watched while it goes.
+ * `start` resolves with the finished run id (null on failure or unmount).
+ */
+export function useRunJob() {
+  const [job, setJob] = useState<RunJob | null>(null);
+  const [live, setLive] = useState<Frames | null>(null);
+  const [error, setError] = useState<ApiError | null>(null);
+  // True from the click until the job ends, including the start request's round trip,
+  // so a double-click or a second ⌘↵ can't launch another run.
+  const [busy, setBusy] = useState(false);
+  const inFlight = useRef(false);
+  const alive = useRef(true);
+  useEffect(() => () => { alive.current = false; }, []);
+
+  const start = useCallback(async (body: RunRequest): Promise<string | null> => {
+    if (inFlight.current) return null;
+    inFlight.current = true;
+    setBusy(true);
+    setError(null);
+    setLive(null);
+    try {
+      let current = await engine.startRun(body);
+      setJob(current);
+      let scene: Record<string, unknown> | null = null;
+      const frames: Frames["frames"] = [];
+      while (current.status === "queued" || current.status === "running") {
+        await new Promise((resolve) => setTimeout(resolve, 400));
+        if (!alive.current) return null;
+        current = await withRetry(() => engine.runJob(current.job_id));
+        if (current.status === "running") {
+          const id = current.job_id;
+          const page = await withRetry(() => engine.liveFrames(id, frames.length));
+          if (page && page.frames.length) {
+            scene = page.scene;
+            frames.push(...page.frames);
+            if (alive.current) setLive({ run_id: current.run_id, scene, frames: frames.slice() });
+          }
+        }
+        if (alive.current) setJob(current);
+      }
+      if (current.status === "failed") throw new Error(current.error ?? "Run failed.");
+      return current.run_id;
+    } catch (e) {
+      const err = toApiError(e);
+      if (alive.current) setError(err);
+      return null;
+    } finally {
+      inFlight.current = false;
+      if (alive.current) setBusy(false);
+    }
+  }, []);
+
+  const running = busy || job?.status === "queued" || job?.status === "running";
+  return { start, job, live, running, error };
+}
+
+/** Retries a poll a few times with backoff, so one dropped request doesn't end the watch. */
+async function withRetry<T>(call: () => Promise<T>, attempts = 4): Promise<T> {
+  for (let i = 0; ; i++) {
+    try {
+      return await call();
+    } catch (error) {
+      const status = toApiError(error).status;
+      // A 4xx is an answer, not a blip (404 on frames is handled by the caller as null).
+      if (i + 1 >= attempts || (status !== null && status < 500)) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 500 * 2 ** i));
+    }
+  }
 }
