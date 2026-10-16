@@ -79,8 +79,6 @@ MEMORY_ADDR=" > .env
 
 # Set Python path and production environment
 ENV PYTHONPATH=/app
-# Open the engine API to site visitors (it is loopback-only by default)
-ENV ANTELLIGENCE_PUBLIC_ENGINE=1
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 

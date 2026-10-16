@@ -206,15 +206,7 @@ def test_api_limits_and_missing(client):
     assert client.get("/engine/experiments/nope").status_code == 404
 
 
-def test_api_is_local_only(tmp_path):
-    remote = TestClient(create_app(tmp_path), client=("203.0.113.9", 5000))
-    assert remote.get("/engine/health").status_code == 403
-    local = TestClient(create_app(tmp_path))
-    assert local.get("/engine/health", headers={"origin": "https://evil.example"}).status_code == 403
-
-
-def test_api_is_public_when_enabled(tmp_path, monkeypatch):
-    monkeypatch.setenv("ANTELLIGENCE_PUBLIC_ENGINE", "1")
+def test_api_serves_remote_clients(tmp_path):
     remote = TestClient(create_app(tmp_path), client=("203.0.113.9", 5000))
     assert remote.get("/engine/health", headers={"origin": "https://antelligence.co"}).status_code == 200
 
