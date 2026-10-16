@@ -213,6 +213,12 @@ def test_api_is_local_only(tmp_path):
     assert local.get("/engine/health", headers={"origin": "https://evil.example"}).status_code == 403
 
 
+def test_api_is_public_when_enabled(tmp_path, monkeypatch):
+    monkeypatch.setenv("ANTELLIGENCE_PUBLIC_ENGINE", "1")
+    remote = TestClient(create_app(tmp_path), client=("203.0.113.9", 5000))
+    assert remote.get("/engine/health", headers={"origin": "https://antelligence.co"}).status_code == 200
+
+
 def test_task_dag_experiment_reproduces_the_merge_result():
     report = run_experiment({"world": "task_dag", "arms": list(world("task_dag").arms), "cases": list(range(101, 121))})
     comps = report["comparisons_vs_baseline"]

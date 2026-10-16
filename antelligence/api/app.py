@@ -58,6 +58,10 @@ class ExperimentBody(BaseModel):
 
 
 def _local_only(request: Request) -> None:
+    # The deployed image sets ANTELLIGENCE_PUBLIC_ENGINE=1 so visitors can use the engine;
+    # a dev server on a laptop keeps the loopback check.
+    if os.environ.get("ANTELLIGENCE_PUBLIC_ENGINE", "").lower() in {"1", "true", "yes", "on"}:
+        return
     host = request.client.host if request.client else ""
     try:
         loopback = ipaddress.ip_address(host).is_loopback
