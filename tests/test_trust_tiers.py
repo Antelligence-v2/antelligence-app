@@ -46,9 +46,11 @@ class TestVerifyTrustTiers:
         assert result_staged["trust_tier"] == "proof_staged"
 
         # 4. Verified Onchain
+        from tests._onchain_proof import proven_onchain
+
         original_check = verify_module.check_onchain_verification
-        verify_module.check_onchain_verification = lambda config_hash: {"ok": True, "verified": True}
-        
+        verify_module.check_onchain_verification = proven_onchain(artifact_staged)
+
         try:
             result_onchain = verify_artifact(artifact_staged, replay=False)
             assert result_onchain["trust_tier"] == "verified_onchain"

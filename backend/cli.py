@@ -109,35 +109,20 @@ def cmd_benchmark(args: argparse.Namespace) -> None:
 def cmd_leaderboard(args: argparse.Namespace) -> None:
     """Display the on-chain leaderboard."""
     try:
-        from chain.leaderboard import build_leaderboard, fetch_onchain_events, load_local_artifacts
-        from chain.config import get_base_sepolia_rpc_url
+        from chain.leaderboard import build_leaderboard, fetch_onchain_events, load_local_artifacts, onchain_artifacts
+        from chain.config import get_rpc_url
 
         artifacts: list = []
 
         if args.from_dir:
             artifacts = load_local_artifacts(args.from_dir)
         else:
-            rpc_url = get_base_sepolia_rpc_url()
+            rpc_url = get_rpc_url()
             if not rpc_url:
-                print("[leaderboard] BASE_SEPOLIA_RPC_URL not set; cannot fetch on-chain data.")
+                print("[leaderboard] chain RPC not configured (ANTELLIGENCE_CHAIN / ANTELLIGENCE_RPC_URL); cannot fetch on-chain data.")
                 print("[leaderboard] No entries to display (offline mode). Use --from-dir <dir> for local artifacts.")
                 return
-            events = fetch_onchain_events(rpc_url)
-            for evt in events:
-                artifacts.append({
-                    "type": "antelligence-simulation-v2",
-                    "config": {},
-                    "metrics": {"kill_rate": 0},
-                    "verification_status": {
-                        "schema_ok": True,
-                        "integrity_ok": False,
-                        "replay_ok": False,
-                        "proof_ok": False,
-                        "onchain_ok": True,
-                    },
-                    "proof_lifecycle": {"stage": "verified_onchain"},
-                    "tx_hash": evt.get("transactionHash", ""),
-                })
+            artifacts = onchain_artifacts(fetch_onchain_events(rpc_url))
 
         if not artifacts:
             print("[leaderboard] No simulation entries found.")

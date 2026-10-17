@@ -171,6 +171,9 @@ contract TumorIntel {
         require(configHash != bytes32(0), "Config hash required");
 
         SimulationRecord storage record = simulations[configHash];
+        // A verified record holds proven values. Letting a later, unproven submission rewrite
+        // them (while `verified` stayed true) would make isVerified() vouch for forged numbers.
+        require(!record.verified, "Simulation already verified");
         record.configHash = configHash;
         record.killRateBps = killRateBps;
         record.nanobotCount = nanobotCount;

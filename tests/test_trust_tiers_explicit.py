@@ -41,7 +41,8 @@ class TestTrustTiersExplicit:
             metrics={"kill_rate": 10.0},
         )
         onchain_artifact["is_mock"] = False
-        monkeypatch.setattr("chain.verify.check_onchain_verification", lambda x: {"ok": True, "verified": True})
+        from tests._onchain_proof import proven_onchain
+        monkeypatch.setattr("chain.verify.check_onchain_verification", proven_onchain(onchain_artifact))
         result_onchain = verify_artifact(onchain_artifact, replay=False)
         assert result_onchain["trust_tier"] == "verified_onchain"
 
