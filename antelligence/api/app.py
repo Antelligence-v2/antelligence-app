@@ -1,4 +1,4 @@
-"""Engine HTTP API (local-only by default).
+"""Engine HTTP API.
 
 Run with ``uvicorn antelligence.api.app:app --host 127.0.0.1 --port 8002`` or
 mount :func:`make_router` into another FastAPI app. Data lives under
@@ -13,15 +13,13 @@ reports progress and serves frames while the run is still going.
 
 from __future__ import annotations
 
-import ipaddress
 import os
 import threading
 import uuid
 from pathlib import Path
 from typing import Annotated, Any, Dict, List, Optional, Union
-from urllib.parse import urlparse
 
-from fastapi import APIRouter, Depends, FastAPI, HTTPException, Query, Request
+from fastapi import APIRouter, FastAPI, HTTPException, Query
 from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel, ConfigDict, Field, StrictInt
 
@@ -55,19 +53,6 @@ class ExperimentBody(BaseModel):
     baseline: Optional[str] = None
     params: Dict[str, ParamValue] = Field(default_factory=dict)
     force: bool = False  # re-run even if a report for this request and engine version exists
-
-
-def _local_only(request: Request) -> None:
-    host = request.client.host if request.client else ""
-    try:
-        loopback = ipaddress.ip_address(host).is_loopback
-    except ValueError:
-        loopback = host == "testclient"
-    if not loopback:
-        raise HTTPException(403, "Engine API is local-only")
-    origin = request.headers.get("origin")
-    if origin and urlparse(origin).hostname not in {"localhost", "127.0.0.1", "::1"}:
-        raise HTTPException(403, "Engine API rejects non-local origins")
 
 
 class QueueFull(RuntimeError):
@@ -208,7 +193,7 @@ class EngineService:
 
 
 def make_router(service: EngineService) -> APIRouter:
-    router = APIRouter(prefix="/engine", dependencies=[Depends(_local_only)])
+    router = APIRouter(prefix="/engine")
 
     @router.get("/health")
     def health() -> Dict[str, Any]:

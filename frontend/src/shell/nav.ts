@@ -12,11 +12,16 @@ export type NavItem = {
   matches?: string[];
 };
 
+/** Research runs against models on a dev machine, so the deployed build hides it. */
+export const SHOW_RESEARCH = import.meta.env?.VITE_HIDE_RESEARCH !== "1";
+
 /** Engine-native product surfaces. */
 export const PRIMARY_NAV: NavItem[] = [
   { to: "/worlds", label: "Worlds", icon: Orbit, chord: "g w", description: "Ant colony, tumor and benchmarks, with LLM, rule or hybrid agents", matches: ["/w", "/runs"] },
   { to: "/lab", label: "Experiments", icon: FlaskConical, chord: "g e", description: "Compare arms across seeded cases" },
-  { to: "/research", label: "Research", icon: MessagesSquare, chord: "g r", description: "Compare LLM swarms on reference tasks" },
+  ...(SHOW_RESEARCH
+    ? [{ to: "/research", label: "Research", icon: MessagesSquare, chord: "g r", description: "Compare LLM swarms on reference tasks" }]
+    : []),
 ];
 
 /** Pre-engine pages, kept reachable until they are retired (step 14). */

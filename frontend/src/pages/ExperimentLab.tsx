@@ -39,6 +39,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { API_BASE_URL, BUILD_INFO, IS_PREVIEW_MODE } from "@/lib/runtime";
+import { SHOW_RESEARCH } from "@/shell/nav";
 import {
   DEFAULT_EXPERIMENT_CONFIG,
   buildExperimentRequest,
@@ -641,9 +642,11 @@ export default function ExperimentLab() {
           <Button variant="outline" size="sm" onClick={() => navigate("/tumor")} className="gap-2 self-start sm:self-auto">
             <Activity className="h-4 w-4" /> Open single-run playback
           </Button>
-          <Button variant="outline" size="sm" onClick={() => navigate("/research")} className="gap-2 self-start sm:self-auto">
-            <Search className="h-4 w-4" /> Swarm research
-          </Button>
+          {SHOW_RESEARCH && (
+            <Button variant="outline" size="sm" onClick={() => navigate("/research")} className="gap-2 self-start sm:self-auto">
+              <Search className="h-4 w-4" /> Swarm research
+            </Button>
+          )}
         </div>
       </header>
 

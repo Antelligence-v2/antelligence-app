@@ -56,7 +56,7 @@ oracle and E15 admission are reproduced exactly, the tumor world matches the
 legacy simulator's physics, and research QA matches `swarm_core`.
 
 ```bash
-# engine API is mounted in backend.main under /engine (local-only)
+# engine API is mounted in backend.main under /engine
 curl -X POST http://127.0.0.1:8001/engine/experiments -H 'content-type: application/json' \
   -d '{"world": "foraging", "arms": ["baseline", "hive_memory", "signals"]}'
 curl -X POST http://127.0.0.1:8001/engine/runs/<run_id>/verify   # replay from the bundle

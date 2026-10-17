@@ -19,6 +19,8 @@ COPY frontend/ ./
 # Commit SHA shown in the frontend build label
 ARG GIT_SHA=unknown
 ENV VITE_GIT_SHA=$GIT_SHA
+# Research calls models on a dev machine, so the deployed site hides it
+ENV VITE_HIDE_RESEARCH=1
 
 # Build frontend to static files with optimizations
 RUN npm run build

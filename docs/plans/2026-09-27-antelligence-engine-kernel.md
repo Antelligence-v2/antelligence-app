@@ -403,7 +403,7 @@ DAGs from the paper's real LLM runs re-execute to the published 8 / 0 / 16.
 ## 15. P8 cutover — what was done and what remains
 
 **Done**
-- Engine API mounted in `backend/main.py` at `/engine/*` (local-only).
+- Engine API mounted in `backend/main.py` at `/engine/*`.
 - Three legacy nanobot bugs fixed in `backend/nanobot_simulation.py`
   (payload deadlock, boundary snap, vessel overshoot; standalone commit),
   and the engine aligned with the fixed legacy.
