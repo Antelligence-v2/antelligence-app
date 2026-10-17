@@ -1,0 +1,41 @@
+{
+  "params": {
+    "steps": 100,
+    "v1_pickups": 6,
+    "v2_flip_tick": 30
+  },
+  "pass": true,
+  "seeds": [
+    100,
+    101,
+    102,
+    103,
+    104,
+    105,
+    106,
+    107,
+    108,
+    109
+  ],
+  "variants": {
+    "v1": {
+      "pass": true,
+      "score_S_base": 15.7,
+      "score_S_variant": 5.7,
+      "score_Sprime_base": 15.2,
+      "score_Sprime_variant": 16.4,
+      "sprime_keeps_base": true,
+      "variant_breaks_s": true
+    },
+    "v2": {
+      "pass": true,
+      "score_S_base": 15.7,
+      "score_S_variant": 3.2,
+      "score_Sprime_base": 15.2,
+      "score_Sprime_variant": 15.8,
+      "sprime_keeps_base": true,
+      "variant_breaks_s": true
+    }
+  },
+  "world": "foraging_sb"
+}

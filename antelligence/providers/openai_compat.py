@@ -90,7 +90,10 @@ class OpenAICompatProvider:
         for value in (prompt_tokens, completion_tokens):
             if type(value) is not int or value < 0:
                 raise ProviderError("token usage missing or invalid")
+        extra: Dict[str, Any] = {"system_fingerprint": data.get("system_fingerprint")}
+        if isinstance(usage.get("cost"), (int, float)):
+            extra["cost"] = usage["cost"]  # provider-reported dollars, when the endpoint says
         return ChatResponse(content=content, model=served or request.model, request_hash=request.request_hash,
                             prompt_tokens=prompt_tokens, completion_tokens=completion_tokens, finish_reason=finish,
                             response_id=data.get("id"), elapsed_s=elapsed,
-                            extra={"system_fingerprint": data.get("system_fingerprint")})
+                            extra=extra)
