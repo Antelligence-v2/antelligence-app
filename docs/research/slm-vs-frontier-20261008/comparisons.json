@@ -1,0 +1,587 @@
+{
+  "duplicates_ignored": 0,
+  "requested_cells": 2831,
+  "written_cells": 2831,
+  "primary": [
+    {
+      "label": "a1 small swarm(signal_board) vs small single",
+      "domain": "both",
+      "treatment": "qwen38-27b-q3k:signal_board",
+      "baseline": "qwen38-27b-q3k:single",
+      "pairs": 180,
+      "treatment_accuracy": 0.7444,
+      "baseline_accuracy": 0.7889,
+      "mean_difference": -0.0444,
+      "ci95_task_bootstrap": {
+        "low": -0.0889,
+        "high": -0.0056,
+        "clusters": 60
+      },
+      "treatment_wins": 4,
+      "baseline_wins": 12,
+      "ties": 164,
+      "sign_test_p": 0.076812744140625,
+      "holm_p": 0.153625,
+      "verdict": "no reliable difference"
+    },
+    {
+      "label": "a2 small swarm(evidence_exchange) vs small single",
+      "domain": "both",
+      "treatment": "qwen38-27b-q3k:evidence_exchange",
+      "baseline": "qwen38-27b-q3k:single",
+      "pairs": 180,
+      "treatment_accuracy": 0.5056,
+      "baseline_accuracy": 0.7889,
+      "mean_difference": -0.2833,
+      "ci95_task_bootstrap": {
+        "low": -0.4,
+        "high": -0.1667,
+        "clusters": 60
+      },
+      "treatment_wins": 8,
+      "baseline_wins": 59,
+      "ties": 113,
+      "sign_test_p": 1.016748503966658e-10,
+      "holm_p": 0.0,
+      "verdict": "treatment worse"
+    },
+    {
+      "label": "b1 small swarm(signal_board) vs frontier-strong single",
+      "domain": "both",
+      "treatment": "qwen38-27b-q3k:signal_board",
+      "baseline": "claude-sonnet-5.5:single",
+      "pairs": 180,
+      "treatment_accuracy": 0.7444,
+      "baseline_accuracy": 0.6833,
+      "mean_difference": 0.0611,
+      "ci95_task_bootstrap": {
+        "low": -0.0667,
+        "high": 0.1944,
+        "clusters": 60
+      },
+      "treatment_wins": 34,
+      "baseline_wins": 23,
+      "ties": 123,
+      "sign_test_p": 0.18485048241641847,
+      "holm_p": 0.18485,
+      "verdict": "no reliable difference"
+    },
+    {
+      "label": "b2 small swarm(evidence_exchange) vs frontier-strong single",
+      "domain": "both",
+      "treatment": "qwen38-27b-q3k:evidence_exchange",
+      "baseline": "claude-sonnet-5.5:single",
+      "pairs": 180,
+      "treatment_accuracy": 0.5056,
+      "baseline_accuracy": 0.6833,
+      "mean_difference": -0.1778,
+      "ci95_task_bootstrap": {
+        "low": -0.2722,
+        "high": -0.0889,
+        "clusters": 60
+      },
+      "treatment_wins": 4,
+      "baseline_wins": 36,
+      "ties": 140,
+      "sign_test_p": 1.8570244719740003e-07,
+      "holm_p": 1e-06,
+      "verdict": "treatment worse"
+    }
+  ],
+  "primary_per_domain_exploratory": [
+    {
+      "label": "a1 small swarm(signal_board) vs small single [medical]",
+      "domain": "medical",
+      "treatment": "qwen38-27b-q3k:signal_board",
+      "baseline": "qwen38-27b-q3k:single",
+      "pairs": 90,
+      "treatment_accuracy": 0.8556,
+      "baseline_accuracy": 0.8667,
+      "mean_difference": -0.0111,
+      "ci95_task_bootstrap": {
+        "low": -0.0556,
+        "high": 0.0222,
+        "clusters": 30
+      },
+      "treatment_wins": 1,
+      "baseline_wins": 2,
+      "ties": 87,
+      "sign_test_p": 1.0
+    },
+    {
+      "label": "a1 small swarm(signal_board) vs small single [finance]",
+      "domain": "finance",
+      "treatment": "qwen38-27b-q3k:signal_board",
+      "baseline": "qwen38-27b-q3k:single",
+      "pairs": 90,
+      "treatment_accuracy": 0.6333,
+      "baseline_accuracy": 0.7111,
+      "mean_difference": -0.0778,
+      "ci95_task_bootstrap": {
+        "low": -0.1556,
+        "high": -0.0111,
+        "clusters": 30
+      },
+      "treatment_wins": 3,
+      "baseline_wins": 10,
+      "ties": 77,
+      "sign_test_p": 0.09228515625
+    },
+    {
+      "label": "a2 small swarm(evidence_exchange) vs small single [medical]",
+      "domain": "medical",
+      "treatment": "qwen38-27b-q3k:evidence_exchange",
+      "baseline": "qwen38-27b-q3k:single",
+      "pairs": 90,
+      "treatment_accuracy": 0.8,
+      "baseline_accuracy": 0.8667,
+      "mean_difference": -0.0667,
+      "ci95_task_bootstrap": {
+        "low": -0.1556,
+        "high": 0.0222,
+        "clusters": 30
+      },
+      "treatment_wins": 4,
+      "baseline_wins": 10,
+      "ties": 76,
+      "sign_test_p": 0.1795654296875
+    },
+    {
+      "label": "a2 small swarm(evidence_exchange) vs small single [finance]",
+      "domain": "finance",
+      "treatment": "qwen38-27b-q3k:evidence_exchange",
+      "baseline": "qwen38-27b-q3k:single",
+      "pairs": 90,
+      "treatment_accuracy": 0.2111,
+      "baseline_accuracy": 0.7111,
+      "mean_difference": -0.5,
+      "ci95_task_bootstrap": {
+        "low": -0.6778,
+        "high": -0.3222,
+        "clusters": 30
+      },
+      "treatment_wins": 4,
+      "baseline_wins": 49,
+      "ties": 37,
+      "sign_test_p": 7.053979622639872e-11
+    },
+    {
+      "label": "b1 small swarm(signal_board) vs frontier-strong single [medical]",
+      "domain": "medical",
+      "treatment": "qwen38-27b-q3k:signal_board",
+      "baseline": "claude-sonnet-5.5:single",
+      "pairs": 90,
+      "treatment_accuracy": 0.8556,
+      "baseline_accuracy": 0.9667,
+      "mean_difference": -0.1111,
+      "ci95_task_bootstrap": {
+        "low": -0.2222,
+        "high": -0.0222,
+        "clusters": 30
+      },
+      "treatment_wins": 0,
+      "baseline_wins": 10,
+      "ties": 80,
+      "sign_test_p": 0.001953125
+    },
+    {
+      "label": "b1 small swarm(signal_board) vs frontier-strong single [finance]",
+      "domain": "finance",
+      "treatment": "qwen38-27b-q3k:signal_board",
+      "baseline": "claude-sonnet-5.5:single",
+      "pairs": 90,
+      "treatment_accuracy": 0.6333,
+      "baseline_accuracy": 0.4,
+      "mean_difference": 0.2333,
+      "ci95_task_bootstrap": {
+        "low": 0.0111,
+        "high": 0.4444,
+        "clusters": 30
+      },
+      "treatment_wins": 34,
+      "baseline_wins": 13,
+      "ties": 43,
+      "sign_test_p": 0.0030876764615186403
+    },
+    {
+      "label": "b2 small swarm(evidence_exchange) vs frontier-strong single [medical]",
+      "domain": "medical",
+      "treatment": "qwen38-27b-q3k:evidence_exchange",
+      "baseline": "claude-sonnet-5.5:single",
+      "pairs": 90,
+      "treatment_accuracy": 0.8,
+      "baseline_accuracy": 0.9667,
+      "mean_difference": -0.1667,
+      "ci95_task_bootstrap": {
+        "low": -0.2556,
+        "high": -0.0889,
+        "clusters": 30
+      },
+      "treatment_wins": 0,
+      "baseline_wins": 15,
+      "ties": 75,
+      "sign_test_p": 6.103515625e-05
+    },
+    {
+      "label": "b2 small swarm(evidence_exchange) vs frontier-strong single [finance]",
+      "domain": "finance",
+      "treatment": "qwen38-27b-q3k:evidence_exchange",
+      "baseline": "claude-sonnet-5.5:single",
+      "pairs": 90,
+      "treatment_accuracy": 0.2111,
+      "baseline_accuracy": 0.4,
+      "mean_difference": -0.1889,
+      "ci95_task_bootstrap": {
+        "low": -0.3556,
+        "high": -0.0333,
+        "clusters": 30
+      },
+      "treatment_wins": 4,
+      "baseline_wins": 21,
+      "ties": 65,
+      "sign_test_p": 0.0009105205535888672
+    }
+  ],
+  "secondary": [
+    {
+      "label": "claude-haiku-5.5: communication beyond more calls: signal_board vs independent_vote",
+      "domain": "both",
+      "treatment": "claude-haiku-5.5:signal_board",
+      "baseline": "claude-haiku-5.5:independent_vote",
+      "pairs": 180,
+      "treatment_accuracy": 0.8222,
+      "baseline_accuracy": 0.8833,
+      "mean_difference": -0.0611,
+      "ci95_task_bootstrap": {
+        "low": -0.1167,
+        "high": -0.0167,
+        "clusters": 60
+      },
+      "treatment_wins": 0,
+      "baseline_wins": 11,
+      "ties": 169,
+      "sign_test_p": 0.0009765625,
+      "holm_p": null,
+      "verdict": "exploratory (uncorrected)"
+    },
+    {
+      "label": "claude-haiku-5.5: communication beyond more calls: signal_board vs solo_refine",
+      "domain": "both",
+      "treatment": "claude-haiku-5.5:signal_board",
+      "baseline": "claude-haiku-5.5:solo_refine",
+      "pairs": 180,
+      "treatment_accuracy": 0.8222,
+      "baseline_accuracy": 0.7722,
+      "mean_difference": 0.05,
+      "ci95_task_bootstrap": {
+        "low": -0.0056,
+        "high": 0.1111,
+        "clusters": 60
+      },
+      "treatment_wins": 14,
+      "baseline_wins": 5,
+      "ties": 161,
+      "sign_test_p": 0.063568115234375,
+      "holm_p": null,
+      "verdict": "exploratory (uncorrected)"
+    },
+    {
+      "label": "claude-haiku-5.5: sharing beyond sharding: evidence_exchange vs evidence_isolated",
+      "domain": "both",
+      "treatment": "claude-haiku-5.5:evidence_exchange",
+      "baseline": "claude-haiku-5.5:evidence_isolated",
+      "pairs": 180,
+      "treatment_accuracy": 0.6389,
+      "baseline_accuracy": 0.0056,
+      "mean_difference": 0.6333,
+      "ci95_task_bootstrap": {
+        "low": 0.5222,
+        "high": 0.7389,
+        "clusters": 60
+      },
+      "treatment_wins": 114,
+      "baseline_wins": 0,
+      "ties": 66,
+      "sign_test_p": 9.62964972193618e-35,
+      "holm_p": null,
+      "verdict": "exploratory (uncorrected)"
+    },
+    {
+      "label": "claude-haiku-5.5: voting vs single",
+      "domain": "both",
+      "treatment": "claude-haiku-5.5:independent_vote",
+      "baseline": "claude-haiku-5.5:single",
+      "pairs": 180,
+      "treatment_accuracy": 0.8833,
+      "baseline_accuracy": 0.8889,
+      "mean_difference": -0.0056,
+      "ci95_task_bootstrap": {
+        "low": -0.0444,
+        "high": 0.0278,
+        "clusters": 60
+      },
+      "treatment_wins": 5,
+      "baseline_wins": 6,
+      "ties": 169,
+      "sign_test_p": 1.0,
+      "holm_p": null,
+      "verdict": "exploratory (uncorrected)"
+    },
+    {
+      "label": "claude-sonnet-5.5: communication beyond more calls: signal_board vs independent_vote",
+      "domain": "both",
+      "treatment": "claude-sonnet-5.5:signal_board",
+      "baseline": "claude-sonnet-5.5:independent_vote",
+      "pairs": 60,
+      "treatment_accuracy": 0.6,
+      "baseline_accuracy": 0.65,
+      "mean_difference": -0.05,
+      "ci95_task_bootstrap": {
+        "low": -0.1167,
+        "high": 0.0,
+        "clusters": 60
+      },
+      "treatment_wins": 0,
+      "baseline_wins": 3,
+      "ties": 57,
+      "sign_test_p": 0.25,
+      "holm_p": null,
+      "verdict": "exploratory (uncorrected)"
+    },
+    {
+      "label": "claude-sonnet-5.5: communication beyond more calls: signal_board vs solo_refine",
+      "domain": "both",
+      "treatment": "claude-sonnet-5.5:signal_board",
+      "baseline": "claude-sonnet-5.5:solo_refine",
+      "pairs": 60,
+      "treatment_accuracy": 0.6,
+      "baseline_accuracy": 0.5333,
+      "mean_difference": 0.0667,
+      "ci95_task_bootstrap": {
+        "low": -0.0167,
+        "high": 0.1667,
+        "clusters": 60
+      },
+      "treatment_wins": 6,
+      "baseline_wins": 2,
+      "ties": 52,
+      "sign_test_p": 0.2890625,
+      "holm_p": null,
+      "verdict": "exploratory (uncorrected)"
+    },
+    {
+      "label": "claude-sonnet-5.5: sharing beyond sharding: evidence_exchange vs evidence_isolated",
+      "domain": "both",
+      "treatment": "claude-sonnet-5.5:evidence_exchange",
+      "baseline": "claude-sonnet-5.5:evidence_isolated",
+      "pairs": 60,
+      "treatment_accuracy": 0.4333,
+      "baseline_accuracy": 0.0,
+      "mean_difference": 0.4333,
+      "ci95_task_bootstrap": {
+        "low": 0.3167,
+        "high": 0.55,
+        "clusters": 60
+      },
+      "treatment_wins": 26,
+      "baseline_wins": 0,
+      "ties": 34,
+      "sign_test_p": 2.9802322387695312e-08,
+      "holm_p": null,
+      "verdict": "exploratory (uncorrected)"
+    },
+    {
+      "label": "claude-sonnet-5.5: voting vs single",
+      "domain": "both",
+      "treatment": "claude-sonnet-5.5:independent_vote",
+      "baseline": "claude-sonnet-5.5:single",
+      "pairs": 60,
+      "treatment_accuracy": 0.65,
+      "baseline_accuracy": 0.6833,
+      "mean_difference": -0.0333,
+      "ci95_task_bootstrap": {
+        "low": -0.0833,
+        "high": 0.0,
+        "clusters": 60
+      },
+      "treatment_wins": 0,
+      "baseline_wins": 2,
+      "ties": 58,
+      "sign_test_p": 0.5,
+      "holm_p": null,
+      "verdict": "exploratory (uncorrected)"
+    },
+    {
+      "label": "qwen38-27b-q3k: communication beyond more calls: signal_board vs independent_vote",
+      "domain": "both",
+      "treatment": "qwen38-27b-q3k:signal_board",
+      "baseline": "qwen38-27b-q3k:independent_vote",
+      "pairs": 180,
+      "treatment_accuracy": 0.7444,
+      "baseline_accuracy": 0.7667,
+      "mean_difference": -0.0222,
+      "ci95_task_bootstrap": {
+        "low": -0.0722,
+        "high": 0.0167,
+        "clusters": 60
+      },
+      "treatment_wins": 3,
+      "baseline_wins": 7,
+      "ties": 170,
+      "sign_test_p": 0.34375,
+      "holm_p": null,
+      "verdict": "exploratory (uncorrected)"
+    },
+    {
+      "label": "qwen38-27b-q3k: communication beyond more calls: signal_board vs solo_refine",
+      "domain": "both",
+      "treatment": "qwen38-27b-q3k:signal_board",
+      "baseline": "qwen38-27b-q3k:solo_refine",
+      "pairs": 180,
+      "treatment_accuracy": 0.7444,
+      "baseline_accuracy": 0.7889,
+      "mean_difference": -0.0444,
+      "ci95_task_bootstrap": {
+        "low": -0.0833,
+        "high": -0.0056,
+        "clusters": 60
+      },
+      "treatment_wins": 2,
+      "baseline_wins": 10,
+      "ties": 168,
+      "sign_test_p": 0.03857421875,
+      "holm_p": null,
+      "verdict": "exploratory (uncorrected)"
+    },
+    {
+      "label": "qwen38-27b-q3k: sharing beyond sharding: evidence_exchange vs evidence_isolated",
+      "domain": "both",
+      "treatment": "qwen38-27b-q3k:evidence_exchange",
+      "baseline": "qwen38-27b-q3k:evidence_isolated",
+      "pairs": 180,
+      "treatment_accuracy": 0.5056,
+      "baseline_accuracy": 0.1222,
+      "mean_difference": 0.3833,
+      "ci95_task_bootstrap": {
+        "low": 0.2722,
+        "high": 0.4944,
+        "clusters": 60
+      },
+      "treatment_wins": 72,
+      "baseline_wins": 3,
+      "ties": 105,
+      "sign_test_p": 3.72567441849804e-18,
+      "holm_p": null,
+      "verdict": "exploratory (uncorrected)"
+    },
+    {
+      "label": "qwen38-27b-q3k: voting vs single",
+      "domain": "both",
+      "treatment": "qwen38-27b-q3k:independent_vote",
+      "baseline": "qwen38-27b-q3k:single",
+      "pairs": 180,
+      "treatment_accuracy": 0.7667,
+      "baseline_accuracy": 0.7889,
+      "mean_difference": -0.0222,
+      "ci95_task_bootstrap": {
+        "low": -0.0556,
+        "high": 0.0056,
+        "clusters": 60
+      },
+      "treatment_wins": 4,
+      "baseline_wins": 8,
+      "ties": 168,
+      "sign_test_p": 0.3876953125,
+      "holm_p": null,
+      "verdict": "exploratory (uncorrected)"
+    }
+  ],
+  "other_worlds": [
+    {
+      "world": "task_dag",
+      "model": "claude-haiku-5.5",
+      "treatment": "swarm_partitioned",
+      "baseline": "solo_planner",
+      "pairs": 19,
+      "treatment_successes": 0,
+      "baseline_successes": 4,
+      "sign_test_p": 0.125
+    },
+    {
+      "world": "task_dag",
+      "model": "claude-haiku-5.5",
+      "treatment": "swarm_partitioned_merged",
+      "baseline": "solo_planner",
+      "pairs": 19,
+      "treatment_successes": 16,
+      "baseline_successes": 4,
+      "sign_test_p": 0.00048828125
+    },
+    {
+      "world": "task_dag",
+      "model": "claude-sonnet-5.5",
+      "treatment": "swarm_partitioned",
+      "baseline": "solo_planner",
+      "pairs": 19,
+      "treatment_successes": 0,
+      "baseline_successes": 10,
+      "sign_test_p": 0.001953125
+    },
+    {
+      "world": "task_dag",
+      "model": "claude-sonnet-5.5",
+      "treatment": "swarm_partitioned_merged",
+      "baseline": "solo_planner",
+      "pairs": 19,
+      "treatment_successes": 16,
+      "baseline_successes": 10,
+      "sign_test_p": 0.03125
+    },
+    {
+      "world": "task_dag",
+      "model": "qwen38-27b-q3k",
+      "treatment": "swarm_partitioned",
+      "baseline": "solo_planner",
+      "pairs": 19,
+      "treatment_successes": 0,
+      "baseline_successes": 2,
+      "sign_test_p": 0.5
+    },
+    {
+      "world": "task_dag",
+      "model": "qwen38-27b-q3k",
+      "treatment": "swarm_partitioned_merged",
+      "baseline": "solo_planner",
+      "pairs": 19,
+      "treatment_successes": 16,
+      "baseline_successes": 2,
+      "sign_test_p": 0.0001220703125
+    },
+    {
+      "world": "foraging",
+      "model": "claude-haiku-5.5",
+      "treatment": "hive_memory_signals",
+      "baseline": "baseline",
+      "pairs": 5,
+      "treatment_successes": 0,
+      "baseline_successes": 0,
+      "sign_test_p": null
+    },
+    {
+      "world": "foraging",
+      "model": "qwen38-27b-q3k",
+      "treatment": "hive_memory_signals",
+      "baseline": "baseline",
+      "pairs": 5,
+      "treatment_successes": 0,
+      "baseline_successes": 1,
+      "sign_test_p": 1.0
+    }
+  ],
+  "method": {
+    "wilson": "one-sided 95% lower bound, z=1.6449, via antelligence.experiments.stats",
+    "paired_test": "exact two-sided sign test on discordant (task,seed) pairs, stats.py",
+    "ci": "task-cluster bootstrap percentile 95%, 10000 reps, seed 20261008",
+    "multiplicity": "Holm over the 4 primary comparisons only"
+  }
+}

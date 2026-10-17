@@ -100,3 +100,6 @@ data/brats/*.zip
 # Keep data directory structure and manifest
 !data/brats/.gitkeep
 !data/README.md
+
+# Per-call model usage ledgers are operator-local; commit aggregates (usage-summary.json) only
+ledger/
