@@ -100,3 +100,6 @@ data/brats/*.zip
 # Keep data directory structure and manifest
 !data/brats/.gitkeep
 !data/README.md
+
+# v4 pilot: usage ledgers and reply caches stay local (cache/ is ignored above)
+ledger/

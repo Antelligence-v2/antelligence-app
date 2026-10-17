@@ -1,0 +1,104 @@
+{
+ "request": {
+  "model": "convaiinnovations/laya-typed-decisions",
+  "state": "Carrying food: no. Food last seen: 3 north, 2 east. Nest: 4 south.",
+  "questions": {
+   "food_known": {
+    "type": "noul",
+    "instructions": "Does the agent know where food is?",
+    "criteria": {
+     "true": "A food location is stated",
+     "false": "No food location is stated"
+    }
+   },
+   "move": {
+    "type": "choice",
+    "instructions": "Which action moves toward the food?",
+    "criteria": {
+     "move north": null,
+     "move south": null,
+     "stay": null
+    }
+   },
+   "urgency": {
+    "type": "score",
+    "instructions": "How urgent is moving now?",
+    "criteria": [
+     "Not urgent",
+     "Somewhat urgent",
+     "Very urgent"
+    ]
+   }
+  }
+ },
+ "response": {
+  "model": "laya-rl-agent",
+  "answers": {
+   "food_known": {
+    "type": "noul",
+    "noul": 0.496,
+    "confidence": 0.504,
+    "answer_confidence": 0.504,
+    "action": {
+     "act_probability": 1.0
+    }
+   },
+   "move": {
+    "type": "choice",
+    "choice": "stay",
+    "probabilities": {
+     "move north": 0.359,
+     "move south": 0.251,
+     "stay": 0.39
+    },
+    "confidence": 0.0152,
+    "answer_confidence": 0.39,
+    "action": {
+     "act_probability": 1.0
+    },
+    "x_jev_confidence": 0.085
+   },
+   "urgency": {
+    "type": "score",
+    "score": 0.7906,
+    "legend": {
+     "0": "Not urgent",
+     "1": "Somewhat urgent",
+     "2": "Very urgent"
+    },
+    "probabilities": {
+     "0": 0.3991,
+     "1": 0.4113,
+     "2": 0.1896
+    },
+    "confidence": 0.0467,
+    "answer_confidence": 0.4113,
+    "action": {
+     "act_probability": 1.0
+    },
+    "x_jev_confidence": 0.1169
+   }
+  },
+  "usage": {
+   "input_tokens": 149,
+   "output_tokens": 0,
+   "state_tokens": 21,
+   "state_tokens_dropped": 0,
+   "truncated": false,
+   "truncated_questions": []
+  },
+  "routing": {
+   "model": "typed-decisions",
+   "repo": "convaiinnovations/laya/typed-decisions",
+   "reason": "explicit model='typed-decisions'",
+   "detection": null,
+   "workflow": null
+  }
+ },
+ "status": 200,
+ "latency_s": [
+  1.673,
+  0.029,
+  0.03
+ ]
+}
