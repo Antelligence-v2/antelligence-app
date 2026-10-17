@@ -8,7 +8,7 @@ import os
 import subprocess
 from typing import Any, Dict, Optional
 
-from chain.config import get_base_sepolia_rpc_url, get_experience_registry_address, get_private_key
+from chain.config import get_rpc_url, get_experience_registry_address, get_private_key
 from chain.ipfs import pin_simulation
 
 EXPERIENCE_REGISTRY_WRITER_ABI = [
@@ -92,7 +92,7 @@ class ChainStrategyWriter:
             if w3 is None:
                 from web3 import Web3
 
-                rpc = rpc_url or get_base_sepolia_rpc_url()
+                rpc = rpc_url or get_rpc_url()
                 if not rpc:
                     return None
                 w3 = Web3(Web3.HTTPProvider(rpc))
@@ -109,10 +109,10 @@ class ChainStrategyWriter:
         return json.loads(result.stdout) if result.stdout.strip() else {}
 
     def _send_submit_with_cast(self, run_hash: str, ipfs_cid: str, data_hash: str, score: int, meta_tuple: tuple) -> str:
-        rpc_url = get_base_sepolia_rpc_url()
+        rpc_url = get_rpc_url()
         private_key = get_private_key()
         if not rpc_url:
-            raise ValueError("BASE_SEPOLIA_RPC_URL is not configured")
+            raise ValueError("chain RPC is not configured (ANTELLIGENCE_CHAIN / ANTELLIGENCE_RPC_URL)")
         if not private_key:
             raise ValueError("PRIVATE_KEY is not configured")
         args = [
@@ -137,10 +137,10 @@ class ChainStrategyWriter:
         return str(self.cast_runner(args).get("transactionHash", ""))
 
     def _send_promotion_with_cast(self, run_hash: str) -> str:
-        rpc_url = get_base_sepolia_rpc_url()
+        rpc_url = get_rpc_url()
         private_key = get_private_key()
         if not rpc_url:
-            raise ValueError("BASE_SEPOLIA_RPC_URL is not configured")
+            raise ValueError("chain RPC is not configured (ANTELLIGENCE_CHAIN / ANTELLIGENCE_RPC_URL)")
         if not private_key:
             raise ValueError("PRIVATE_KEY is not configured")
         args = [

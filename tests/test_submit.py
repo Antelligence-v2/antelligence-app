@@ -5,6 +5,8 @@ import subprocess
 import sys
 from unittest.mock import patch
 
+import pytest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'backend'))
 
 from chain.submit import (
@@ -15,6 +17,13 @@ from chain.submit import (
 )
 
 
+@pytest.fixture(autouse=True)
+def _deployed_tumor_intel(monkeypatch):
+    """Contract addresses are no longer hard-coded; supply one as a deployment would."""
+    monkeypatch.setenv("ANTELLIGENCE_TUMOR_INTEL_ADDR", "0x" + "ab" * 20)
+
+
+
 class TestAttestationBundle:
     def test_create_bundle(self):
         config = {"tumor_radius": 150, "nanobot_count": 10, "steps": 300}
@@ -22,8 +31,9 @@ class TestAttestationBundle:
         bundle = create_attestation_bundle(config, metrics)
 
         assert bundle["ok"] is True
-        assert bundle["onchain"]["contract"] == TUMOR_INTEL_ADDRESS
-        assert bundle["onchain"]["chain_id"] == 84532
+        from chain.config import get_tumor_intel_address
+        assert bundle["onchain"]["contract"] == get_tumor_intel_address() == "0x" + "ab" * 20
+        assert bundle["onchain"]["chain_id"] == 300  # ZKsync Era Sepolia (default ANTELLIGENCE_CHAIN)
         assert bundle["onchain"]["kill_rate_bps"] == 4550
         assert bundle["onchain"]["nanobot_count"] == 10
         assert bundle["onchain"]["tumor_radius"] == 150

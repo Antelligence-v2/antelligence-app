@@ -16,15 +16,16 @@ def _fn(return_value=None, side_effect=None):
     return function
 
 
-def test_chain_config_defaults_to_latest_deployed_phase1_contracts(monkeypatch):
-    monkeypatch.delenv("ANTELLIGENCE_TUMOR_INTEL_ADDR", raising=False)
-    monkeypatch.delenv("TUMOR_INTEL_ADDR", raising=False)
-    monkeypatch.delenv("ANTELLIGENCE_REGISTRY_ADDR", raising=False)
-    monkeypatch.delenv("EXPERIENCE_REGISTRY_ADDR", raising=False)
+def test_chain_config_has_no_hardcoded_contract_defaults(monkeypatch, tmp_path):
+    """Addresses come only from a deployments file; old Base Sepolia defaults are gone."""
+    for name in ("ANTELLIGENCE_TUMOR_INTEL_ADDR", "TUMOR_INTEL_ADDR", "ANTELLIGENCE_REGISTRY_ADDR",
+                 "EXPERIENCE_REGISTRY_ADDR", "ANTELLIGENCE_CHAIN"):
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.setenv("ANTELLIGENCE_DEPLOYMENTS_DIR", str(tmp_path))
     from chain.config import get_experience_registry_address, get_tumor_intel_address
 
-    assert get_tumor_intel_address() == "0x925b455175eF932a9a0239090a94E593224CD8AB"
-    assert get_experience_registry_address() == "0x58A78E337ce3D948A39475f05Ca1A2c30274CADE"
+    assert get_tumor_intel_address() == ""
+    assert get_experience_registry_address() == ""
 
 
 def test_intel_reader_pin_type_names_match_solidity_enum():
@@ -200,7 +201,7 @@ def test_experience_writer_submits_and_promotes_when_enabled(monkeypatch):
 
 def test_experience_writer_can_submit_with_cast_when_private_key_configured(monkeypatch):
     monkeypatch.setenv("CHAIN_WRITE_ENABLED", "true")
-    monkeypatch.setenv("BASE_SEPOLIA_RPC_URL", "http://rpc.test")
+    monkeypatch.setenv("ANTELLIGENCE_RPC_URL", "http://rpc.test")
     monkeypatch.setenv("PRIVATE_KEY", "0x" + "11" * 32)
     monkeypatch.setenv("EXPERIENCE_REGISTRY_ADDR", "0x58A78E337ce3D948A39475f05Ca1A2c30274CADE")
     from chain.experience_writer import ChainStrategyWriter

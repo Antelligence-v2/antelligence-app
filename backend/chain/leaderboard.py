@@ -1,8 +1,12 @@
 """Leaderboard service for ranking attested simulation policies.
 
-Reads SimulationVerified events from TumorIntel on Base Sepolia and
-ranks policies by attested kill rate. Supports both on-chain event
-reading (via cast/RPC) and local artifact-based ranking.
+Reads SimulationSubmitted / SimulationVerified events from TumorIntel on the
+configured chain (``ANTELLIGENCE_CHAIN``, default ZKsync Era Sepolia) and ranks
+runs by claimed kill rate. Supports on-chain reading and local artifact ranking.
+
+Trust: an on-chain *submission* only records claimed public values. Such entries
+are ``unverified`` unless the contract's ``isVerified`` is true, which requires a
+configured proof verifier to have accepted a proof.
 
 Usage:
     python3 -m chain.leaderboard                    # Show leaderboard
@@ -20,40 +24,98 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
-from chain.config import get_base_sepolia_rpc_url, get_tumor_intel_address
+from chain.config import explorer_tx_url, get_network, get_rpc_url, get_tumor_intel_address, load_deployment
 
 TUMOR_INTEL_ADDRESS = get_tumor_intel_address()
-SIMULATION_VERIFIED_TOPIC = None  # Will compute from event signature
+# keccak256 of the event signatures in blockchain/contracts/TumorIntel.sol
+SIMULATION_SUBMITTED_TOPIC = "0xa21d9d52e2e6ed7649d4ed863a13b4745fffab40841d79e32b6d5a9c72334ca1"
+SIMULATION_VERIFIED_TOPIC = "0xdeb2a6c54484ae22ad3e9e0132b27c57562483e240ae7f5f4760ef83143e9390"
+IS_VERIFIED_ABI = [{"inputs": [{"name": "configHash", "type": "bytes32"}], "name": "isVerified",
+                    "outputs": [{"name": "", "type": "bool"}], "stateMutability": "view", "type": "function"}]
 
 
-def fetch_onchain_events(rpc_url: str, from_block: int = 0) -> List[Dict]:
-    """Fetch SimulationVerified events from TumorIntel contract.
+def _hex(value) -> str:
+    if isinstance(value, (bytes, bytearray)):
+        return "0x" + bytes(value).hex()
+    text = str(value)
+    return text if text.startswith("0x") else "0x" + text
 
-    Uses cast CLI to query event logs.
 
-    Args:
-        rpc_url: Base Sepolia RPC URL
-        from_block: Start block for event query
+def _deployment_block() -> int:
+    record = load_deployment()
+    for contract in (record or {}).get("contracts", []):
+        if contract.get("name") == "TumorIntel" and contract.get("block_number") is not None:
+            return int(contract["block_number"])
+    return 0
 
-    Returns:
-        List of decoded event dicts
+
+def fetch_onchain_simulations(rpc_url: str, contract: Optional[str] = None, from_block: Optional[int] = None,
+                              w3=None) -> List[Dict]:
+    """Decode TumorIntel SimulationSubmitted events and attach the contract's isVerified state.
+
+    Returns one dict per submission: config_hash, submitter, kill_rate_bps, nanobot_count,
+    tumor_radius, steps, tx_hash, block_number, verified (bool, read from the contract).
     """
+    contract = contract or get_tumor_intel_address()
+    if not contract:
+        return []
+    if w3 is None:
+        from web3 import Web3
+        w3 = Web3(Web3.HTTPProvider(rpc_url, request_kwargs={"timeout": 30}))
+    from web3 import Web3 as _W3
+    address = _W3.to_checksum_address(contract)
+    logs = w3.eth.get_logs({"address": address, "fromBlock": from_block if from_block is not None else _deployment_block(),
+                            "toBlock": "latest", "topics": [SIMULATION_SUBMITTED_TOPIC]})
+    reader = w3.eth.contract(address=address, abi=IS_VERIFIED_ABI)
+    out = []
+    for log in logs:
+        topics = [_hex(t) for t in log["topics"]]
+        data = _hex(log["data"])[2:]
+        words = [int(data[i:i + 64], 16) for i in range(0, len(data), 64)]
+        if len(topics) < 3 or len(words) < 4:
+            continue
+        config_hash = topics[1]
+        out.append({
+            "config_hash": config_hash[2:],
+            "submitter": "0x" + topics[2][-40:],
+            "kill_rate_bps": words[0], "nanobot_count": words[1], "tumor_radius": words[2], "steps": words[3],
+            "tx_hash": _hex(log["transactionHash"]),
+            "block_number": int(log["blockNumber"]),
+            "verified": bool(reader.functions.isVerified(bytes.fromhex(config_hash[2:])).call()),
+        })
+    return out
+
+
+def onchain_artifacts(events: List[Dict]) -> List[Dict]:
+    """Leaderboard rows for on-chain submissions, with honest trust fields.
+
+    A submission carries only claimed public values: no artifact, no replay, no proof.
+    It is ``verified_onchain`` only when the contract itself reports isVerified.
+    """
+    rows = []
+    for evt in events:
+        verified = bool(evt.get("verified"))
+        rows.append({
+            "type": "antelligence-simulation-v2",
+            "run_id": evt["config_hash"][:16],
+            "config_hash": evt["config_hash"],
+            "config": {"nanobot_count": evt["nanobot_count"], "tumor_radius": evt["tumor_radius"],
+                       "steps": evt["steps"]},
+            "metrics": {"kill_rate": evt["kill_rate_bps"] / 100.0},
+            "verification_status": {"schema_ok": True, "integrity_ok": False, "replay_ok": False,
+                                    "proof_ok": verified, "onchain_ok": verified},
+            "proof_lifecycle": {"stage": "verified_onchain" if verified else "submitted_onchain"},
+            "tx_hash": evt.get("tx_hash", ""),
+            "explorer_tx_url": explorer_tx_url(evt.get("tx_hash", "")),
+            "network": get_network().name,
+        })
+    return rows
+
+
+def fetch_onchain_events(rpc_url: str, from_block: Optional[int] = None) -> List[Dict]:
+    """Backwards-compatible wrapper: decoded submissions, or [] if the chain is unreachable."""
     try:
-        # Get event signature hash
-        result = subprocess.run(
-            [
-                "cast", "logs",
-                "--address", TUMOR_INTEL_ADDRESS,
-                "--from-block", str(from_block),
-                "--rpc-url", rpc_url,
-                "--json",
-            ],
-            capture_output=True, text=True, timeout=30,
-        )
-        if result.returncode != 0:
-            return []
-        logs = json.loads(result.stdout) if result.stdout.strip() else []
-        return logs
+        return fetch_onchain_simulations(rpc_url, from_block=from_block)
     except Exception:
         return []
 
@@ -213,7 +275,7 @@ def build_leaderboard(artifacts: List[Dict]) -> Dict:
 def main():
     parser = argparse.ArgumentParser(description="Antelligence simulation leaderboard")
     parser.add_argument("--from-dir", help="Load artifacts from local directory")
-    parser.add_argument("--onchain", action="store_true", help="Fetch events from Base Sepolia")
+    parser.add_argument("--onchain", action="store_true", help="Fetch submissions from the configured chain")
     parser.add_argument("--json", action="store_true", help="JSON output")
     args = parser.parse_args()
 
@@ -222,27 +284,11 @@ def main():
     if args.from_dir:
         artifacts = load_local_artifacts(args.from_dir)
     elif args.onchain:
-        rpc_url = get_base_sepolia_rpc_url()
+        rpc_url = get_rpc_url()
         if not rpc_url:
-            print(json.dumps({"ok": False, "error": "BASE_SEPOLIA_RPC_URL not set"}))
+            print(json.dumps({"ok": False, "error": "chain RPC not configured (set ANTELLIGENCE_CHAIN or ANTELLIGENCE_RPC_URL)"}))
             sys.exit(1)
-        events = fetch_onchain_events(rpc_url)
-        # Convert events to artifact-like format
-        for evt in events:
-            artifacts.append({
-                "type": "antelligence-simulation-v2",
-                "config": {},
-                "metrics": {"kill_rate": 0},
-                "verification_status": {
-                    "schema_ok": True,
-                    "integrity_ok": False,
-                    "replay_ok": False,
-                    "proof_ok": False,
-                    "onchain_ok": True,
-                },
-                "proof_lifecycle": {"stage": "verified_onchain"},
-                "tx_hash": evt.get("transactionHash", ""),
-            })
+        artifacts = onchain_artifacts(fetch_onchain_simulations(rpc_url))
     else:
         print(json.dumps({"ok": False, "error": "Specify --from-dir or --onchain"}))
         sys.exit(1)

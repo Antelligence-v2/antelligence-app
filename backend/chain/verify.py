@@ -18,7 +18,7 @@ from typing import Dict, Optional, Tuple
 # Add parent to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-from chain.config import get_base_sepolia_rpc_url, get_tumor_intel_address
+from chain.config import get_rpc_url, get_tumor_intel_address
 from chain.ipfs import compute_artifact_hash
 from chain.proof_spec import (
     PROGRAM_VERSION,
@@ -536,7 +536,7 @@ def verify_proof_bundle_schema(record: dict) -> Dict:
 
 def check_onchain_verification(config_hash: str) -> Dict:
     """Check whether the current TumorIntel contract marks a config hash as verified."""
-    rpc_url = get_base_sepolia_rpc_url()
+    rpc_url = get_rpc_url()
     contract = get_tumor_intel_address()
     if not rpc_url or not contract:
         return {"ok": False, "reason": "missing chain config"}

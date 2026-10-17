@@ -103,7 +103,7 @@ def generate_markdown(data: dict) -> str:
             lines.append(f"- Gateway: {attestation.get('gateway_url', '')}")
         lines.append(f"- Artifact hash: `{attestation.get('artifact_hash', 'N/A')}`")
         lines.append(f"- Config hash: `{attestation.get('config_hash', 'N/A')}`")
-        lines.append(f"- Contract: `0xd1cfa5b9994e06cc18a21dc18fb9d20a3c02238b` (Base Sepolia)")
+        lines.append(f"- Contract: `{attestation.get('contract') or 'not recorded'}` ({attestation.get('network', 'network not recorded')})")
         lines.append("")
 
     return "\n".join(lines)
