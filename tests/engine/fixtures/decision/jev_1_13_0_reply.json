@@ -1,0 +1,74 @@
+{
+ "request": {
+  "model": "jev-1.13.0",
+  "state": "Carrying food: no. Food last seen: 3 north, 2 east. Nest: 4 south.",
+  "questions": {
+   "food_known": {
+    "type": "noul",
+    "instructions": "Does the agent know where food is?",
+    "criteria": {
+     "true": "A food location is stated",
+     "false": "No food location is stated"
+    }
+   },
+   "move": {
+    "type": "choice",
+    "instructions": "Which action moves toward the food?",
+    "criteria": {
+     "move north": null,
+     "move south": null,
+     "stay": null
+    }
+   },
+   "urgency": {
+    "type": "score",
+    "instructions": "How urgent is moving now?",
+    "criteria": [
+     "Not urgent",
+     "Somewhat urgent",
+     "Very urgent"
+    ]
+   }
+  }
+ },
+ "response": {
+  "model": "jev-1.13.0",
+  "answers": {
+   "food_known": {
+    "type": "noul",
+    "noul": 0.94
+   },
+   "move": {
+    "type": "choice",
+    "choice": "move north",
+    "confidence": 1.0,
+    "probabilities": {
+     "move north": 1.0,
+     "move south": 0.0,
+     "stay": 0.0
+    }
+   },
+   "urgency": {
+    "type": "score",
+    "score": 0.43,
+    "confidence": 0.37,
+    "legend": {
+     "0": "Not urgent",
+     "1": "Somewhat urgent",
+     "2": "Very urgent"
+    },
+    "probabilities": {
+     "0": 0.65,
+     "1": 0.28,
+     "2": 0.07
+    }
+   }
+  },
+  "usage": {
+   "input_tokens": 405,
+   "output_tokens": 73
+  }
+ },
+ "status": 200,
+ "latency_s": 3.217
+}
