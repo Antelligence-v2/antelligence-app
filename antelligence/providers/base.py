@@ -9,7 +9,38 @@ from antelligence.kernel.canonical import content_hash, plain
 
 
 class ProviderError(RuntimeError):
-    """The provider failed or returned something we refuse to trust."""
+    """The provider failed or returned something we refuse to trust.
+
+    ``http_status`` / ``error_body`` (redacted, at most 500 characters) are set when the failure was an HTTP reply."""
+
+    def __init__(self, *args: object, http_status: "int | None" = None, error_body: "str | None" = None) -> None:
+        super().__init__(*args)
+        self.http_status = http_status
+        self.error_body = error_body
+
+
+class ProviderUnavailable(ProviderError):
+    """The provider could not be reached or refused for a reason that may pass: HTTP 401, 429, 5xx or a transport error.
+
+    ``status`` is the HTTP status, or ``None`` for a transport error. Callers that must not turn an outage into a
+    different answer (the queen, the sandbox proposer) retry the same request on this class and on no other."""
+
+    def __init__(self, message: str, *, status: Optional[int] = None, http_status: "int | None" = None,
+                 error_body: "str | None" = None) -> None:
+        super().__init__(message, http_status=status if http_status is None else http_status, error_body=error_body)
+        self.status = status
+
+
+class ProviderTruncated(ProviderError):
+    """The reply was cut off at the output cap (``finish_reason == "length"``).
+
+    A truncated reply is an INVALID REPLY, not a provider failure: the provider answered, the answer is unusable, and
+    asking again would cut off again. It is not a :class:`ProviderUnavailable`, so nothing retries it as an outage."""
+
+    def __init__(self, *args: object, http_status: "int | None" = None, error_body: "str | None" = None,
+                 response: "ChatResponse | None" = None) -> None:
+        super().__init__(*args, http_status=http_status, error_body=error_body)
+        self.response = response  # what the call actually cost; callers bill it and caches store it (format_ok=False)
 
 
 class BudgetExceeded(ProviderError):
@@ -24,6 +55,7 @@ class ChatRequest:
     temperature: float = 0.0
     seed: Optional[int] = None
     response_format: Optional[Mapping[str, Any]] = None
+    extra_body: Optional[Mapping[str, Any]] = None  # provider-specific body keys, e.g. {"thinking": {"type": "disabled"}}
 
     def __post_init__(self) -> None:
         if not self.model:
@@ -35,11 +67,14 @@ class ChatRequest:
         object.__setattr__(self, "messages", messages)
         if self.response_format is not None:
             object.__setattr__(self, "response_format", plain(dict(self.response_format)))
+        if self.extra_body is not None:
+            object.__setattr__(self, "extra_body", plain(dict(self.extra_body)))
         if self.max_tokens < 1:
             raise ValueError("max_tokens must be positive")
 
     def payload(self) -> Dict[str, Any]:
         body: Dict[str, Any] = {
+            **(self.extra_body or {}),
             "model": self.model,
             "messages": list(self.messages),
             "max_tokens": self.max_tokens,
