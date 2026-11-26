@@ -1,0 +1,18 @@
+{
+  "scenarios": [
+    {
+      "name": "downtown_rush",
+      "max_steps": 30,
+      "max_fuel": 14,
+      "fine_per_violation": 25.0,
+      "reward_per_delivery": 100.0
+    },
+    {
+      "name": "low_fuel_crosstown",
+      "max_steps": 35,
+      "max_fuel": 8,
+      "fine_per_violation": 30.0,
+      "reward_per_delivery": 120.0
+    }
+  ]
+}
