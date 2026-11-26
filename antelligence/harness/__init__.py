@@ -1,5 +1,15 @@
 """Antelligence Harness vNext: domain-agnostic core, execution graph, scheduler, replay, and scorecard."""
 
+from antelligence.harness.adapters import (
+    CANONICAL_LABELS,
+    CuratedRealTriageAdapter,
+    EvalHygieneError,
+    EvalHygieneReport,
+    HoldoutGuard,
+    MCQCompatAdapter,
+    TFIDFBaseline,
+    eval_hygiene_gate,
+)
 from antelligence.harness.core import (
     FIDELITY_TIERS,
     Action,
@@ -20,6 +30,16 @@ from antelligence.harness.core import (
     verify_env_contract,
 )
 from antelligence.harness.graph import ExecutionGraph, Node, When
+from antelligence.harness.policy import (
+    CalibrationError,
+    CalibrationGate,
+    CalibrationReport,
+    CDMGateError,
+    CDMWrapper,
+    EscalationDecision,
+    Policy,
+    UncalibratedGateError,
+)
 from antelligence.harness.replay import (
     BranchingReplay,
     BranchResult,
@@ -46,7 +66,38 @@ from antelligence.harness.scorecard import (
     verdict,
 )
 
+from antelligence.harness.verifiers import (
+    SandboxResult,
+    SelfCheckError,
+    VerificationResult,
+    Verifier,
+    model_family,
+    run_sandbox,
+)
+
 __all__ = [
+    "CANONICAL_LABELS",
+    "CalibrationError",
+    "CalibrationGate",
+    "CalibrationReport",
+    "CDMGateError",
+    "CDMWrapper",
+    "CuratedRealTriageAdapter",
+    "EscalationDecision",
+    "EvalHygieneError",
+    "EvalHygieneReport",
+    "HoldoutGuard",
+    "MCQCompatAdapter",
+    "Policy",
+    "SandboxResult",
+    "SelfCheckError",
+    "TFIDFBaseline",
+    "UncalibratedGateError",
+    "VerificationResult",
+    "Verifier",
+    "eval_hygiene_gate",
+    "model_family",
+    "run_sandbox",
     "Action",
     "Artifact",
     "BranchResult",
