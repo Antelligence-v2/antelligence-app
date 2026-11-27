@@ -29,6 +29,7 @@ test = [
 [project.scripts]
 antelligence = "backend.cli:main"
 antelligence-api = "backend.api_server:main"
+antelligence-harness = "antelligence.harness.cli:main"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
