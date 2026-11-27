@@ -5,6 +5,19 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Mapping, Optional
 
+SCALAR_FACT_TYPES = (bool, int, float, str)
+
+
+def extract_scalar_facts(obs: Any) -> Dict[str, Any]:
+    """Extract verified non-None scalar key-value pairs from a Mapping observation."""
+    if not isinstance(obs, Mapping):
+        return {}
+    return {
+        str(key): value
+        for key, value in obs.items()
+        if isinstance(value, SCALAR_FACT_TYPES)
+    }
+
 
 @dataclass
 class EpisodeMemory:
@@ -22,6 +35,12 @@ class EpisodeMemory:
     facts: Dict[str, Any] = field(default_factory=dict)
     unverified_notes: List[Dict[str, Any]] = field(default_factory=list)
     total_reward: float = 0.0
+
+    def update_facts(self, facts: Mapping[str, Any]) -> None:
+        """Merge verified non-None facts into ``self.facts``."""
+        for key, value in facts.items():
+            if value is not None:
+                self.facts[str(key)] = value
 
     def record_step(
         self,
@@ -42,12 +61,9 @@ class EpisodeMemory:
             self.counters["violations"] += int(info_map.get("violation_count", 1))
         if info_map.get("delivered"):
             self.counters["deliveries"] += 1
-        if isinstance(obs, Mapping):
-            for key in ("node", "fuel", "cargo", "active_job", "pickup", "dropoff", "auth_code"):
-                if obs.get(key) is not None:
-                    self.facts[key] = obs[key]
+        self.update_facts(extract_scalar_facts(obs))
         if isinstance(info_map.get("verified_facts"), Mapping):
-            self.facts.update(info_map["verified_facts"])
+            self.update_facts(info_map["verified_facts"])
         self.verified_history.append(
             {
                 "step": step_idx,
