@@ -22,6 +22,7 @@ from antelligence.harness.evolve import (
     CanaryMetrics,
     EvolutionCandidate,
     ProposedMemoryEntry,
+    check_guardrail_lock,
     dynamic_step_cap,
     evaluate_evolution,
 )
@@ -261,3 +262,74 @@ def test_dynamic_step_cap_headroom_inside_hard_l1_ceiling() -> None:
     )
     assert dec.winner_id == KEEP_ORIGINAL_ID
     assert dec.hard_rejections["c1"] == "step_cap_exceeded"
+
+
+def test_guardrail_lock_blocks_path_traversal_and_expanded_immutable_paths(tmp_path: Path) -> None:
+    # Traversal into locked path resolves to antelligence/record/l1_gate.py and is blocked.
+    for traversal in (
+        "antelligence/harness/../record/l1_gate.py",
+        r"antelligence\harness\..\record\l1_gate.py",
+        "./antelligence/harness/../record/l1_gate.py",
+    ):
+        ok, reason = check_guardrail_lock([traversal])
+        assert not ok
+        assert reason == "immutable_guardrail_path:antelligence/record/l1_gate.py"
+
+    # Leading .. escapes and absolute paths are rejected.
+    for escape in ("../record/l0.py", "a/../../record/l0.py", "..", "/etc/passwd", "/antelligence/harness/policy.py"):
+        ok, reason = check_guardrail_lock([escape])
+        assert not ok
+        assert reason.startswith(("path_traversal:", "invalid_path:"))
+
+    # Expanded immutable paths: all of antelligence/record/, kernel/, evolve.py, consensus.py.
+    for locked_path in (
+        "antelligence/record/audit.py",
+        "antelligence/record/recover.py",
+        "antelligence/record/sandbox_check.py",
+        "antelligence/record/l0.py",
+        "antelligence/record/l1_gate.py",
+        "antelligence/kernel/types.py",
+        "antelligence/harness/evolve.py",
+        "antelligence/harness/consensus.py",
+    ):
+        ok, reason = check_guardrail_lock([locked_path])
+        assert not ok
+        assert reason == f"immutable_guardrail_path:{locked_path}"
+
+    # Normal allowed paths still pass.
+    ok, reason = check_guardrail_lock(["antelligence/harness/policy.py", "./antelligence/harness/policy.py"])
+    assert ok
+    assert reason == "ok"
+
+    # Traversal in pinned_hashes is also rejected.
+    ok, reason = check_guardrail_lock([], repo_root=str(tmp_path), pinned_hashes={"../etc/passwd": "0" * 64})
+    assert not ok
+    assert reason.startswith("pinned_hash_path_traversal:")
+
+    # End-to-end evolution rejects traversal and self-edits even with unanimous promotion votes.
+    ledger = _warm_ledger()
+    base = CanaryMetrics(score=Decimal("0.85"), tokens=100, spend_microusd=100)
+    reveals = {"c1": {v: {"vote": "PROMOTE", "p_permille": 900} for v in ["a1", "g1", "o1"]}}
+    for bad in (
+        "antelligence/harness/../record/l1_gate.py",
+        "../record/l0.py",
+        "/etc/passwd",
+        "antelligence/record/audit.py",
+        "antelligence/harness/evolve.py",
+        "antelligence/harness/consensus.py",
+    ):
+        dec = evaluate_evolution(
+            [_cand("c1", paths=(bad,))], base, ledger=ledger, roster=list(ledger.states),
+            reveals_by_candidate=reveals, hard_l1_max_steps=20, base_steps=10, headroom_steps=5,
+        )
+        assert dec.winner_id == KEEP_ORIGINAL_ID
+        assert not dec.promoted
+        assert "c1" in dec.hard_rejections
+
+
+def test_voter_spec_reserved_fields_and_ledger_docstring() -> None:
+    spec = VoterSpec("v1", "anthropic")
+    assert spec.domain == "harness"
+    assert spec.is_new_family is False
+    assert "domain-scoped" not in (TrustLedger.__doc__ or "").lower()
+    assert "PR 7" in (TrustLedger.__doc__ or "")

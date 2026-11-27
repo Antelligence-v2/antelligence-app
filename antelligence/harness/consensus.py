@@ -79,11 +79,18 @@ def _to_dec(val: Decimal | int | str) -> Decimal:
 
 @dataclass(frozen=True)
 class VoterSpec:
+    """Static voter registration metadata.
+
+    ``domain`` and ``is_new_family`` are reserved for PR 7 (``DomainTrustBook``
+    domain isolation and new-family probation) and are not read by PR 6's
+    per-voter ``TrustLedger``.
+    """
+
     voter_id: str
     family: str
     model_id: str = ""
-    domain: str = "harness"
-    is_new_family: bool = False
+    domain: str = "harness"  # Reserved for PR 7 (DomainTrustBook).
+    is_new_family: bool = False  # Reserved for PR 7 (new-family probation).
     dev_brier: Decimal | str | int | None = None
 
 
@@ -130,7 +137,11 @@ def initial_trust_for(spec: VoterSpec) -> Decimal:
 
 
 class TrustLedger:
-    """Deterministic domain-scoped trust ledger with Hedge-on-Brier updates and slashing."""
+    """Deterministic per-voter trust ledger with Hedge-on-Brier updates and slashing.
+
+    PR 6 tracks trust per ``voter_id`` in a single ledger; per-domain isolation
+    (``DomainTrustBook``) lands in PR 7.
+    """
 
     def __init__(self, specs: Sequence[VoterSpec] = (), window: int = DEFAULT_WINDOW) -> None:
         self.window = window

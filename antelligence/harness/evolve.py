@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import hashlib
 import os
+import posixpath
 import re
 from dataclasses import dataclass, field
 from decimal import Decimal
@@ -26,9 +27,10 @@ from antelligence.harness.consensus import (
 KEEP_ORIGINAL_ID = "keep_original"
 
 IMMUTABLE_GUARDRAIL_PATHS: tuple[str, ...] = (
-    "antelligence/record/l1_gate.py",
-    "antelligence/record/l0.py",
+    "antelligence/record/",
     "antelligence/kernel/",
+    "antelligence/harness/evolve.py",
+    "antelligence/harness/consensus.py",
 )
 
 _HEX64_RE = re.compile(r"^[0-9a-f]{64}$")
@@ -42,7 +44,13 @@ _BLOCKED_TAGS = frozenset({"unverified_note", "untrusted", "poisoned"})
 
 
 def _norm_path(path: str) -> str:
-    return path.replace("\\", "/").lstrip("./")
+    raw = path.replace("\\", "/")
+    if not raw or "\x00" in raw or raw.startswith("/") or (len(raw) >= 2 and raw[1] == ":"):
+        raise ValueError(f"invalid_path:{path}")
+    norm = posixpath.normpath(raw)
+    if norm in ("", ".", "..") or norm.startswith("../") or norm.startswith("/"):
+        raise ValueError(f"path_traversal:{path}")
+    return norm
 
 
 def check_guardrail_lock(
@@ -53,7 +61,10 @@ def check_guardrail_lock(
 ) -> tuple[bool, str]:
     """Reject any diff touching immutable L1/guardrail/kernel paths or violating pinned file hashes."""
     for raw in touched_paths:
-        norm = _norm_path(raw)
+        try:
+            norm = _norm_path(raw)
+        except ValueError as exc:
+            return False, str(exc)
         for locked in IMMUTABLE_GUARDRAIL_PATHS:
             if locked.endswith("/"):
                 if norm.startswith(locked) or norm == locked.rstrip("/"):
@@ -63,7 +74,10 @@ def check_guardrail_lock(
 
     if pinned_hashes and repo_root is not None:
         for rel_path, expected_sha in sorted(pinned_hashes.items()):
-            norm = _norm_path(rel_path)
+            try:
+                norm = _norm_path(rel_path)
+            except ValueError as exc:
+                return False, f"pinned_hash_{exc}"
             full = os.path.join(repo_root, norm)
             if not os.path.isfile(full):
                 return False, f"pinned_hash_missing:{norm}"
