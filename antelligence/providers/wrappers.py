@@ -17,7 +17,7 @@ from pathlib import Path
 from typing import Any, Callable, Dict, Optional, Union
 
 from antelligence.kernel.canonical import canonical_json
-from antelligence.providers.base import BudgetExceeded, ChatRequest, ChatResponse, Provider, ProviderError, Usage
+from antelligence.providers.base import BudgetExceeded, ChatRequest, ChatResponse, Provider, ProviderError, ProviderTruncated, Usage
 
 Responder = Callable[[ChatRequest], Union[str, ChatResponse]]
 
@@ -136,6 +136,12 @@ class Budgeted:
         self._reserved_tokens += reservation
         try:
             response = await self.inner.complete(request)
+        except ProviderTruncated as exc:
+            if exc.response is not None:
+                self.usage.add(exc.response)   # a cut-off reply was paid for: bill actual tokens, never 0
+            else:
+                self.usage.failed_calls += 1
+            raise
         except Exception:
             self.usage.failed_calls += 1
             raise
