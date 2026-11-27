@@ -8,7 +8,7 @@ from antelligence.providers import (
     Budgeted, ChatRequest, ChatResponse, OpenAICompatProvider, ProviderError, ProviderTruncated,
     ProviderUnavailable, RetryPolicy, Retrying, SqliteCache,
 )
-from antelligence.providers.cache import UnsafeCachePath, import_legacy_jsonl
+from antelligence.providers.cache import UnsafeCachePath, base_request_hash, import_legacy_jsonl
 from antelligence.providers.local_mlx import LocalModelError, LocalModelManager, free_memory_fraction
 
 
@@ -106,6 +106,104 @@ def test_superset_matching_does_not_corrupt_older_rows(tmp_path):
     assert run(plain.complete(req())).extra == first.extra  # plain lookup still sees the old row first
     rows = plain._db.execute("SELECT COUNT(*) FROM responses").fetchone()[0]
     assert rows == 2
+
+
+def test_superset_lookup_strips_telemetry_extra_body_keys(tmp_path):
+    inner = Scripted({"logprobs": {"conf": 0.9}, "usage": {"total_tokens": 3}})
+    cache = SqliteCache(inner, tmp_path / "c.db")
+
+    req_plain = req(extra_body={})
+    req_lp = req(extra_body={"logprobs": True})
+    req_full = req(extra_body={"logprobs": True, "top_logprobs": 5, "stream_options": {"include_usage": True}})
+    req_other = req(extra_body={"thinking": {"type": "disabled"}})
+
+    # ChatRequest.request_hash stays sensitive to extra_body; SqliteCache base key strips telemetry-only keys.
+    assert req_lp.request_hash != req_plain.request_hash
+    assert base_request_hash(req_plain) == base_request_hash(req_lp) == base_request_hash(req_full)
+    assert base_request_hash(req_other) != base_request_hash(req_plain)
+
+    # Seed a cached row with telemetry_flags={"logprobs", "usage"} via a telemetry-bearing ChatRequest.
+    seeded = run(cache.complete(req_full))
+    assert not seeded.cached and inner.calls == 1
+    stored_flags = json.loads(cache._db.execute("SELECT telemetry FROM responses").fetchone()[0])
+    assert set(stored_flags) == {"logprobs", "usage"}
+
+    # Hit by ChatRequest(extra_body={}) AND by ChatRequest(extra_body={"logprobs": True}).
+    hit_plain = run(cache.complete(req_plain))
+    assert hit_plain.cached and hit_plain.content == seeded.content and inner.calls == 1
+    hit_lp = run(cache.complete(req_lp))
+    assert hit_lp.cached and hit_lp.extra["logprobs"] == {"conf": 0.9} and inner.calls == 1
+    assert cache.lookup(req_plain) is not None and cache.lookup(req_lp) is not None
+
+
+def test_empty_telemetry_row_misses_request_extra_body_logprobs_without_corrupting(tmp_path):
+    class DistinctContentProvider:
+        def __init__(self):
+            self.calls = 0
+
+        def describe(self):
+            return {"provider": "distinct"}
+
+        async def complete(self, request):
+            self.calls += 1
+            if (request.extra_body or {}).get("logprobs"):
+                return ChatResponse(content="lp-content", model=request.model, request_hash=request.request_hash,
+                                    prompt_tokens=2, completion_tokens=1, finish_reason="stop",
+                                    extra={"logprobs": {"conf": 0.95}})
+            return ChatResponse(content="plain-content", model=request.model, request_hash=request.request_hash,
+                                prompt_tokens=2, completion_tokens=1, finish_reason="stop", extra={})
+
+    inner = DistinctContentProvider()
+    cache = SqliteCache(inner, tmp_path / "c.db")
+
+    # Seed a cached row with telemetry_flags=set().
+    first = run(cache.complete(req(extra_body={})))
+    assert not first.cached and first.content == "plain-content" and inner.calls == 1
+    assert cache.lookup(req(extra_body={"logprobs": True})) is None
+
+    # Lookup with extra_body={"logprobs": True} misses cleanly, inserts a new row, and keeps old content intact.
+    second = run(cache.complete(req(extra_body={"logprobs": True})))
+    assert not second.cached and second.content == "lp-content" and second.extra["logprobs"] == {"conf": 0.95}
+    assert inner.calls == 2
+
+    # Subsequent calls hit their respective rows without extra provider calls.
+    hit_lp = run(cache.complete(req(extra_body={"logprobs": True})))
+    assert hit_lp.cached and hit_lp.content == "lp-content" and inner.calls == 2
+    hit_plain = run(cache.complete(req(extra_body={})))
+    assert hit_plain.cached and hit_plain.content == "plain-content" and hit_plain.extra == {} and inner.calls == 2
+    assert len(cache) == 1
+    assert cache._db.execute("SELECT COUNT(*) FROM responses").fetchone()[0] == 2
+
+
+def test_provider_level_extra_body_requires_telemetry(tmp_path):
+    lp_payload = {"content": [{"token": "A", "logprob": -0.1, "top_logprobs": [{"token": "A", "logprob": -0.1}]}]}
+    calls = []
+
+    def handler(request):
+        calls.append(json.loads(request.content))
+        body = {"id": "r", "model": "m1",
+                "choices": [{"message": {"content": "x"}, "finish_reason": "stop", "logprobs": lp_payload}],
+                "usage": {"prompt_tokens": 5, "completion_tokens": 3}}
+        return httpx.Response(200, json=body)
+
+    db = tmp_path / "c.db"
+    # Seed plain row (telemetry_flags=set()).
+    plain_cache = SqliteCache(Scripted({}), db)
+    run(plain_cache.complete(req()))
+
+    # Provider-level extra_body={"logprobs": True} (even behind Retrying) must require "logprobs" and miss plain row.
+    prov = OpenAICompatProvider("http://local.test/v1", extra_body={"logprobs": True},
+                                transport=httpx.MockTransport(handler))
+    lp_cache = SqliteCache(Retrying(prov), db)
+    assert lp_cache.required_for(req()) == frozenset({"logprobs"})
+    assert lp_cache.lookup(req()) is None
+
+    res = run(lp_cache.complete(req()))
+    assert not res.cached and res.extra["logprobs"] and len(calls) == 1
+    # Now cached: hits for both provider-level and request-level logprobs requests, and plain lookup stays intact.
+    assert run(lp_cache.complete(req())).cached and len(calls) == 1
+    assert run(lp_cache.complete(req(extra_body={"logprobs": True}))).cached and len(calls) == 1
+    assert lp_cache.required_for(req(extra_body={"logprobs": False})) == frozenset()
 
 
 def test_concurrent_identical_requests_hit_model_once(tmp_path):

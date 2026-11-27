@@ -18,10 +18,12 @@ import json
 import sqlite3
 import sys
 from pathlib import Path
-from typing import Any, Dict, FrozenSet, Iterable, Optional, Union
+from typing import Any, Dict, FrozenSet, Iterable, Mapping, Optional, Union
 
-from antelligence.kernel.canonical import canonical_json
+from antelligence.kernel.canonical import canonical_json, content_hash
 from antelligence.providers.base import ChatRequest, ChatResponse, Provider, ProviderError, ProviderTruncated
+
+TELEMETRY_BODY_KEYS: FrozenSet[str] = frozenset({"logprobs", "top_logprobs", "stream_options"})
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS responses (
@@ -48,8 +50,53 @@ def check_local_path(path: Union[str, Path]) -> Path:
     return resolved
 
 
+def base_request_hash(request: ChatRequest) -> str:
+    """Cache lookup key with telemetry-only ``extra_body`` keys stripped.
+
+    Leaves :attr:`ChatRequest.request_hash` unchanged while ensuring requests that differ only in
+    telemetry options (``logprobs``, ``top_logprobs``, ``stream_options``) share one superset bucket.
+    """
+    if not request.extra_body or not any(k in request.extra_body for k in TELEMETRY_BODY_KEYS):
+        return request.request_hash
+    body = request.payload()
+    for key in TELEMETRY_BODY_KEYS:
+        body.pop(key, None)
+    return content_hash(body)
+
+
 def telemetry_flags(extra: Optional[Dict[str, Any]]) -> FrozenSet[str]:
-    return frozenset(k for k in ("logprobs", "cached_tokens", "cost") if (extra or {}).get(k) is not None)
+    return frozenset(k for k in ("logprobs", "cached_tokens", "cost", "usage") if (extra or {}).get(k) is not None)
+
+
+def _provider_extra_body(provider: Optional[Provider]) -> Dict[str, Any]:
+    """Collect provider-level ``extra_body`` across any ``.inner`` wrapper chain (outer overrides inner)."""
+    chain = []
+    seen: set = set()
+    cur: Any = provider
+    while cur is not None and id(cur) not in seen:
+        seen.add(id(cur))
+        chain.append(cur)
+        cur = getattr(cur, "inner", None)
+    merged: Dict[str, Any] = {}
+    for node in reversed(chain):
+        eb = getattr(node, "extra_body", None)
+        if isinstance(eb, Mapping):
+            merged.update(eb)
+    return merged
+
+
+def required_telemetry_from_extra_body(extra_body: Optional[Mapping[str, Any]]) -> FrozenSet[str]:
+    """Infer required telemetry flags requested via an effective ``extra_body`` mapping."""
+    if not extra_body:
+        return frozenset()
+    flags = set()
+    logprobs_val = extra_body.get("logprobs")
+    if logprobs_val or (logprobs_val is None and extra_body.get("top_logprobs")):
+        flags.add("logprobs")
+    stream_opts = extra_body.get("stream_options")
+    if isinstance(stream_opts, Mapping) and stream_opts.get("include_usage"):
+        flags.add("usage")
+    return frozenset(flags)
 
 
 class SqliteCache:
@@ -77,10 +124,21 @@ class SqliteCache:
     def describe(self) -> Dict[str, Any]:
         return self.inner.describe() if self.inner is not None else {"provider": "cache_only"}
 
-    def lookup(self, request_hash: str, required: Optional[FrozenSet[str]] = None) -> Optional[Dict[str, Any]]:
-        need = self.required if required is None else required
+    def required_for(self, request: Optional[ChatRequest] = None) -> FrozenSet[str]:
+        effective = _provider_extra_body(self.inner)
+        if request is not None and request.extra_body:
+            effective.update(request.extra_body)
+        return self.required | required_telemetry_from_extra_body(effective)
+
+    def lookup(self, request_hash: Union[str, ChatRequest], required: Optional[FrozenSet[str]] = None) -> Optional[Dict[str, Any]]:
+        if isinstance(request_hash, ChatRequest):
+            key = base_request_hash(request_hash)
+            need = self.required_for(request_hash) if required is None else frozenset(required)
+        else:
+            key = request_hash
+            need = self.required_for() if required is None else frozenset(required)
         for (telemetry, row) in self._db.execute(
-                "SELECT telemetry, row FROM responses WHERE request_hash = ? AND usable = 1 ORDER BY id", (request_hash,)):
+                "SELECT telemetry, row FROM responses WHERE request_hash = ? AND usable = 1 ORDER BY id", (key,)):
             if need <= frozenset(json.loads(telemetry)):
                 return json.loads(row)
         return None
@@ -90,17 +148,20 @@ class SqliteCache:
                                  (request_hash,)).fetchone()
         return json.loads(found[0]) if found else None
 
-    def insert(self, row: Dict[str, Any], *, usable: bool = True) -> bool:
-        flags = sorted(telemetry_flags(row.get("extra")))
+    def insert(self, row: Dict[str, Any], *, usable: bool = True, key: Optional[str] = None,
+               flags: Optional[Iterable[str]] = None) -> bool:
+        tflags = sorted(telemetry_flags(row.get("extra")) if flags is None else frozenset(flags))
+        cache_key = row["request_hash"] if key is None else key
         cur = self._db.execute("INSERT OR IGNORE INTO responses (request_hash, telemetry, usable, row) VALUES (?,?,?,?)",
-                               (row["request_hash"], json.dumps(flags), int(usable), canonical_json({**row, "cached": False})))
+                               (cache_key, json.dumps(tflags), int(usable), canonical_json({**row, "cached": False})))
         return cur.rowcount == 1
 
     async def complete(self, request: ChatRequest) -> ChatResponse:
-        key = request.request_hash
+        key = base_request_hash(request)
+        required = self.required_for(request)
         lock = self._locks.setdefault(key, asyncio.Lock())
         async with lock:  # identical concurrent requests hit the model once
-            hit = self.lookup(key)
+            hit = self.lookup(key, required=required)
             if hit is not None:
                 return ChatResponse.from_dict(hit, cached=True)
             stored_cut = self._truncated_row(key)
@@ -115,9 +176,9 @@ class SqliteCache:
                 if exc.response is not None:  # honest billing: keep what the cut-off reply cost, flagged unusable
                     row = exc.response.to_dict()
                     row["extra"] = {**row.get("extra", {}), "format_ok": False}
-                    self.insert(row, usable=False)
+                    self.insert(row, usable=False, key=key)
                 raise
-            self.insert(response.to_dict(), usable=True)
+            self.insert(response.to_dict(), usable=True, key=key)
             return response
 
 
