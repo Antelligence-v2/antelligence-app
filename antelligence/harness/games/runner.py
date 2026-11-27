@@ -17,7 +17,7 @@ from antelligence.harness.core import (
     RealismContract,
 )
 from antelligence.harness.games.checker import CheckDecision, GameChecker
-from antelligence.harness.games.memory import EpisodeMemory
+from antelligence.harness.games.memory import EpisodeMemory, extract_scalar_facts
 from antelligence.harness.replay import BranchResult
 from antelligence.record.l1_gate import L1Gate
 
@@ -56,6 +56,9 @@ class GameEpisodeResult:
     fidelity_tier: str
     l0_path: Optional[str] = None
     info: Mapping[str, Any] = field(default_factory=dict)
+    status: str = "complete"
+    aborted: bool = False
+    abort_reason: Optional[str] = None
 
 
 PolicyFn = Callable[[Observation, Optional[EpisodeMemory]], Union[PolicyDecision, Action]]
@@ -113,10 +116,14 @@ def run_episode(
 
     memory: Optional[EpisodeMemory] = EpisodeMemory() if use_memory else None
     obs = env.reset(seed, config)
-    if memory is not None and isinstance(obs, Mapping):
-        for k in ("node", "fuel", "cargo", "job_accepted", "pickup", "dropoff", "auth_code"):
-            if obs.get(k) is not None:
-                memory.facts[k] = obs[k]
+    if memory is not None:
+        initial_facts_fn = getattr(env, "initial_facts", None)
+        if callable(initial_facts_fn):
+            seeded = initial_facts_fn(obs)
+            if isinstance(seeded, Mapping):
+                memory.update_facts(seeded)
+        else:
+            memory.update_facts(extract_scalar_facts(obs))
 
     t0 = time.perf_counter()
     total_score = 0.0
@@ -124,6 +131,8 @@ def run_episode(
     checker_fires = 0
     steps = 0
     done = False
+    aborted = False
+    abort_reason: Optional[str] = None
     last_hash = ""
     last_info: Mapping[str, Any] = {}
     decision_latencies: List[float] = []
@@ -133,19 +142,30 @@ def run_episode(
         decision = _coerce_decision(policy(obs, memory), time.perf_counter() - d0)
         decision_latencies.append(decision.latency_s)
 
-        if memory is not None and decision.note:
-            memory.add_unverified_note(decision.note, step_idx=step_idx)
-
         if gate is not None and (decision.cost_microusd > 0 or decision.tokens_in > 0 or decision.tokens_out > 0):
             reserve = max(decision.cost_microusd, 1)
-            if gate.model_call(decision.model, f"step={step_idx}", reserve):
-                gate.model_result(
-                    decision.tokens_in,
-                    decision.tokens_out,
-                    decision.cost_microusd,
-                    str(decision.action),
-                    format_ok=decision.format_ok,
-                )
+            prev_refusals = len(gate.refusals)
+            if not gate.model_call(decision.model, f"step={step_idx}", reserve):
+                aborted = True
+                if len(gate.refusals) > prev_refusals:
+                    abort_reason = f"l1_gate_refused:{gate.refusals[-1]}"
+                elif any(Path(k).exists() for k in gate.kill_paths):
+                    abort_reason = "l1_gate_refused:kill_file"
+                elif gate.end_status == "aborted":
+                    abort_reason = "l1_gate_refused:aborted"
+                else:
+                    abort_reason = "l1_gate_refused"
+                break
+            gate.model_result(
+                decision.tokens_in,
+                decision.tokens_out,
+                decision.cost_microusd,
+                str(decision.action),
+                format_ok=decision.format_ok,
+            )
+
+        if memory is not None and decision.note:
+            memory.add_unverified_note(decision.note, step_idx=step_idx)
 
         action = decision.action
         if checker is not None:
@@ -186,8 +206,15 @@ def run_episode(
     wall_s = time.perf_counter() - t0
     l1_spent = gate.subtree_spent() if gate is not None else 0
     l1_calls = gate.subtree_calls() if gate is not None else 0
+    status = "aborted" if aborted else ("pass" if done else "complete")
     if owns_gate and gate is not None:
-        gate.end("pass" if done else "complete")
+        gate.end(status, detail=abort_reason or "")
+
+    info_out = dict(last_info)
+    info_out["status"] = status
+    if aborted:
+        info_out["aborted"] = True
+        info_out["abort_reason"] = abort_reason
 
     return GameEpisodeResult(
         seed=seed,
@@ -205,7 +232,10 @@ def run_episode(
         baseline_score=baseline.score,
         fidelity_tier=env.realism.fidelity_tier,
         l0_path=str(l0_path) if l0_path is not None else None,
-        info=dict(last_info),
+        info=info_out,
+        status=status,
+        aborted=aborted,
+        abort_reason=abort_reason,
     )
 
 

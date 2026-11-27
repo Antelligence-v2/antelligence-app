@@ -293,3 +293,197 @@ def test_world_bridge_with_kernel_world():
     res = run_episode(adapter, lambda o, m: "step", seed=0, max_steps=5)
     assert res.done is True
     assert res.steps == 3
+
+
+def test_l1_gate_refusal_aborts_on_budget_cap_and_kill_file(tmp_path):
+    class CountingEnv(CityOpsEnv):
+        def __init__(self) -> None:
+            super().__init__()
+            self.step_calls = 0
+
+        def step(self, action: Any):
+            self.step_calls += 1
+            return super().step(action)
+
+        def no_model_baseline(self, seed: int) -> EpisodeOutcome:
+            return CityOpsEnv().no_model_baseline(seed)
+
+    # 1. Budget exhausted on step 0: abort cleanly, never call env.step().
+    env0 = CountingEnv()
+    l0_cap0 = tmp_path / "cap0.jsonl"
+    res0 = run_episode(
+        env0,
+        _memory_aware_policy,
+        seed=7,
+        max_steps=5,
+        l0_path=l0_cap0,
+        l1_caps={"spend_microusd": 10, "max_steps": 10, "max_depth": 2},
+    )
+    assert res0.aborted is True
+    assert res0.status == "aborted"
+    assert res0.abort_reason == "l1_gate_refused:spend_cap"
+    assert res0.info.get("aborted") is True
+    assert res0.info.get("abort_reason") == "l1_gate_refused:spend_cap"
+    assert res0.info.get("status") == "aborted"
+    assert res0.done is False
+    assert res0.steps == 0
+    assert env0.step_calls == 0
+    assert res0.l1_calls == 0
+    assert validate(l0_cap0.read_bytes())["valid"] is True
+
+    # 2. Budget allows 1 call (15 microusd) then refuses step 1: exactly 1 env.step().
+    env1 = CountingEnv()
+    l0_cap1 = tmp_path / "cap1.jsonl"
+    res1 = run_episode(
+        env1,
+        _memory_aware_policy,
+        seed=7,
+        max_steps=5,
+        l0_path=l0_cap1,
+        l1_caps={"spend_microusd": 20, "max_steps": 10, "max_depth": 2},
+    )
+    assert res1.aborted is True
+    assert res1.status == "aborted"
+    assert res1.abort_reason == "l1_gate_refused:spend_cap"
+    assert res1.done is False
+    assert res1.steps == 1
+    assert env1.step_calls == 1
+    assert res1.l1_calls == 1
+    assert res1.l1_spent_microusd == 15
+    assert validate(l0_cap1.read_bytes())["valid"] is True
+
+    # 3. Kill file present mid-episode: step 0 completes, step 1 aborts without calling env.step().
+    env_kill = CountingEnv()
+    l0_kill = tmp_path / "killed.jsonl"
+    kill_path = tmp_path / "killed.jsonl.kill"
+    calls_seen = 0
+
+    def kill_after_first_step(obs: Mapping[str, Any], mem: Optional[EpisodeMemory]) -> PolicyDecision:
+        nonlocal calls_seen
+        calls_seen += 1
+        if calls_seen == 2:
+            kill_path.write_text("stop", encoding="utf-8")
+        return _memory_aware_policy(obs, mem)
+
+    res_kill = run_episode(
+        env_kill,
+        kill_after_first_step,
+        seed=7,
+        max_steps=5,
+        l0_path=l0_kill,
+        l1_caps={"spend_microusd": 100_000, "max_steps": 10, "max_depth": 2},
+    )
+    assert res_kill.aborted is True
+    assert res_kill.status == "aborted"
+    assert res_kill.abort_reason == "l1_gate_refused:kill_file"
+    assert res_kill.info.get("aborted") is True
+    assert res_kill.info.get("abort_reason") == "l1_gate_refused:kill_file"
+    assert res_kill.done is False
+    assert res_kill.steps == 1
+    assert env_kill.step_calls == 1
+    assert validate(l0_kill.read_bytes())["valid"] is True
+
+
+def test_custom_env_adapter_populates_memory_facts_generically():
+    from antelligence.harness.core import EnvSnapshot, StepResult
+
+    class OrbitalProbeEnv:
+        supports_checkpoint = False
+        realism = RealismContract(fidelity_tier="proxy", units={"temp": "K"})
+
+        def __init__(self, *, use_hook: bool = False) -> None:
+            self._use_hook = use_hook
+            self._tick = 0
+            self._temp = 290.5
+
+        def reset(self, seed: int, config: Optional[Mapping[str, Any]] = None) -> Dict[str, Any]:
+            self._tick = 0
+            self._temp = 290.5
+            return {
+                "sector": f"orbit-{seed}",
+                "reactor_temp": self._temp,
+                "shields_up": True,
+                "beacon_code": "XZ-900",
+                "sensors": [1, 2, 3],
+                "raw_frame": {"bytes": 128},
+                "transient_alert": None,
+            }
+
+        def initial_facts(self, obs: Mapping[str, Any]) -> Dict[str, Any]:
+            if not self._use_hook:
+                return {k: v for k, v in obs.items() if isinstance(v, (bool, int, float, str))}
+            return {"custom_seed_tag": f"hook:{obs['sector']}", "beacon_code": obs["beacon_code"]}
+
+        def legal_actions(self, obs: Any):
+            return ("stabilize", "coast")
+
+        def step(self, action: Any) -> StepResult:
+            self._tick += 1
+            self._temp -= 5.0 if action == "stabilize" else 1.0
+            obs = {
+                "sector": f"orbit-step-{self._tick}",
+                "reactor_temp": self._temp,
+                "shields_up": True,
+                "beacon_code": None,  # transient: must remain remembered from reset
+                "sensors": [self._tick],
+            }
+            return StepResult(
+                obs=obs,
+                reward=1.0,
+                done=self._tick >= 2,
+                info={},
+                state_hash=f"h-{self._tick}",
+            )
+
+        def snapshot(self) -> EnvSnapshot:
+            raise NotImplementedError
+
+        def restore(self, snap: EnvSnapshot) -> None:
+            raise NotImplementedError
+
+        def no_model_baseline(self, seed: int) -> EpisodeOutcome:
+            return EpisodeOutcome(score=2.0, steps=2)
+
+    class PlainOrbitalEnv(OrbitalProbeEnv):
+        # Deliberately omit initial_facts hook to test generic scalar fallback.
+        initial_facts = None  # type: ignore[assignment]
+
+    seen_facts: List[Dict[str, Any]] = []
+
+    def inspect_policy(obs: Mapping[str, Any], mem: Optional[EpisodeMemory]) -> str:
+        assert mem is not None
+        seen_facts.append(dict(mem.facts))
+        return "stabilize"
+
+    res_plain = run_episode(PlainOrbitalEnv(), inspect_policy, seed=4, max_steps=5, use_memory=True)
+    assert res_plain.done is True
+    assert res_plain.steps == 2
+    assert res_plain.status == "pass"
+    # Step 0 seeded from reset obs with arbitrary scalar keys (excluding lists/dicts/None).
+    assert seen_facts[0] == {
+        "sector": "orbit-4",
+        "reactor_temp": 290.5,
+        "shields_up": True,
+        "beacon_code": "XZ-900",
+    }
+    # Step 1 keeps remembered transient beacon_code while updating scalar facts.
+    assert seen_facts[1]["beacon_code"] == "XZ-900"
+    assert seen_facts[1]["sector"] == "orbit-step-1"
+    assert seen_facts[1]["reactor_temp"] == 285.5
+    assert "sensors" not in seen_facts[1] and "raw_frame" not in seen_facts[1]
+    assert not ({"node", "fuel", "cargo", "job_accepted", "pickup", "dropoff", "auth_code"} & set(seen_facts[1]))
+
+    # Optional initial_facts(obs) hook takes precedence on reset.
+    hook_facts: List[Dict[str, Any]] = []
+
+    def inspect_hook_policy(obs: Mapping[str, Any], mem: Optional[EpisodeMemory]) -> str:
+        assert mem is not None
+        hook_facts.append(dict(mem.facts))
+        return "coast"
+
+    res_hook = run_episode(OrbitalProbeEnv(use_hook=True), inspect_hook_policy, seed=9, max_steps=5, use_memory=True)
+    assert res_hook.done is True
+    assert hook_facts[0] == {"custom_seed_tag": "hook:orbit-9", "beacon_code": "XZ-900"}
+    assert hook_facts[1]["custom_seed_tag"] == "hook:orbit-9"
+    assert hook_facts[1]["beacon_code"] == "XZ-900"
+    assert hook_facts[1]["sector"] == "orbit-step-1"
